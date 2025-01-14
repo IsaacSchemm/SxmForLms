@@ -23,29 +23,17 @@ module Program =
     let main args =
         let builder = WebApplication.CreateBuilder(args)
 
-        builder
-            .Services
+        builder.Services
             .AddControllersWithViews()
             .AddRazorRuntimeCompilation()
 
-        builder.Services.AddRazorPages()
+        builder.Services
+            .AddHttpClient()
 
         let app = builder.Build()
 
-        if not (builder.Environment.IsDevelopment()) then
-            app.UseExceptionHandler("/Home/Error")
-            app.UseHsts() |> ignore // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-
-        app.UseHttpsRedirection()
-
         app.UseStaticFiles()
-        app.UseRouting()
-        app.UseAuthorization()
-
         app.MapControllerRoute(name = "default", pattern = "{controller=Home}/{action=Index}/{id?}")
-
-        app.MapRazorPages()
-
-        app.Run()
+        app.Run("http://+:5000")
 
         exitCode

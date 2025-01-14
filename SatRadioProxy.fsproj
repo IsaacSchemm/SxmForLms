@@ -6,10 +6,19 @@
 
   <ItemGroup>
     <Compile Include="Controllers/HomeController.fs" />
+    <Compile Include="NetworkInterfaceProvider.fs" />
+    <Compile Include="SiriusXMChannel.fs" />
+    <Compile Include="SiriusXMPythonScriptManager.fs" />
+    <Compile Include="SiriusXMChannelProvider.fs" />
+    <Compile Include="Favorite.fs" />
+    <Compile Include="LyrionFavoritesManager.fs" />
+    <Compile Include="LyrionManager.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Data" Version="6.4.0" />
+    <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.11" />
   </ItemGroup>
 

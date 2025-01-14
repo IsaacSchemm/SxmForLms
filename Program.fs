@@ -32,6 +32,22 @@ module Program =
 
         let app = builder.Build()
 
+        let hostApplicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>()
+
+        hostApplicationLifetime.ApplicationStarted.Register(fun () -> ignore (task {
+            try
+                do! NetworkInterfaceProvider.updateAddressAsync ()
+                do! SiriusXMChannelProvider.refreshChannelsAsync ()
+                LyrionManager.refreshFavorites ()
+                SiriusXMPythonScriptManager.start ()
+            with exn ->
+                sprintf "%O" exn |> stderr.WriteLine
+        }))
+
+        hostApplicationLifetime.ApplicationStopped.Register(fun () ->
+            SiriusXMPythonScriptManager.stop ()
+        )
+
         app.UseStaticFiles()
         app.MapControllerRoute(name = "default", pattern = "{controller=Home}/{action=Index}/{id?}")
         app.Run("http://+:5000")

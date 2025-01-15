@@ -1,7 +1,11 @@
 ﻿namespace SatRadioProxy
 
 module SiriusXMChannelProvider =
-    let mutable channels = []
+    let mutable channels = [{
+        id = ""
+        number = 0
+        name = "Loading..."
+    }]
 
     let refreshChannelsAsync () = task {
         SiriusXMPythonScriptManager.stop ()

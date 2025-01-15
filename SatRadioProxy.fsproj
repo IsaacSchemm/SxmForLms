@@ -5,14 +5,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Controllers/HomeController.fs" />
+    <Compile Include="Utility.fs" />
+    <Compile Include="Favorite.fs" />
+    <Compile Include="Channel.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
-    <Compile Include="SiriusXMChannel.fs" />
     <Compile Include="SiriusXMPythonScriptManager.fs" />
     <Compile Include="SiriusXMChannelProvider.fs" />
-    <Compile Include="Favorite.fs" />
+    <Compile Include="BookmarkManager.fs" />
     <Compile Include="LyrionFavoritesManager.fs" />
     <Compile Include="LyrionManager.fs" />
+    <Compile Include="Controllers/HomeController.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

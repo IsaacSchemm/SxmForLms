@@ -17,18 +17,12 @@ module LyrionFavoritesManager =
             let doc = new XmlDocument()
             doc.Load(path)
 
-            let favoriteNodes = [
-                for category in doc.GetElementsByTagName("outline") do
-                    if (category |> attr "text") = Some categoryName then
-                        for favorite in category.ChildNodes do
-                            favorite
-            ]
-
-            for favorite in favoriteNodes do
-                match (favorite |> attr "URL"), (favorite |> attr "text") with
-                | Some url, Some text ->
-                    yield { url = url; text = text }
-                | _ -> ()
+            for category in doc.GetElementsByTagName("outline") do
+                if attr "text" category = Some categoryName then
+                    for favorite in category.ChildNodes do
+                        match attr "URL" favorite, attr "text" favorite with
+                        | Some url, Some text -> { url = url; text = text }
+                        | _ -> ()
     ]
 
     let replaceFavorites categoryName channels =

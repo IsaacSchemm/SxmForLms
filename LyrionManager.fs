@@ -16,6 +16,6 @@ module LyrionManager =
             }
         ]
 
-        if desiredFavorites <> LyrionFavoritesManager.getFavorites "SiriusXM" then
+        if LyrionFavoritesManager.getFavorites "SiriusXM" <> desiredFavorites then
             LyrionFavoritesManager.replaceFavorites "SiriusXM" desiredFavorites
             Process.Start("service", "lyrionmusicserver restart") |> ignore

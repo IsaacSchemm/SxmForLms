@@ -1,6 +1,5 @@
 ﻿namespace SatRadioProxy
 
-open System
 open System.Diagnostics
 open System.IO
 
@@ -10,26 +9,10 @@ module SiriusXMPythonScriptManager =
 
     let mutable private currentProcess: Process option = None
 
-    // https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns#partial-active-patterns
-    let private (|Integer|_|) (str: string) =
-        let mutable intvalue = 0
-        if Int32.TryParse(str, &intvalue) then Some(intvalue)
-        else None
-
-    let private readFile path =
-        if File.Exists(path)
-        then Some (File.ReadAllText(path))
-        else None
-
-    let private getActiveProcess () =
-        currentProcess
-        |> Option.filter (fun p -> not p.HasExited)
-
-    let private getUsername () =
-        readFile usernameFile
-
-    let private getPassword () =
-        readFile passwordFile
+    let private getStatus () =
+        Utility.readFile usernameFile,
+        Utility.readFile passwordFile,
+        currentProcess |> Option.filter (fun p -> not p.HasExited)
 
     let setCredentials (username, password) =
         File.WriteAllText(usernameFile, username)
@@ -37,8 +20,8 @@ module SiriusXMPythonScriptManager =
 
     let getChannelsAsync () = task {
         let newProcess =
-            match getActiveProcess (), getUsername (), getPassword () with
-            | None, Some username, Some password ->
+            match getStatus () with
+            | Some username, Some password, None ->
                 new ProcessStartInfo(
                     "python3",
                     $"sxm.py -l {username} {password}",
@@ -59,11 +42,9 @@ module SiriusXMPythonScriptManager =
         }
 
         return [
-            let splitOptions = StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries
-
-            for line in output.Split('\n', splitOptions) do
-                match line.Split('|', splitOptions) with
-                | [| id; Integer number; name |] ->
+            for line in Utility.split '\n' output do
+                match Utility.split '|' line with
+                | [| id; Utility.Int32 number; name |] ->
                     yield {
                         id = id
                         number = number
@@ -74,8 +55,8 @@ module SiriusXMPythonScriptManager =
     }
 
     let start () =
-        match getActiveProcess (), getUsername (), getPassword () with
-        | None, Some username, Some password ->
+        match getStatus() with
+        | Some username, Some password, None ->
             currentProcess <-
                 Process.Start(
                     "python3",
@@ -84,8 +65,5 @@ module SiriusXMPythonScriptManager =
         | _ -> ()
 
     let stop () =
-        match getActiveProcess () with
-        | Some p -> p.Kill()
-        | None -> ()
-
+        currentProcess |> Option.iter (fun p -> p.Kill())
         currentProcess <- None

@@ -1,6 +1,6 @@
 ﻿namespace SatRadioProxy
 
-type SiriusXMChannel = {
+type Channel = {
     id: string
     number: int
     name: string

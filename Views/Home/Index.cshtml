@@ -42,6 +42,8 @@
     </style>
 </head>
 <body>
+    <audio controls></audio>
+    <hr />
     @{
     var bookmarks = BookmarkManager.getBookmarks();
     var channels = SiriusXMChannelProvider.channels.OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2);
@@ -138,5 +140,29 @@
             </form>
         </div>
     </details>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
+            integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <script type="text/javascript">
+        var hls;
+        (async () => {
+            try {
+                if (Hls.isSupported()) {
+                    const audio = document.getElementsByTagName("audio")[0];
+                    hls = new Hls({ startPosition: 0 });
+                    const pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
+                    hls.attachMedia(audio);
+                    await pr;
+                    hls.on(Hls.Events.ERROR, function (event, data) {
+                        console.log(event, data);
+                    });
+                    hls.loadSource("/Proxy/big80s.m3u8");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        })();
+    </script>
 </body>
 </html>

@@ -15,12 +15,14 @@
     <Compile Include="LyrionFavoritesManager.fs" />
     <Compile Include="LyrionManager.fs" />
     <Compile Include="Controllers/HomeController.fs" />
+    <Compile Include="Controllers\ProxyController.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
+    <PackageReference Include="M3U8Parser" Version="1.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.11" />
   </ItemGroup>
 

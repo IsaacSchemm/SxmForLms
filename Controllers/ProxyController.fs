@@ -11,13 +11,27 @@ open System.Threading
 
 open Microsoft.AspNetCore.Mvc
 
+open Microsoft.Extensions.Caching.Memory
+
 open SatRadioProxy
 
-type ProxyController (httpClientFactory: IHttpClientFactory) =
+type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
     inherit Controller()
 
     let ffmpeg = "ffmpeg"
     let ipAddress = "localhost"
+
+    let keySpace = Guid.NewGuid()
+
+    let store segment =
+        let key = (keySpace, segment.path)
+        memoryCache.Set(key, segment, TimeSpan.FromMinutes(5))
+
+    let retrieve path =
+        let key = (keySpace, path)
+        match memoryCache.TryGetValue(key) with
+        | true, (:? Segment as segment) -> Some segment
+        | _ -> None
 
     [<Route("Proxy/{id}.m3u8")>]
     member this.Chunklist (id: string, cancellationToken: CancellationToken) = task {
@@ -25,18 +39,19 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
         use! resp = client.GetAsync($"http://{ipAddress}:8888/{id}.m3u8", cancellationToken)
         let! text = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
 
-        let origList = ChunklistParser.parse text
+        let fullList = ChunklistParser.parse text
 
-        let newList =
-            origList
-            |> List.skip (List.length origList - 5)
-            |> List.map (fun segment -> {
-                segment with
-                    path = $"Segment/{segment.path}?sequence={segment.mediaSequence}"
-                    keyTag = None
-            })
+        let truncatedList =
+            ChunklistParser.parse text
+            |> List.skip (fullList.Length - 5)
 
-        let content = ChunklistParser.write newList
+        for segment in truncatedList do
+            ignore (store segment)
+
+        let content =
+            truncatedList
+            |> Seq.map (fun segment -> { segment with key = "NONE" })
+            |> ChunklistParser.write
 
         return this.Content(
             content,
@@ -44,40 +59,51 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
             Encoding.UTF8)
     }
 
-    [<Route("Proxy/Segment/{**path}")>]
-    member this.Chunk (path: string, sequence: uint64, cancellationToken: CancellationToken) = task {
+    [<Route("Proxy/{**path}")>]
+    member this.Chunk (path: string, cancellationToken: CancellationToken) = task {
+        let segment = Option.get (retrieve path)
+
         use client = httpClientFactory.CreateClient()
+        client.BaseAddress <- new Uri($"http://{ipAddress}:8888")
 
-        use algorithm = Aes.Create()
-        algorithm.Padding <- PaddingMode.PKCS7
-        algorithm.Mode <- CipherMode.CBC
-        algorithm.KeySize <- 128
-        algorithm.BlockSize <- 128
-
-        let! key = task {
-            use! keyResp = client.GetAsync($"http://{ipAddress}:8888/key/1", cancellationToken)
-            return! keyResp.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
+        let! raw = task {
+            use! response = client.GetAsync(segment.path, cancellationToken)
+            return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
         }
 
-        algorithm.Key <- key
-
-        algorithm.IV <-
-            let iv = Array.zeroCreate 16
-            BinaryPrimitives.WriteUInt128BigEndian(iv.AsSpan(), sequence)
-            iv
-
         let! data = task {
-            use! response = client.GetAsync($"http://{ipAddress}:8888/{path}", cancellationToken)
-            use! responseStream = response.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
+            match segment.key with
+            | "NONE" ->
+                return raw
+            | "METHOD=AES-128,URI=\"key/1\"" ->
+                use algorithm = Aes.Create()
+                algorithm.Padding <- PaddingMode.PKCS7
+                algorithm.Mode <- CipherMode.CBC
+                algorithm.KeySize <- 128
+                algorithm.BlockSize <- 128
 
-            use memoryStream = new MemoryStream()
+                let! key = task {
+                    use! response = client.GetAsync("key/1", cancellationToken)
+                    return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
+                }
 
-            do! task {
-                use cryptoStream = new CryptoStream(memoryStream, algorithm.CreateDecryptor(), CryptoStreamMode.Write)
-                do! responseStream.CopyToAsync(cryptoStream)
-            }
+                algorithm.Key <- key
 
-            return memoryStream.ToArray()
+                algorithm.IV <-
+                    let iv = Array.zeroCreate 16
+                    BinaryPrimitives.WriteUInt128BigEndian(iv.AsSpan(), segment.mediaSequence)
+                    iv
+
+                use outputStream = new MemoryStream()
+
+                do! task {
+                    use cryptoStream = new CryptoStream(outputStream, algorithm.CreateDecryptor(), CryptoStreamMode.Write)
+                    do! cryptoStream.WriteAsync(raw)
+                }
+
+                return outputStream.ToArray()
+            | _ ->
+                return raise (new NotImplementedException())
         }
 
         let psi = new ProcessStartInfo(

@@ -3,13 +3,13 @@
 open System
 
 module ChunklistParser =
-    let (|Int128|_|) (str: string) =
-        match Int128.TryParse(str) with
+    let (|UInt128|_|) (str: string) =
+        match UInt128.TryParse(str) with
         | true, value -> Some value
         | false, _ -> None
 
-    let zero = Int128.Zero
-    let one = Int128.One
+    let zero = UInt128.Zero
+    let one = UInt128.One
 
     let (|Tag|_|) (str: string) =
         match str.StartsWith('#'), str.IndexOf(':') with
@@ -27,16 +27,8 @@ module ChunklistParser =
         | "EXT-X-PROGRAM-DATE-TIME" -> true
         | _ -> false
 
-    type Segment = {
-        keyTag: string option
-        headerTags: string list
-        mediaSequence: Int128
-        segmentTags: string list
-        path: string
-    }
-
     let parse text = [
-        let mutable keyTag = None
+        let mutable key = "NONE"
         let mutable headerTags = []
         let mutable segmentTags = []
 
@@ -45,18 +37,18 @@ module ChunklistParser =
         for line in Utility.split '\n' text do
             match line with
             | Tag ("EXT-X-KEY", value) ->
-                keyTag <- Some value
-            | Tag ("EXT-X-MEDIA-SEQUENCE", Int128 value) ->
+                key <- value
+            | Tag ("EXT-X-MEDIA-SEQUENCE", UInt128 value) ->
                 mediaSequence <- value
             | Tag ("EXTINF", _)
             | Tag ("EXT-X-BYTERANGE", _)
             | Tag ("EXT-X-PROGRAM-DATE-TIME", _) ->
-                segmentTags <- line :: segmentTags
+                segmentTags <- List.rev (line :: segmentTags)
             | Tag _ ->
-                headerTags <- line :: headerTags
+                headerTags <- List.rev (line :: headerTags)
             | _ when not (line.StartsWith('#')) ->
                 {
-                    keyTag = keyTag
+                    key = key
                     headerTags = headerTags
                     mediaSequence = mediaSequence
                     segmentTags = segmentTags
@@ -73,16 +65,19 @@ module ChunklistParser =
         match Seq.tryHead segments with
         | None -> ()
         | Some segment ->
-            yield! List.rev segment.headerTags
+            yield! segment.headerTags
 
             if segment.mediaSequence <> zero then
                 $"#EXT-X-MEDIA-SEQUENCE:{segment.mediaSequence}"
 
-            match segment.keyTag with
-            | Some key -> $"#EXT-X-KEY:{key}"
-            | None -> ()
+        let mutable lastKey = "NONE"
 
         for segment in segments do
-            yield! List.rev segment.segmentTags
+            if segment.key <> lastKey then
+                $"EXT-X-KEY:{segment.key}"
+                lastKey <- segment.key
+
+            yield! segment.segmentTags
+
             segment.path
     ]

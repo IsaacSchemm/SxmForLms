@@ -43,18 +43,13 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
         let! text = resp.Content.ReadAsStringAsync(cancellationToken)
 
-        let fullList = ChunklistParser.parse text
-
-        let truncatedList =
-            ChunklistParser.parse text
-            |> List.skip (fullList.Length - 5)
-
-        for segment in truncatedList do
-            ignore (store segment)
+        let list = ChunklistParser.parse text
 
         let content =
-            truncatedList
-            |> Seq.map (fun segment -> { segment with key = "NONE" })
+            list
+            |> Seq.skip (list.Length - 5)
+            |> Seq.map (fun segment -> store segment)
+            |> Seq.map (fun segment -> { store segment with key = "NONE" })
             |> ChunklistParser.write
 
         return this.Content(

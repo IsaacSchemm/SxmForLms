@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35527.113 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SatRadioProxy", "SatRadioProxy.fsproj", "{6B1B4758-1B09-4700-BA6F-FF8CF4B8C064}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SatRadioProxy", "SatRadioProxy/SatRadioProxy.fsproj", "{6B1B4758-1B09-4700-BA6F-FF8CF4B8C064}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

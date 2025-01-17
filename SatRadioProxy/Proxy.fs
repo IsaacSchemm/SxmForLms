@@ -1,24 +1,16 @@
-﻿namespace SatRadioProxy.Controllers
+﻿namespace SatRadioProxy
 
 open System
 open System.Buffers.Binary
 open System.Diagnostics
 open System.IO
-open System.Net
 open System.Net.Http
 open System.Security.Cryptography
-open System.Text
 open System.Threading
-
-open Microsoft.AspNetCore.Mvc
 
 open Microsoft.Extensions.Caching.Memory
 
-open SatRadioProxy
-
-type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
-    inherit Controller()
-
+type Proxy (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
     static let keySpace = Guid.NewGuid()
 
     let store segment =
@@ -34,14 +26,10 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
     let ffmpeg = "ffmpeg"
     let ipAddress = "localhost"
 
-    [<Route("Proxy/{id}.m3u8")>]
-    member this.Chunklist (id: string, cancellationToken: CancellationToken) = task {
+    member _.GetChunklistAsync (id: string, cancellationToken: CancellationToken) = task {
         use client = httpClientFactory.CreateClient()
         use! resp = client.GetAsync($"http://{ipAddress}:8888/{id}.m3u8", cancellationToken)
-        if not resp.IsSuccessStatusCode then
-            raise (StatusCodeException HttpStatusCode.BadGateway)
-
-        let! text = resp.Content.ReadAsStringAsync(cancellationToken)
+        let! text = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
 
         let list = ChunklistParser.parse text
 
@@ -52,28 +40,24 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
             |> Seq.map (fun segment -> { store segment with key = "NONE" })
             |> ChunklistParser.write
 
-        return this.Content(
-            content,
-            resp.Content.Headers.ContentType.MediaType,
-            Encoding.UTF8)
+        return {|
+            content = content
+            contentType = resp.Content.Headers.ContentType.MediaType
+        |}
     }
 
-    [<Route("Proxy/{**path}")>]
-    member this.Chunk (path: string, cancellationToken: CancellationToken) = task {
+    member _.GetChunkAsync (path: string, cancellationToken: CancellationToken) = task {
         let segment =
             match retrieve path with
             | Some segment -> segment
-            | None -> raise (StatusCodeException HttpStatusCode.Gone)
+            | None -> failwith "Segment path is no longer present in cache"
 
         use client = httpClientFactory.CreateClient()
         client.BaseAddress <- new Uri($"http://{ipAddress}:8888")
 
         let! raw = task {
             use! response = client.GetAsync(segment.path, cancellationToken)
-            if not response.IsSuccessStatusCode then
-                raise (StatusCodeException HttpStatusCode.BadGateway)
-
-            return! response.Content.ReadAsByteArrayAsync(cancellationToken)
+            return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
         }
 
         let! data = task {
@@ -89,10 +73,7 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
                 let! key = task {
                     use! response = client.GetAsync("key/1", cancellationToken)
-                    if not response.IsSuccessStatusCode then
-                        raise (StatusCodeException HttpStatusCode.BadGateway)
-
-                    return! response.Content.ReadAsByteArrayAsync(cancellationToken)
+                    return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
                 }
 
                 algorithm.Key <- key
@@ -111,7 +92,7 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
                 return outputStream.ToArray()
             | _ ->
-                return raise (StatusCodeException HttpStatusCode.NotImplemented)
+                return raise (new NotImplementedException())
         }
 
         let psi = new ProcessStartInfo(
@@ -138,5 +119,8 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
             return buffer.ToArray()
         }
 
-        return this.File(segment, "video/mp2t")
+        return {|
+            data = segment
+            contentType = "video/mp2t"
+        |}
     }

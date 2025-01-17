@@ -45,8 +45,8 @@
     <audio controls></audio>
     <hr />
     @{
-    var bookmarks = BookmarkManager.getBookmarks();
-    var channels = SiriusXMChannelProvider.channels.OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2);
+        var bookmarks = BookmarkManager.getBookmarks();
+        var channels = SiriusXMChannelProvider.channels.OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2);
     }
     <form asp-action="PlayChannel" method="get">
         <input type="number"
@@ -66,26 +66,26 @@
             <tbody>
                 @foreach (var channel in channels)
                 {
-                <tr>
-                    <td>
-                        @if (bookmarks.Contains(channel.id))
-                        {
-                        <input type="checkbox" name="id" value="@channel.id" checked />
-                        }
-                        else
-                        {
-                        <input type="checkbox" name="id" value="@channel.id" />
-                        }
-                    </td>
-                    <td style="text-align: right">
-                        @channel.number
-                    </td>
-                    <td style="text-align: left">
-                        <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/@(channel.id).m3u8" class="button play">
-                            @channel.name
-                        </a>
-                    </td>
-                </tr>
+                    <tr>
+                        <td>
+                            @if (bookmarks.Contains(channel.id))
+                            {
+                                <input type="checkbox" name="id" value="@channel.id" checked />
+                            }
+                            else
+                            {
+                                <input type="checkbox" name="id" value="@channel.id" />
+                            }
+                        </td>
+                        <td style="text-align: right">
+                            @channel.number
+                        </td>
+                        <td style="text-align: left">
+                            <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/@(channel.id).m3u8" class="button play">
+                                @channel.name
+                            </a>
+                        </td>
+                    </tr>
                 }
                 <tr>
                     <td colspan="3" style="text-align: right">

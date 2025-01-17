@@ -2,19 +2,9 @@ namespace SatRadioProxy
 
 #nowarn "20"
 
-open System
-open System.Collections.Generic
-open System.IO
-open System.Linq
-open System.Threading.Tasks
-open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.HttpsPolicy
-open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.Logging
 
 module Program =
     let exitCode = 0
@@ -28,6 +18,8 @@ module Program =
             .AddRazorRuntimeCompilation()
 
         builder.Services
+            .AddProblemDetails()
+            .AddExceptionHandler<StatusCodeExceptionHandler>()
             .AddHttpClient()
 
         let app = builder.Build()
@@ -48,6 +40,7 @@ module Program =
             SiriusXMPythonScriptManager.stop ()
         )
 
+        app.UseExceptionHandler()
         app.UseStaticFiles()
         app.MapControllerRoute(name = "default", pattern = "{controller=Home}/{action=Index}/{id?}")
         app.Run("http://+:5000")

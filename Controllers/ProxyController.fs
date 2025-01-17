@@ -4,6 +4,7 @@ open System
 open System.Buffers.Binary
 open System.Diagnostics
 open System.IO
+open System.Net
 open System.Net.Http
 open System.Security.Cryptography
 open System.Text
@@ -18,10 +19,7 @@ open SatRadioProxy
 type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
     inherit Controller()
 
-    let ffmpeg = "ffmpeg"
-    let ipAddress = "localhost"
-
-    let keySpace = Guid.NewGuid()
+    static let keySpace = Guid.NewGuid()
 
     let store segment =
         let key = (keySpace, segment.path)
@@ -33,11 +31,17 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
         | true, (:? Segment as segment) -> Some segment
         | _ -> None
 
+    let ffmpeg = "ffmpeg"
+    let ipAddress = "localhost"
+
     [<Route("Proxy/{id}.m3u8")>]
     member this.Chunklist (id: string, cancellationToken: CancellationToken) = task {
         use client = httpClientFactory.CreateClient()
         use! resp = client.GetAsync($"http://{ipAddress}:8888/{id}.m3u8", cancellationToken)
-        let! text = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+        if not resp.IsSuccessStatusCode then
+            raise (StatusCodeException HttpStatusCode.BadGateway)
+
+        let! text = resp.Content.ReadAsStringAsync(cancellationToken)
 
         let fullList = ChunklistParser.parse text
 
@@ -61,14 +65,20 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
     [<Route("Proxy/{**path}")>]
     member this.Chunk (path: string, cancellationToken: CancellationToken) = task {
-        let segment = Option.get (retrieve path)
+        let segment =
+            match retrieve path with
+            | Some segment -> segment
+            | None -> raise (StatusCodeException HttpStatusCode.Gone)
 
         use client = httpClientFactory.CreateClient()
         client.BaseAddress <- new Uri($"http://{ipAddress}:8888")
 
         let! raw = task {
             use! response = client.GetAsync(segment.path, cancellationToken)
-            return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
+            if not response.IsSuccessStatusCode then
+                raise (StatusCodeException HttpStatusCode.BadGateway)
+
+            return! response.Content.ReadAsByteArrayAsync(cancellationToken)
         }
 
         let! data = task {
@@ -84,7 +94,10 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
                 let! key = task {
                     use! response = client.GetAsync("key/1", cancellationToken)
-                    return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
+                    if not response.IsSuccessStatusCode then
+                        raise (StatusCodeException HttpStatusCode.BadGateway)
+
+                    return! response.Content.ReadAsByteArrayAsync(cancellationToken)
                 }
 
                 algorithm.Key <- key
@@ -103,7 +116,7 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
 
                 return outputStream.ToArray()
             | _ ->
-                return raise (new NotImplementedException())
+                return raise (StatusCodeException HttpStatusCode.NotImplemented)
         }
 
         let psi = new ProcessStartInfo(
@@ -113,8 +126,6 @@ type ProxyController (httpClientFactory: IHttpClientFactory, memoryCache: IMemor
             RedirectStandardOutput = true)
 
         let proc = Process.Start(psi)
-        if isNull proc then
-            failwith "Cannot redirect stdin and stdout for ffmpeg (process variable is null)"
 
         let! segment = task {
             use buffer = new MemoryStream()

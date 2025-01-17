@@ -16,6 +16,8 @@
     <Compile Include="LyrionManager.fs" />
     <Compile Include="Segment.fs" />
     <Compile Include="ChunklistParser.fs" />
+    <Compile Include="StatusCodeException.fs" />
+    <Compile Include="StatusCodeExceptionHandler.fs" />
     <Compile Include="Controllers/HomeController.fs" />
     <Compile Include="Controllers\ProxyController.fs" />
     <Compile Include="Program.fs" />

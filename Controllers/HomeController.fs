@@ -1,6 +1,7 @@
 ﻿namespace SatRadioProxy.Controllers
 
 open System
+open System.Net
 
 open Microsoft.AspNetCore.Mvc
 
@@ -21,12 +22,19 @@ type HomeController () =
             SiriusXMChannelProvider.channels
             |> Seq.where (fun c -> c.number = num)
             |> Seq.map (fun c -> c.id)
-            |> Seq.head
+            |> Seq.tryHead
+            |> Option.defaultWith (fun () -> raise (StatusCodeException HttpStatusCode.NotFound))
+
         this.Redirect($"http://{NetworkInterfaceProvider.address}:5000/Proxy/{id}.m3u8")
 
     member this.PlayBookmark (num) =
         let bookmarks = BookmarkManager.getBookmarks ()
-        let bookmark = bookmarks[num]
+
+        let bookmark =
+            bookmarks
+            |> List.tryItem num
+            |> Option.defaultWith (fun () -> raise (StatusCodeException HttpStatusCode.NotFound))
+
         this.Redirect(bookmark)
 
     [<HttpPost>]
@@ -44,7 +52,7 @@ type HomeController () =
     [<HttpPost>]
     member this.SetCredentials (username, password) =
         if [username; password] |> List.exists String.IsNullOrEmpty then
-            failwith "Not saving an empty username/password"
+            raise (StatusCodeException HttpStatusCode.BadRequest)
 
         SiriusXMPythonScriptManager.setCredentials (username, password)
         this.RedirectToAction(nameof Index)

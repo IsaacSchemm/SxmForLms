@@ -4,11 +4,10 @@ open System
 open System.IO
 
 module Utility =
-    // https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns#partial-active-patterns
     let (|Int32|_|) (str: string) =
-        let mutable intvalue = 0
-        if Int32.TryParse(str, &intvalue) then Some(intvalue)
-        else None
+        match Int32.TryParse(str) with
+        | true, value -> Some value
+        | false, _ -> None
 
     let readFile path =
         if File.Exists(path)

@@ -2,16 +2,16 @@
 
 open System
 open System.Buffers.Binary
+open System.Diagnostics
 open System.IO
 open System.Net.Http
 open System.Security.Cryptography
 open System.Text
 open System.Threading
-open System.Diagnostics
 
 open Microsoft.AspNetCore.Mvc
 
-open M3U8Parser
+open SatRadioProxy
 
 type ProxyController (httpClientFactory: IHttpClientFactory) =
     inherit Controller()
@@ -25,34 +25,27 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
         use! resp = client.GetAsync($"http://{ipAddress}:8888/{id}.m3u8", cancellationToken)
         let! text = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
 
-        let playlist = MediaPlaylist.LoadFromText(text)
-        let segmentContainer = Seq.exactlyOne playlist.MediaSegments
+        let origList = ChunklistParser.parse text
 
-        segmentContainer.Key <- null
+        let newList =
+            origList
+            |> List.skip (List.length origList - 5)
+            |> List.map (fun segment -> {
+                segment with
+                    path = $"Segment/{segment.path}?sequence={segment.mediaSequence}"
+                    keyTag = None
+            })
 
-        let mutable segments = List.ofSeq segmentContainer.Segments
-        let mutable sequence = playlist.MediaSequence |> Option.ofNullable |> Option.defaultValue 0
-
-        while List.length segments > 5 do
-            segments <- List.tail segments
-            sequence <- sequence + 1
-
-        playlist.MediaSequence <- sequence
-
-        for segment in segments do
-            segment.Uri <- $"{id}-{sequence}.ts?path={Uri.EscapeDataString(segment.Uri)}"
-            sequence <- sequence + 1
-
-        segmentContainer.Segments <- ResizeArray segments
+        let content = ChunklistParser.write newList
 
         return this.Content(
-            string playlist,
+            content,
             resp.Content.Headers.ContentType.MediaType,
             Encoding.UTF8)
     }
 
-    [<Route("Proxy/{id}-{sequence}.ts")>]
-    member this.Chunk (id: string, sequence: uint64, path: string, cancellationToken: CancellationToken) = task {
+    [<Route("Proxy/Segment/{**path}")>]
+    member this.Chunk (path: string, sequence: uint64, cancellationToken: CancellationToken) = task {
         use client = httpClientFactory.CreateClient()
 
         use algorithm = Aes.Create()
@@ -61,19 +54,22 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
         algorithm.KeySize <- 128
         algorithm.BlockSize <- 128
 
-        use! keyResp = client.GetAsync($"http://{ipAddress}:8888/key/1", cancellationToken)
-        let! key = keyResp.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
-
-        let iv = Array.zeroCreate 16
-        BinaryPrimitives.WriteUInt128BigEndian(iv.AsSpan(), sequence)
+        let! key = task {
+            use! keyResp = client.GetAsync($"http://{ipAddress}:8888/key/1", cancellationToken)
+            return! keyResp.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
+        }
 
         algorithm.Key <- key
-        algorithm.IV <- iv
 
-        use! response = client.GetAsync($"http://{ipAddress}:8888/{path}", cancellationToken)
-        use! responseStream = response.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
+        algorithm.IV <-
+            let iv = Array.zeroCreate 16
+            BinaryPrimitives.WriteUInt128BigEndian(iv.AsSpan(), sequence)
+            iv
 
         let! data = task {
+            use! response = client.GetAsync($"http://{ipAddress}:8888/{path}", cancellationToken)
+            use! responseStream = response.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
+
             use memoryStream = new MemoryStream()
 
             do! task {
@@ -90,10 +86,11 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
             RedirectStandardInput = true,
             RedirectStandardOutput = true)
 
-        match Process.Start(psi) with
-        | null ->
-            return this.File(data, response.Content.Headers.ContentType.MediaType)
-        | proc ->
+        let proc = Process.Start(psi)
+        if isNull proc then
+            failwith "Cannot redirect stdin and stdout for ffmpeg (process variable is null)"
+
+        let! segment = task {
             use buffer = new MemoryStream()
 
             let writeTask = proc.StandardInput.BaseStream.WriteAsync(data, cancellationToken)
@@ -106,5 +103,8 @@ type ProxyController (httpClientFactory: IHttpClientFactory) =
             do! readTask
             do! proc.WaitForExitAsync(cancellationToken)
 
-            return this.File(buffer.ToArray(), "video/mp2t")
+            return buffer.ToArray()
+        }
+
+        return this.File(segment, "video/mp2t")
     }

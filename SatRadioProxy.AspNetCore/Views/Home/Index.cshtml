@@ -10,16 +10,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
     <title>SatRadioProxy</title>
     <style type="text/css">
-        html, body {
-            margin: 0;
-        }
-
         body {
             background-color: black;
             color: white;
             font-family: sans-serif;
             font-size: 16pt;
+            margin: 0;
             text-align: center;
+        }
+
+        main {
+            margin: auto;
+            max-width: 320px;
         }
 
         #num {
@@ -55,53 +57,55 @@
     </style>
 </head>
 <body>
-    <table>
-        <tr>
-            <td><button id="button1">1</button></td>
-            <td><button id="button2">2</button></td>
-            <td><button id="button3">3</button></td>
-        </tr>
-        <tr>
-            <td><button id="button4">4</button></td>
-            <td><button id="button5">5</button></td>
-            <td><button id="button6">6</button></td>
-        </tr>
-        <tr>
-            <td><button id="button7">7</button></td>
-            <td><button id="button8">8</button></td>
-            <td><button id="button9">9</button></td>
-        </tr>
-        <tr>
-            <td><button id="clear">⌫</button></td>
-            <td><button id="button0">0</button></td>
-            <td><button id="play">&#9654;</button></td>
-        </tr>
-    </table>
-    <div>
-        &nbsp;
-        <span id="num"></span>
-        &nbsp;
-    </div>
-    <audio controls></audio>
-    <table>
-        <tr>
-            <td><button id="back">&larr;&#x2605;</button></td>
-            <td><button id="stop">&#9724;</button></td>
-            <td><button id="next">&#x2605;&rarr;</button></td>
-        </tr>
-    </table>
-    <hr />
-    <div>
-        <a asp-action="Channels">
-            View channels
-        </a>
-    </div>
-    <hr />
-    <div>
-        <a href="http://@(NetworkInterfaceProvider.address):9000">
-            Lyrion Music Server
-        </a>
-    </div>
+    <main>
+        <table>
+            <tr>
+                <td><button id="button1">1</button></td>
+                <td><button id="button2">2</button></td>
+                <td><button id="button3">3</button></td>
+            </tr>
+            <tr>
+                <td><button id="button4">4</button></td>
+                <td><button id="button5">5</button></td>
+                <td><button id="button6">6</button></td>
+            </tr>
+            <tr>
+                <td><button id="button7">7</button></td>
+                <td><button id="button8">8</button></td>
+                <td><button id="button9">9</button></td>
+            </tr>
+            <tr>
+                <td><button id="clear">⌫</button></td>
+                <td><button id="button0">0</button></td>
+                <td><button id="play">&#9654;</button></td>
+            </tr>
+        </table>
+        <div>
+            &nbsp;
+            <span id="num"></span>
+            &nbsp;
+        </div>
+        <audio controls></audio>
+        <table>
+            <tr>
+                <td><button id="back">&larr;&#x2605;</button></td>
+                <td><button id="stop">&#9724;</button></td>
+                <td><button id="next">&#x2605;&rarr;</button></td>
+            </tr>
+        </table>
+        <hr />
+        <div>
+            <a asp-action="Channels">
+                View channels
+            </a>
+        </div>
+        <hr />
+        <div>
+            <a href="http://@(NetworkInterfaceProvider.address):9000">
+                Lyrion Music Server
+            </a>
+        </div>
+    </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
             integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
             crossorigin="anonymous"
@@ -116,6 +120,43 @@
         var bookmarkNumbers = [@Html.Raw(Json.Serialize(bookmarkNumbers))][0];
         var number = 0;
 
+        function backspace() {
+            const span = document.getElementById("num");
+            const str = span.innerText;
+            if (str) {
+                span.innerText = str.substring(0, str.length - 1);
+            }
+        }
+
+        function enter() {
+            var span = document.getElementById("num");
+            var num = +span.innerText || null;
+
+            if (num)
+                playNumber(num);
+            else
+                play(null);
+
+            span.innerText = "";
+        }
+
+        document.body.addEventListener("keydown", function (e) {
+            if (e.key === "Backspace") {
+                e.preventDefault();
+                backspace();
+            }
+        });
+
+        document.body.addEventListener("keypress", function (e) {
+            if ("0123456789".indexOf(e.key) !== -1) {
+                e.preventDefault();
+                document.getElementById("num").innerText += e.key;
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                enter();
+            }
+        });
+
         for (var i = 0; i <= 9; i++) {
             const button = document.getElementById("button" + i);
             var handler = function (e) {
@@ -128,24 +169,12 @@
 
         document.getElementById("clear").addEventListener("click", function (e) {
             e.preventDefault();
-            const span = document.getElementById("num");
-            const str = span.innerText;
-            if (str) {
-                span.innerText = str.substring(0, str.length - 1);
-            }
+            backspace();
         });
 
         document.getElementById("play").addEventListener("click", function (e) {
             e.preventDefault();
-            var span = document.getElementById("num");
-            var num = +span.innerText || null;
-
-            if (num)
-                playNumber(num);
-            else
-                play(null);
-
-            span.innerText = "";
+            enter();
         });
 
         document.getElementById("stop").addEventListener("click", function (e) {

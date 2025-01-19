@@ -9,6 +9,11 @@ namespace SatRadioProxy.Web.Controllers
             return View();
         }
 
+        public IActionResult Channels()
+        {
+            return View();
+        }
+
         [HttpPost]
         public IActionResult SetBookmarks(string[] id)
         {

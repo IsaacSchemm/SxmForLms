@@ -7,8 +7,13 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <title>Preset Tuner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>SatRadioProxy</title>
     <style type="text/css">
+        html, body {
+            margin: 0;
+        }
+
         body {
             background-color: black;
             color: white;
@@ -17,181 +22,226 @@
             text-align: center;
         }
 
+        #num {
+            font-size: 32pt;
+        }
+
         audio {
-            width: 400px;
-            max-width: calc(100vw - 50px);
             visibility: hidden;
+            width: 100%;
         }
 
         a {
             color: inherit;
         }
 
-        button, input, select {
-            font-size: inherit;
-        }
-
         table {
-            border-collapse: collapse;
-            margin: auto;
-            text-align: center;
+            flex: 1 1 auto;
+            table-layout: fixed;
+            width: 100%;
         }
 
-        td, th {
-            padding: 0.5em;
-        }
-
-        input[type=checkbox] {
-            width: 20px;
-            height: 20px;
-        }
+            table button {
+                appearance: none;
+                background-color: steelblue;
+                border: 0;
+                color: white;
+                cursor: pointer;
+                font-size: 24pt;
+                height: 64px;
+                padding: 0;
+                width: 100%;
+            }
     </style>
 </head>
 <body>
+    <table>
+        <tr>
+            <td><button id="button1">1</button></td>
+            <td><button id="button2">2</button></td>
+            <td><button id="button3">3</button></td>
+        </tr>
+        <tr>
+            <td><button id="button4">4</button></td>
+            <td><button id="button5">5</button></td>
+            <td><button id="button6">6</button></td>
+        </tr>
+        <tr>
+            <td><button id="button7">7</button></td>
+            <td><button id="button8">8</button></td>
+            <td><button id="button9">9</button></td>
+        </tr>
+        <tr>
+            <td><button id="clear">⌫</button></td>
+            <td><button id="button0">0</button></td>
+            <td><button id="play">&#9654;</button></td>
+        </tr>
+    </table>
+    <div>
+        &nbsp;
+        <span id="num"></span>
+        &nbsp;
+    </div>
     <audio controls></audio>
-    <hr />
-    @{
-        var bookmarks = BookmarkManager.getBookmarks();
-        var channels = SiriusXMChannelProvider.channels.OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2);
-    }
-    <form asp-action="PlayChannel" method="get" id="playByNumber">
-        <input type="number"
-               name="num"
-               min="@channels.Select(c => c.number).Min()"
-               max="@channels.Select(c => c.number).Max()"
-               step="1"
-               style="min-width: 100px"
-               value="@channels.First().number" />
-        <button type="submit">
-            Play
-        </button>
-    </form>
-    <hr />
-    <form asp-action="SetBookmarks">
-        <table style="">
-            <tbody>
-                @foreach (var channel in channels)
-                {
-                    <tr>
-                        <td>
-                            @if (bookmarks.Contains(channel.id))
-                            {
-                                <input type="checkbox" name="id" value="@channel.id" checked />
-                            }
-                            else
-                            {
-                                <input type="checkbox" name="id" value="@channel.id" />
-                            }
-                        </td>
-                        <td style="text-align: right">
-                            @channel.number
-                        </td>
-                        <td style="text-align: left">
-                            <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/@(channel.id).m3u8" class="button play">
-                                @channel.name
-                            </a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-        <p>
-            <button type="submit">
-                Save bookmarks
-            </button>
-        </p>
-    </form>
+    <table>
+        <tr>
+            <td><button id="back">&larr;&#x2605;</button></td>
+            <td><button id="stop">&#9724;</button></td>
+            <td><button id="next">&#x2605;&rarr;</button></td>
+        </tr>
+    </table>
     <hr />
     <div>
-        <a href="http://@(NetworkInterfaceProvider.address):9000" class="button">
-            Lyrion Music Server
+        <a asp-action="Channels">
+            View channels
         </a>
     </div>
     <hr />
-    <details>
-        <summary>Administration</summary>
-        <div style="margin: 1em">
-            <form asp-action="RefreshChannels">
-                <p>
-                    <button type="submit">
-                        Refresh SiriusXM channel list
-                    </button>
-                </p>
-            </form>
-            <form asp-action="UpdateIPAddress">
-                <p>
-                    <button type="submit">
-                        Update IP address
-                    </button>
-                </p>
-            </form>
-            <form asp-action="SetCredentials">
-                <p>
-                    <label>
-                        Username
-                        <input name="username" type="text" />
-                    </label>
-                </p>
-                <p>
-                    <label>
-                        Password
-                        <input name="password" type="password" />
-                    </label>
-                </p>
-                <p>
-                    <button type="submit">Update SiriusXM credentials</button>
-                </p>
-            </form>
-        </div>
-    </details>
+    <div>
+        <a href="http://@(NetworkInterfaceProvider.address):9000">
+            Lyrion Music Server
+        </a>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
             integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
+    @{
+        var bookmarks = BookmarkManager.getBookmarks();
+        var bookmarkNumbers = SiriusXMChannelProvider.channels
+            .Where(c => bookmarks.Contains(c.id) || bookmarks.IsEmpty)
+            .Select(c => c.number);
+    }
     <script type="text/javascript">
-        (async () => {
-            try {
-                if (Hls.isSupported()) {
-                    const audio = document.getElementsByTagName("audio")[0];
+        var bookmarkNumbers = [@Html.Raw(Json.Serialize(bookmarkNumbers))][0];
+        var number = 0;
 
-                    const hls = new Hls({ startPosition: 0 });
+        for (var i = 0; i <= 9; i++) {
+            const button = document.getElementById("button" + i);
+            var handler = function (e) {
+                e.preventDefault();
+                document.getElementById("num").innerText += e.target.innerText;
+            };
+            button.addEventListener("click", handler);
+            button.addEventListener("touchstart", handler);
+        }
 
-                    const pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
+        document.getElementById("clear").addEventListener("click", function (e) {
+            e.preventDefault();
+            const span = document.getElementById("num");
+            const str = span.innerText;
+            if (str) {
+                span.innerText = str.substring(0, str.length - 1);
+            }
+        });
+
+        document.getElementById("play").addEventListener("click", function (e) {
+            e.preventDefault();
+            var span = document.getElementById("num");
+            var num = +span.innerText || null;
+
+            if (num)
+                playNumber(num);
+            else
+                play(null);
+
+            span.innerText = "";
+        });
+
+        document.getElementById("stop").addEventListener("click", function (e) {
+            e.preventDefault();
+            play(null);
+        });
+
+        document.getElementById("back").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            for (var i = bookmarkNumbers.length - 1; i >= 0; i--) {
+                if (bookmarkNumbers[i] < number) {
+                    playNumber(bookmarkNumbers[i]);
+                    return;
+                }
+            }
+
+            playNumber(bookmarkNumbers[bookmarkNumbers.length - 1]);
+        });
+
+        document.getElementById("next").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            for (var i = 0; i < bookmarkNumbers.length; i++) {
+                if (bookmarkNumbers[i] > number) {
+                    playNumber(bookmarkNumbers[i]);
+                    return;
+                }
+            }
+
+            playNumber(bookmarkNumbers[0]);
+        });
+
+        function playNumber(num) {
+            number = +num;
+            play("/Home/PlayChannel?num=" + encodeURIComponent(num));
+        };
+
+        function play(url) {
+            var audio = document.getElementsByTagName("audio")[0];
+            audio.style.visibility = "hidden";
+            audio.pause();
+
+            if (!url)
+                return;
+
+            audio.src = url;
+            audio.style.visibility = "visible";
+            audio.play();
+        };
+    </script>
+
+    <script type="text/javascript">
+        var hls = null;
+
+        if ("Hls" in window && Hls.isSupported()) {
+            play = async (url) => {
+                try {
+                    var audio = document.getElementsByTagName("audio")[0];
+                    audio.pause();
+
+                    audio.style.visibility = "hidden";
+
+                    if (hls)
+                        hls.destroy();
+
+                    if (!url)
+                        return;
+
+                    audio.pause();
+
+                    hls = new Hls({ startPosition: 0 });
+
+                    hls.on(Hls.Events.ERROR, function (event, data) {
+                        console.warn({ event, data });
+                    });
+
+                    var pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
                     hls.attachMedia(audio);
                     await pr;
 
-                    const play = async (url) => {
-                        audio.pause();
-
+                    if (hls) {
                         hls.loadSource(url);
 
                         await new Promise(r => hls.on(Hls.Events.MANIFEST_PARSED, r));
-
-                        audio.style.visibility = "visible";
-                        audio.play();
-                    };
-
-                    document.getElementById("playByNumber").addEventListener("submit", e => {
-                        e.preventDefault();
-                        const number = e.target.querySelector("input[type=number]").value;
-                        play(`/Home/PlayChannel?num=${number}`);
-                    });
-
-                    for (const playButton of document.querySelectorAll(".button.play")) {
-                        playButton.addEventListener("click", e => {
-                            e.preventDefault();
-                            play(e.target.href);
-                        })
+                    } else {
+                        audio.src = url;
                     }
 
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        console.warn(event, data);
-                    });
+                    audio.style.visibility = "visible";
+                    audio.play();
+                } catch (e) {
+                    console.error(e);
                 }
-            } catch (e) {
-                console.error(e);
-            }
-        })();
+            };
+        }
     </script>
 </body>
 </html>

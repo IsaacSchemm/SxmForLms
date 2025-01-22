@@ -1,6 +1,12 @@
-﻿namespace SatRadioProxy
+﻿namespace SatRadioProxy.SiriusXM
 
 module SiriusXMChannelProvider =
+    type Channel = {
+        id: string
+        number: int
+        name: string
+    }
+
     let mutable channels = [
         {
             id = "big80s"
@@ -19,7 +25,13 @@ module SiriusXMChannelProvider =
         SiriusXMPythonScriptManager.stop ()
 
         let! ch = SiriusXMPythonScriptManager.getChannelsAsync ()
-        channels <- ch
+        channels <- [
+            for channel in ch do {
+                id = channel.id
+                number = channel.number
+                name = channel.name
+            }
+        ]
 
         SiriusXMPythonScriptManager.start ()
     }

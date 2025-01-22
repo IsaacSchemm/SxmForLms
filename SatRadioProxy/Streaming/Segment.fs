@@ -1,4 +1,4 @@
-﻿namespace SatRadioProxy
+﻿namespace SatRadioProxy.Streaming
 
 open System
 

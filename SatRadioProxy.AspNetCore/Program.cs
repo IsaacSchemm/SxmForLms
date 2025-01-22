@@ -1,4 +1,7 @@
 using SatRadioProxy;
+using SatRadioProxy.Lyrion;
+using SatRadioProxy.SiriusXM;
+using SatRadioProxy.Streaming;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +20,7 @@ hostApplicationLifetime.ApplicationStarted.Register(async () =>
     {
         await NetworkInterfaceProvider.updateAddressAsync();
         await SiriusXMChannelProvider.refreshChannelsAsync();
-        LyrionManager.refreshFavorites();
+        LyrionFavoritesManager.refreshFavorites();
         SiriusXMPythonScriptManager.start();
     }
     catch (Exception ex)

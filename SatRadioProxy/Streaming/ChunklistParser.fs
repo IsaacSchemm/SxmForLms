@@ -1,6 +1,8 @@
-﻿namespace SatRadioProxy
+﻿namespace SatRadioProxy.Streaming
 
 open System
+
+open SatRadioProxy
 
 module ChunklistParser =
     let (|UInt128|_|) (str: string) =

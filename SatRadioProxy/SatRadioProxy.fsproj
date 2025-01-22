@@ -6,17 +6,14 @@
 
   <ItemGroup>
     <Compile Include="Utility.fs" />
-    <Compile Include="Favorite.fs" />
-    <Compile Include="Channel.fs" />
-    <Compile Include="NetworkInterfaceProvider.fs" />
-    <Compile Include="SiriusXMPythonScriptManager.fs" />
-    <Compile Include="SiriusXMChannelProvider.fs" />
     <Compile Include="BookmarkManager.fs" />
-    <Compile Include="LyrionFavoritesManager.fs" />
-    <Compile Include="LyrionManager.fs" />
-    <Compile Include="Segment.fs" />
-    <Compile Include="ChunklistParser.fs" />
-    <Compile Include="Proxy.fs" />
+    <Compile Include="NetworkInterfaceProvider.fs" />
+    <Compile Include="SiriusXM\SiriusXMPythonScriptManager.fs" />
+    <Compile Include="SiriusXM\SiriusXMChannelProvider.fs" />
+    <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
+    <Compile Include="Streaming\Segment.fs" />
+    <Compile Include="Streaming\ChunklistParser.fs" />
+    <Compile Include="Streaming\Proxy.fs" />
   </ItemGroup>
 
   <ItemGroup>

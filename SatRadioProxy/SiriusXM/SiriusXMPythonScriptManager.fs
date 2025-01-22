@@ -1,7 +1,9 @@
-﻿namespace SatRadioProxy
+﻿namespace SatRadioProxy.SiriusXM
 
 open System.Diagnostics
 open System.IO
+
+open SatRadioProxy
 
 module SiriusXMPythonScriptManager =
     let private usernameFile = "username.txt"
@@ -45,11 +47,11 @@ module SiriusXMPythonScriptManager =
             for line in Utility.split '\n' output do
                 match Utility.split '|' line with
                 | [| id; Utility.Int32 number; name |] ->
-                    yield {
+                    yield {|
                         id = id
                         number = number
                         name = name
-                    }
+                    |}
                 | _ -> ()
         ]
     }

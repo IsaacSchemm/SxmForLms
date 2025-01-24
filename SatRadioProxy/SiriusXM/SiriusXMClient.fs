@@ -212,7 +212,7 @@ module SiriusXMClient =
                 sprintf "tune/now-playing-live?%s" queryString,
                 cancellationToken)
             let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
-            File.WriteAllText("""C:\Users\isaac\Desktop\json2.json""", string)
+
             return string |> Utility.deserializeAs {|
                 ModuleListResponse = {|
                     messages = [{|
@@ -236,21 +236,6 @@ module SiriusXMClient =
                                             |}]
                                         |}
                                     |}]
-                                    //markerLists = [{|
-                                    //    layer = ""
-                                    //    markers = [{|
-                                    //        cut = {|
-                                    //            title = ""
-                                    //            artists = [{|
-                                    //                name = ""
-                                    //            |}]
-                                    //            album = {|
-                                    //                title = ""
-                                    //            |}
-                                    //            cutContentType = ""
-                                    //        |}
-                                    //    |}]
-                                    //|}]
                                 |}
                             |}
                         |}]
@@ -285,17 +270,6 @@ module SiriusXMClient =
             for info in liveChannelData.customAudioInfos do
                 for chunk in info.chunks.chunks do
                     key <- Some (Convert.FromBase64String chunk.key)
-
-        //let cut =
-        //    liveChannelData.markerLists
-        //    |> Seq.where (fun m -> m.layer = "cut")
-        //    |> Seq.collect (fun m -> m.markers)
-        //    |> Seq.map (fun m -> m.cut)
-        //    |> Seq.tryLast
-
-        //match cut with
-        //| Some c -> sprintf "%s - %s" c.title (String.concat ", " [for a in c.artists do a.name]) |> System.Diagnostics.Debug.WriteLine
-        //| None -> ()
 
         let url =
             liveChannelData.hlsAudioInfos

@@ -21,7 +21,7 @@ module LyrionFavoritesManager =
         |> Option.bind (fun attrs -> Option.ofObj attrs[name])
         |> Option.bind (fun attr -> Option.ofObj attr.Value)
 
-    let getFavorites categoryName = [
+    let get_favorites categoryName = [
         if File.Exists(path) then
             let doc = new XmlDocument()
             doc.Load(path)
@@ -34,7 +34,7 @@ module LyrionFavoritesManager =
                         | _ -> ()
     ]
 
-    let replaceFavorites categoryName channels =
+    let replace_favorites categoryName channels =
         if File.Exists(path) then
             let doc = new XmlDocument()
             doc.Load(path)
@@ -64,11 +64,11 @@ module LyrionFavoritesManager =
 
             doc.Save(path)
 
-    let refreshFavorites () =
+    let refresh_favorites () =
         let desiredFavorites = [
-            for channel in SiriusXMChannelProvider.channels do {
-                url = $"http://{NetworkInterfaceProvider.address}:5000/Home/PlayChannel?num={channel.number}"
-                text = $"[{channel.number}] {channel.name}"
+            for channel in SiriusXMClientManager.channels do {
+                url = $"http://{NetworkInterfaceProvider.address}:5000/Home/PlayChannel?num={channel.siriusChannelNumber}"
+                text = $"[{channel.siriusChannelNumber}] {channel.name}"
             }
 
             for i in 1 .. 10 do {
@@ -77,6 +77,6 @@ module LyrionFavoritesManager =
             }
         ]
 
-        if getFavorites "SiriusXM" <> desiredFavorites then
-            replaceFavorites "SiriusXM" desiredFavorites
+        if get_favorites "SiriusXM" <> desiredFavorites then
+            replace_favorites "SiriusXM" desiredFavorites
             Process.Start("service", "lyrionmusicserver restart") |> ignore

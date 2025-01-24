@@ -113,40 +113,18 @@
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
     @{
-        var bookmarks = BookmarkManager.getBookmarks();
-        var bookmarkNumbers = SiriusXMChannelProvider.channels
-            .Where(c => bookmarks.Contains(c.id) || bookmarks.IsEmpty)
-            .Select(c => c.number);
+        var bookmarks = BookmarkManager.get_bookmarks();
+        var bookmarkNumbers = SiriusXMClientManager.channels
+            .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
+            .Select(c => c.siriusChannelNumber);
     }
     <script type="text/javascript">
         var bookmarkNumbers = [@Html.Raw(Json.Serialize(bookmarkNumbers))][0];
         var number = 0;
 
         if ("wiiu" in window) {
-            document.getElementById("clear").innerHTML = @Html.Raw(Json.Serialize((char)0xE072));
-            document.getElementById("stop").innerHTML = @Html.Raw(Json.Serialize((char)0xE098));
-            // document.getElementById("back").innerHTML = @Html.Raw(Json.Serialize((char)0xE085));
-            // document.getElementById("next").innerHTML = @Html.Raw(Json.Serialize((char)0xE086));
-
-            // var last_zl = 0;
-            // var last_zr = 0;
-
-            // setInterval(function () {
-            //     var state = wiiu.gamepad.update().hold;
-            //     var zl = state & 0x80;
-            //     var zr = state & 0x40;
-            //     var new_zl = zl && !last_zl;
-            //     var new_zr = zr && !last_zr;
-            //     last_zl = new_zl;
-            //     last_zr = new_zr;
-            //     if (new_zl && new_zr) {
-            //         // nothing
-            //     } else if (new_zl) {
-            //         back();
-            //     } else if (new_zr) {
-            //         next();
-            //     }
-            // }, 50);
+            document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
+            document.getElementById("stop").innerHTML = [@Html.Raw(Json.Serialize((char)0xE098))][0];
         }
 
         function backspace() {

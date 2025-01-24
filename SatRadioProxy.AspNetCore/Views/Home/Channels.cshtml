@@ -53,8 +53,8 @@
     <audio controls></audio>
     <hr />
     @{
-        var bookmarks = BookmarkManager.getBookmarks();
-        var channels = SiriusXMChannelProvider.channels.OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2);
+        var bookmarks = BookmarkManager.get_bookmarks();
+        var channels = SiriusXMClientManager.channels.OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2);
     }
     <form asp-action="SetBookmarks">
         <table style="">
@@ -63,20 +63,20 @@
                 {
                     <tr>
                         <td>
-                            @if (bookmarks.Contains(channel.id))
+                            @if (bookmarks.Contains(channel.channelId))
                             {
-                                <input type="checkbox" name="id" value="@channel.id" checked />
+                                <input type="checkbox" name="id" value="@channel.channelId" checked />
                             }
                             else
                             {
-                                <input type="checkbox" name="id" value="@channel.id" />
+                                <input type="checkbox" name="id" value="@channel.channelId" />
                             }
                         </td>
                         <td style="text-align: right">
-                            @channel.number
+                            @channel.siriusChannelNumber
                         </td>
                         <td style="text-align: left">
-                            <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/@(channel.id).m3u8" class="button play">
+                            <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/@(channel.channelId)/playlist.m3u8" class="button play">
                                 @channel.name
                             </a>
                         </td>

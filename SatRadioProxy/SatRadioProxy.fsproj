@@ -8,8 +8,8 @@
     <Compile Include="Utility.fs" />
     <Compile Include="BookmarkManager.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
-    <Compile Include="SiriusXM\SiriusXMPythonScriptManager.fs" />
-    <Compile Include="SiriusXM\SiriusXMChannelProvider.fs" />
+    <Compile Include="SiriusXM\SiriusXMClient.fs" />
+    <Compile Include="SiriusXM\SiriusXMClientManager.fs" />
     <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
     <Compile Include="Streaming\Segment.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />

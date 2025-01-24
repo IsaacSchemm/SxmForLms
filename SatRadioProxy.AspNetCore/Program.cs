@@ -18,22 +18,9 @@ hostApplicationLifetime.ApplicationStarted.Register(async () =>
 {
     try
     {
-        await NetworkInterfaceProvider.updateAddressAsync();
-        await SiriusXMChannelProvider.refreshChannelsAsync();
-        LyrionFavoritesManager.refreshFavorites();
-        SiriusXMPythonScriptManager.start();
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine(ex);
-    }
-});
-
-hostApplicationLifetime.ApplicationStopped.Register(() =>
-{
-    try
-    {
-        SiriusXMPythonScriptManager.stop();
+        await SiriusXMClientManager.refresh_channels();
+        LyrionFavoritesManager.refresh_favorites();
+        await NetworkInterfaceProvider.update_address();
     }
     catch (Exception ex)
     {

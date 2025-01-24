@@ -4,61 +4,98 @@ open System
 open System.Buffers.Binary
 open System.Diagnostics
 open System.IO
-open System.Net.Http
 open System.Security.Cryptography
+open System.Text
 open System.Threading
 
 open Microsoft.Extensions.Caching.Memory
 
-type Proxy (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
-    static let keySpace = Guid.NewGuid()
+open SatRadioProxy.SiriusXM
 
-    let store segment =
-        let key = (keySpace, segment.path)
+type Proxy(memoryCache: IMemoryCache) =
+    static let playlist_url_key_space = Guid.NewGuid()
+    static let segment_key_space = Guid.NewGuid()
+
+    let store_playlist_url id url =
+        let key = (playlist_url_key_space, id)
+        memoryCache.Set(key, url, TimeSpan.FromHours(1))
+
+    let retrieve_playlist_url id =
+        let key = (playlist_url_key_space, id)
+        match memoryCache.TryGetValue(key) with
+        | true, (:? string as segment) -> Some segment
+        | _ -> None
+
+    let store_segment (uri: Uri) segment =
+        let key = (segment_key_space, uri)
         memoryCache.Set(key, segment, TimeSpan.FromMinutes(5))
 
-    let retrieve path =
-        let key = (keySpace, path)
+    let retrieve_segment (uri: Uri) =
+        let key = (segment_key_space, uri)
         match memoryCache.TryGetValue(key) with
         | true, (:? Segment as segment) -> Some segment
         | _ -> None
 
-    let ffmpeg = "ffmpeg"
-    let ipAddress = "localhost"
+    let ffmpeg = """ffmpeg"""
 
-    member _.GetChunklistAsync (id: string, cancellationToken: CancellationToken) = task {
-        use client = httpClientFactory.CreateClient()
-        use! resp = client.GetAsync($"http://{ipAddress}:8888/{id}.m3u8", cancellationToken)
-        let! text = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+    let get_playlist_url id = task {
+        match retrieve_playlist_url id with
+        | Some url ->
+            return url
+        | None ->
+            let! url = SiriusXMClientManager.get_playlist_url id
+            ignore (store_playlist_url id url)
+            return url
+    }
 
-        let list = ChunklistParser.parse text
+    member _.GetPlaylistAsync(id: string, cancellationToken: CancellationToken) = task {
+        let! playlist_url = get_playlist_url id
+        let! data = SiriusXMClientManager.get_file playlist_url
+        return data
+    }
+
+    member _.GetChunklistAsync(id: string, path: string, cancellationToken: CancellationToken) = task {
+        let! playlist_url = get_playlist_url id
+
+        let base_uri = new Uri(playlist_url)
+        let uri = new Uri(base_uri, path)
+
+        let! data = SiriusXMClientManager.get_file uri.AbsoluteUri
+
+        let list =
+            data.content
+            |> Encoding.UTF8.GetString
+            |> ChunklistParser.parse
 
         let content =
             list
             |> Seq.skip (list.Length - 5)
-            |> Seq.map (fun segment -> store segment)
-            |> Seq.map (fun segment -> { store segment with key = "NONE" })
+            |> Seq.map (fun segment ->
+                let segment_uri = new Uri(uri, segment.path)
+                store_segment segment_uri segment)
+            |> Seq.map (fun segment -> { segment with key = "NONE" })
             |> ChunklistParser.write
 
         return {|
             content = content
-            contentType = resp.Content.Headers.ContentType.MediaType
+            content_type = data.content_type
         |}
     }
 
-    member _.GetChunkAsync (path: string, cancellationToken: CancellationToken) = task {
+    member _.GetChunkAsync(id: string, path: string, cancellationToken: CancellationToken) = task {
+        let! playlist_url = get_playlist_url id
+
+        let base_uri = new Uri(playlist_url)
+        let uri = new Uri(base_uri, path)
+
         let segment =
-            match retrieve path with
+            match retrieve_segment uri with
             | Some segment -> segment
             | None -> failwith "Segment path is no longer present in cache"
 
-        use client = httpClientFactory.CreateClient()
-        client.BaseAddress <- new Uri($"http://{ipAddress}:8888")
+        let! result = SiriusXMClientManager.get_file uri.AbsoluteUri
 
-        let! raw = task {
-            use! response = client.GetAsync(segment.path, cancellationToken)
-            return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
-        }
+        let raw = result.content
 
         let! data = task {
             match segment.key with
@@ -71,12 +108,7 @@ type Proxy (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
                 algorithm.KeySize <- 128
                 algorithm.BlockSize <- 128
 
-                let! key = task {
-                    use! response = client.GetAsync("key/1", cancellationToken)
-                    return! response.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync(cancellationToken)
-                }
-
-                algorithm.Key <- key
+                algorithm.Key <- SiriusXMClient.KEY.ToArray()
 
                 algorithm.IV <-
                     let iv = Array.zeroCreate 16
@@ -121,6 +153,6 @@ type Proxy (httpClientFactory: IHttpClientFactory, memoryCache: IMemoryCache) =
 
         return {|
             data = segment
-            contentType = "video/mp2t"
+            content_type = "video/mp2t"
         |}
     }

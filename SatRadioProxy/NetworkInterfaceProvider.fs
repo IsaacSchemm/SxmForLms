@@ -9,7 +9,7 @@ type NetworkInterfaces = JsonProvider<"""[{"ifname":"lo","addr_info":[{"family":
 module NetworkInterfaceProvider =
     let mutable address = "127.0.0.1"
 
-    let updateAddressAsync () = task {
+    let update_address () = task {
         let proc =
             new ProcessStartInfo("ip", "-j address", RedirectStandardOutput = true)
             |> Process.Start

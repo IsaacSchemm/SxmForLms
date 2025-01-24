@@ -18,46 +18,46 @@ namespace SatRadioProxy.Web.Controllers
         [HttpPost]
         public IActionResult SetBookmarks(string[] id)
         {
-            BookmarkManager.setBookmarks(id);
+            BookmarkManager.set_bookmarks(id);
             return RedirectToAction(nameof(Index));
         }
 
         public IActionResult PlayChannel(int num)
         {
             string ipAddress = NetworkInterfaceProvider.address;
-            var channel = SiriusXMChannelProvider.channels
-                .Where(c => c.number == num)
+            var channel = SiriusXMClientManager.channels
+                .Where(c => c.siriusChannelNumber == $"{num}")
                 .FirstOrDefault();
             return channel != null
-                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.id}.m3u8")
+                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.channelId}/playlist.m3u8")
                 : NotFound();
         }
 
         public IActionResult PlayBookmark(int num)
         {
             string ipAddress = NetworkInterfaceProvider.address;
-            var bookmarks = BookmarkManager.getBookmarks();
-            var channel = SiriusXMChannelProvider.channels
-                .OrderBy(c => bookmarks.Contains(c.id) ? 1 : 2)
-                .ThenBy(c => c.number)
+            var bookmarks = BookmarkManager.get_bookmarks();
+            var channel = SiriusXMClientManager.channels
+                .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
+                .ThenBy(c => c.siriusChannelNumber)
                 .Skip(num - 1)
                 .FirstOrDefault();
             return channel != null
-                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.id}.m3u8")
+                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.channelId}/playlist.m3u8")
                 : NotFound();
         }
 
         [HttpPost]
         public async Task<IActionResult> RefreshChannels()
         {
-            await SiriusXMChannelProvider.refreshChannelsAsync();
+            await SiriusXMClientManager.refresh_channels();
             return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
         public async Task<IActionResult> UpdateIPAddress()
         {
-            await NetworkInterfaceProvider.updateAddressAsync();
+            await NetworkInterfaceProvider.update_address();
             return RedirectToAction(nameof(Index));
         }
 
@@ -67,7 +67,7 @@ namespace SatRadioProxy.Web.Controllers
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 return BadRequest();
 
-            SiriusXMPythonScriptManager.setCredentials(username, password);
+            SiriusXMClientManager.setCredentials(username, password);
             return RedirectToAction(nameof(Index));
         }
     }

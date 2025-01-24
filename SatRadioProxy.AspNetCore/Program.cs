@@ -1,14 +1,11 @@
 using SatRadioProxy;
 using SatRadioProxy.Lyrion;
 using SatRadioProxy.SiriusXM;
-using SatRadioProxy.Streaming;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
-
-builder.Services.AddSingleton<Proxy>();
 
 var app = builder.Build();
 

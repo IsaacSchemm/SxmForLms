@@ -29,7 +29,7 @@ namespace SatRadioProxy.Web.Controllers
                 .Where(c => c.siriusChannelNumber == $"{num}")
                 .FirstOrDefault();
             return channel != null
-                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.channelId}/playlist.m3u8")
+                ? Redirect($"http://{ipAddress}:5000/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();
         }
 
@@ -43,7 +43,7 @@ namespace SatRadioProxy.Web.Controllers
                 .Skip(num - 1)
                 .FirstOrDefault();
             return channel != null
-                ? Redirect($"http://{ipAddress}:5000/Proxy/{channel.channelId}/playlist.m3u8")
+                ? Redirect($"http://{ipAddress}:5000/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();
         }
 

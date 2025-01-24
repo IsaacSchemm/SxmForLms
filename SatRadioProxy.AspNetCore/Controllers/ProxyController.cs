@@ -1,30 +1,48 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using SatRadioProxy.Streaming;
-using System.IO;
 using System.Text;
 
 namespace SatRadioProxy.AspNetCore.Controllers
 {
-    public class ProxyController(Proxy proxy) : Controller
+    public class ProxyController(IMemoryCache memoryCache) : Controller
     {
-        [Route("Proxy/{id}/{**path}")]
-        public async Task<IActionResult> Proxy(string id, string path, CancellationToken cancellationToken)
+        [Route("Proxy/playlist-{id}.m3u8")]
+        public async Task<IActionResult> Playlist(string id, string path, CancellationToken cancellationToken)
         {
-            if (path == "playlist.m3u8")
-            {
-                var file = await proxy.GetPlaylistAsync(id, cancellationToken);
-                return File(file.content, file.contentType);
-            }
-            else if (path.EndsWith(".m3u8"))
-            {
-                var file = await proxy.GetChunklistAsync(id, path, cancellationToken);
-                return Content(file.content, file.content_type, Encoding.UTF8);
-            }
-            else
-            {
-                var file = await proxy.GetChunkAsync(id, path, cancellationToken);
-                return File(file.data, file.content_type);
-            }
+            string contents = await MediaProxy.getPlaylistAsync(
+                memoryCache,
+                id);
+
+            return Content(
+                contents,
+                "application/x-mpegURL",
+                Encoding.UTF8);
+        }
+
+        [Route("Proxy/chunklist-{guid}.m3u8")]
+        public async Task<IActionResult> Chunklist(Guid guid, CancellationToken cancellationToken)
+        {
+            string contents = await MediaProxy.getChunklistAsync(
+                memoryCache,
+                guid);
+
+            return Content(
+                contents,
+                "application/x-mpegURL",
+                Encoding.UTF8);
+        }
+
+        [Route("Proxy/chunk-{guid}.ts")]
+        public async Task<IActionResult> Chunk(Guid guid, CancellationToken cancellationToken)
+        {
+            var data = await MediaProxy.getChunkAsync(
+                memoryCache,
+                guid);
+
+            return File(
+                data,
+                "video/mp2t");
         }
     }
 }

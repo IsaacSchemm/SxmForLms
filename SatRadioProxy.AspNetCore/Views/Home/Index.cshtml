@@ -114,7 +114,7 @@
             referrerpolicy="no-referrer"></script>
     @{
         var bookmarks = BookmarkManager.getBookmarks();
-        var bookmarkNumbers = SiriusXMClientManager.channels
+        var bookmarkNumbers = SiriusXMChannelCache.channels
             .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
             .Select(c => c.siriusChannelNumber);
     }

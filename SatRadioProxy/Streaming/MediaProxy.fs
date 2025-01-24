@@ -43,9 +43,14 @@ module MediaProxy =
         | true, (:? CacheItem as Chunk chunk) -> chunk
         | _ -> raise MediaNotCachedException
 
-    let getPlaylistAsync memoryCache id = task {
-        let! url = SiriusXMClientManager.get_playlist_url id
-        let! data = SiriusXMClientManager.get_file url
+    let getPlaylistAsync memoryCache id cancellationToken = task {
+        let channel =
+            SiriusXMChannelCache.channels
+            |> Seq.where (fun c -> c.channelId = id)
+            |> Seq.head
+
+        let! url = SiriusXMClient.getPlaylistUrl channel.channelGuid channel.channelId cancellationToken
+        let! data = SiriusXMClient.getFile url cancellationToken
 
         let baseUri = new Uri(url)
 
@@ -67,10 +72,10 @@ module MediaProxy =
         return content
     }
 
-    let getChunklistAsync memoryCache key = task {
+    let getChunklistAsync memoryCache key cancellationToken = task {
         let chunklistUri = memoryCache |> retrieveChunklist key
 
-        let! data = SiriusXMClientManager.get_file chunklistUri.AbsoluteUri
+        let! data = SiriusXMClient.getFile chunklistUri.AbsoluteUri cancellationToken
 
         let list =
             data.content
@@ -99,10 +104,10 @@ module MediaProxy =
         return content
     }
 
-    let getChunkAsync memoryCache key = task {
+    let getChunkAsync memoryCache key cancellationToken = task {
         let chunk = memoryCache |> retrieveChunk key
 
-        let! encryptedData = SiriusXMClientManager.get_file chunk.uri.AbsoluteUri
+        let! encryptedData = SiriusXMClient.getFile chunk.uri.AbsoluteUri cancellationToken
 
         let! data = task {
             match chunk.encryption with

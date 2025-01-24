@@ -25,7 +25,7 @@ namespace SatRadioProxy.Web.Controllers
         public IActionResult PlayChannel(int num)
         {
             string ipAddress = NetworkInterfaceProvider.address;
-            var channel = SiriusXMClientManager.channels
+            var channel = SiriusXMChannelCache.channels
                 .Where(c => c.siriusChannelNumber == $"{num}")
                 .FirstOrDefault();
             return channel != null
@@ -37,7 +37,7 @@ namespace SatRadioProxy.Web.Controllers
         {
             string ipAddress = NetworkInterfaceProvider.address;
             var bookmarks = BookmarkManager.getBookmarks();
-            var channel = SiriusXMClientManager.channels
+            var channel = SiriusXMChannelCache.channels
                 .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
                 .ThenBy(c => c.siriusChannelNumber)
                 .Skip(num - 1)
@@ -48,9 +48,9 @@ namespace SatRadioProxy.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> RefreshChannels()
+        public async Task<IActionResult> RefreshChannels(CancellationToken cancellationToken)
         {
-            await SiriusXMClientManager.refresh_channels();
+            await SiriusXMChannelCache.refresh(cancellationToken);
             return RedirectToAction(nameof(Index));
         }
 
@@ -58,16 +58,6 @@ namespace SatRadioProxy.Web.Controllers
         public async Task<IActionResult> UpdateIPAddress()
         {
             await NetworkInterfaceProvider.updateAddress();
-            return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        public IActionResult SetCredentials(string username, string password)
-        {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-                return BadRequest();
-
-            SiriusXMClientManager.setCredentials(username, password);
             return RedirectToAction(nameof(Index));
         }
     }

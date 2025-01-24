@@ -54,7 +54,7 @@
     <hr />
     @{
         var bookmarks = BookmarkManager.getBookmarks();
-        var channels = SiriusXMClientManager.channels.OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2);
+        var channels = SiriusXMChannelCache.channels.OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2);
     }
     <form asp-action="SetBookmarks">
         <table style="">
@@ -112,23 +112,6 @@
                     <button type="submit">
                         Update IP address
                     </button>
-                </p>
-            </form>
-            <form asp-action="SetCredentials">
-                <p>
-                    <label>
-                        Username
-                        <input name="username" type="text" />
-                    </label>
-                </p>
-                <p>
-                    <label>
-                        Password
-                        <input name="password" type="password" />
-                    </label>
-                </p>
-                <p>
-                    <button type="submit">Update SiriusXM credentials</button>
                 </p>
             </form>
         </div>

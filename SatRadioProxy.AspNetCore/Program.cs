@@ -15,8 +15,18 @@ hostApplicationLifetime.ApplicationStarted.Register(async () =>
 {
     try
     {
-        await SiriusXMClientManager.refresh_channels();
+        string username = File.ReadAllText("username.txt");
+        string password = File.ReadAllText("password.txt");
+
+        SiriusXMClient.setCredentials(new(
+            username,
+            password,
+            "US"));
+
+        await SiriusXMChannelCache.refresh(CancellationToken.None);
+
         LyrionFavoritesManager.refresh_favorites();
+
         await NetworkInterfaceProvider.updateAddress();
     }
     catch (Exception ex)

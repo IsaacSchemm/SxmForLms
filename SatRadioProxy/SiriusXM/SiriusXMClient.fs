@@ -5,7 +5,6 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Net.Http.Json
-open System.Threading.Tasks
 
 open SatRadioProxy
 
@@ -35,7 +34,7 @@ module SiriusXMClient =
     let mutable private currentCredentials = None
 
     let setCredentials creds =
-        currentCredentials <- creds
+        currentCredentials <- Some creds
         for cookie in cookies.GetAllCookies() do
             cookie.Expired <- true
 
@@ -57,7 +56,7 @@ module SiriusXMClient =
     let isSessionAuthenticated () =
         getCookie "AWSALB" <> None && getCookie "JSESSIONID" <> None
 
-    let loginAsync () = task {
+    let loginAsync cancellationToken = task {
         match currentCredentials with
         | None ->
             return false
@@ -90,9 +89,10 @@ module SiriusXMClient =
 
             use! resp = client.PostAsync(
                 "modify/authentication",
-                Json.JsonContent.Create(postdata))
+                Json.JsonContent.Create(postdata),
+                cancellationToken)
 
-            let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
             let data = string |> Utility.deserializeAs {|
                 ModuleListResponse = {|
                     status = 0
@@ -102,7 +102,7 @@ module SiriusXMClient =
             return data.ModuleListResponse.status = 1 && isLoggedIn ()
     }
 
-    let authenticateAsync () = task {
+    let authenticateAsync cancellationToken = task {
         match currentCredentials with
         | None ->
             return false
@@ -110,7 +110,7 @@ module SiriusXMClient =
             let! loggedIn = task {
                 if (isLoggedIn ())
                 then return true
-                else return! loginAsync ()
+                else return! loginAsync cancellationToken
             }
 
             if not loggedIn then
@@ -140,8 +140,11 @@ module SiriusXMClient =
 
             use content = JsonContent.Create(postdata)
 
-            use! res = client.PostAsync("resume?OAtrial=false", content)
-            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            use! res = client.PostAsync(
+                "resume?OAtrial=false",
+                content,
+                cancellationToken)
+            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
             let data = string |> Utility.deserializeAs {|
                 ModuleListResponse = {|
                     status = 0
@@ -151,10 +154,10 @@ module SiriusXMClient =
             return data.ModuleListResponse.status = 1 && isSessionAuthenticated ()
     }
 
-    let confirmAuthentication () = task {
+    let confirmAuthentication cancellationToken = task {
         let! ok = task {
             if (isSessionAuthenticated ()) then return true
-            else return! authenticateAsync ()
+            else return! authenticateAsync cancellationToken
         }
 
         if not ok then
@@ -183,8 +186,8 @@ module SiriusXMClient =
         |> Option.map (fun data -> data.gupId)
         |> Option.get
 
-    let rec getPlaylistUrl (guid: Guid) channelId = task {
-        do! confirmAuthentication ()
+    let rec getPlaylistUrl (guid: Guid) channelId cancellationToken = task {
+        do! confirmAuthentication cancellationToken
 
         let executeAsync () = task {
             let now = DateTimeOffset.UtcNow
@@ -205,8 +208,10 @@ module SiriusXMClient =
                     $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
             ]
 
-            use! res = client.GetAsync(sprintf "tune/now-playing-live?%s" queryString)
-            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            use! res = client.GetAsync(
+                sprintf "tune/now-playing-live?%s" queryString,
+                cancellationToken)
+            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
             File.WriteAllText("""C:\Users\isaac\Desktop\json2.json""", string)
             return string |> Utility.deserializeAs {|
                 ModuleListResponse = {|
@@ -264,7 +269,7 @@ module SiriusXMClient =
             | 100 ->
                 return result
             | 201 | 208 ->
-                let! authenticated = authenticateAsync ()
+                let! authenticated = authenticateAsync cancellationToken
 
                 if not authenticated then
                     raise LoginFailedException
@@ -305,8 +310,8 @@ module SiriusXMClient =
         return url.Replace("%Live_Primary_HLS%", LIVE_PRIMARY_HLS)
     }
 
-    let getChannels () = task {
-        do! confirmAuthentication ()
+    let getChannels cancellationToken = task {
+        do! confirmAuthentication cancellationToken
 
         let postdata = {|
             moduleList = {|
@@ -325,8 +330,11 @@ module SiriusXMClient =
 
         use content = JsonContent.Create(postdata)
 
-        use! res = client.PostAsync("get", content)
-        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+        use! res = client.PostAsync(
+            "get",
+            content,
+            cancellationToken)
+        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
 
         let data = string |> Utility.deserializeAs {|
             ModuleListResponse = {|
@@ -352,8 +360,8 @@ module SiriusXMClient =
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
     }
 
-    let getFile (path: string) = task {
-        do! confirmAuthentication ()
+    let getFile path cancellationToken = task {
+        do! confirmAuthentication cancellationToken
 
         let parameters = [
             "token", getSxmAkToken ()
@@ -367,10 +375,14 @@ module SiriusXMClient =
         ]
 
         let baseUri = new Uri(LIVE_PRIMARY_HLS)
-        let uri = new Uri(baseUri, sprintf "%s?%s" path queryString)
+        let uri = new Uri(
+            baseUri,
+            sprintf "%s?%s" path queryString)
 
-        use! res = client.GetAsync(uri)
-        use! stream = res.EnsureSuccessStatusCode().Content.ReadAsStreamAsync()
+        use! res = client.GetAsync(
+            uri,
+            cancellationToken)
+        use! stream = res.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
 
         use ms = new MemoryStream()
         do! stream.CopyToAsync(ms)

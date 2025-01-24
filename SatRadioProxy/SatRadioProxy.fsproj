@@ -9,9 +9,8 @@
     <Compile Include="BookmarkManager.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
     <Compile Include="SiriusXM\SiriusXMClient.fs" />
-    <Compile Include="SiriusXM\SiriusXMClientManager.fs" />
+    <Compile Include="SiriusXM\SiriusXMChannelCache.fs" />
     <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
-    <Compile Include="Streaming\Segment.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
   </ItemGroup>

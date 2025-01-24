@@ -12,7 +12,8 @@ namespace SatRadioProxy.AspNetCore.Controllers
         {
             string contents = await MediaProxy.getPlaylistAsync(
                 memoryCache,
-                id);
+                id,
+                cancellationToken);
 
             return Content(
                 contents,
@@ -25,7 +26,8 @@ namespace SatRadioProxy.AspNetCore.Controllers
         {
             string contents = await MediaProxy.getChunklistAsync(
                 memoryCache,
-                guid);
+                guid,
+                cancellationToken);
 
             return Content(
                 contents,
@@ -38,7 +40,8 @@ namespace SatRadioProxy.AspNetCore.Controllers
         {
             var data = await MediaProxy.getChunkAsync(
                 memoryCache,
-                guid);
+                guid,
+                cancellationToken);
 
             return File(
                 data,

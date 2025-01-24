@@ -5,6 +5,14 @@ open System
 open SatRadioProxy
 
 module ChunklistParser =
+    type Segment = {
+        key: string
+        headerTags: string list
+        mediaSequence: UInt128
+        segmentTags: string list
+        path: string
+    }
+
     let (|UInt128|_|) (str: string) =
         match UInt128.TryParse(str) with
         | true, value -> Some value

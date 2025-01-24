@@ -5,6 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Net.Http.Json
+open System.Threading.Tasks
 
 open SatRadioProxy
 
@@ -17,23 +18,31 @@ exception LoginFailedException
 exception RecievedErrorException of code: int * message: string
 
 module SiriusXMClient =
+    type Credentials = {
+        username: string
+        password: string
+        region: string
+    }
+
     let USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6"
     let REST_BASE = "https://player.siriusxm.com/rest/v2/experience/modules/"
     let LIVE_PRIMARY_HLS = "https://siriusxm-priprodlive.akamaized.net"
 
-    let KEY: ReadOnlyMemory<byte> = raise (new NotImplementedException())
+    let mutable key = None
 
-type SiriusXMClient(
-    username: string,
-    password: string,
-    region: string
-) =
     let cookies = new CookieContainer()
+
+    let mutable private currentCredentials = None
+
+    let setCredentials creds =
+        currentCredentials <- creds
+        for cookie in cookies.GetAllCookies() do
+            cookie.Expired <- true
 
     let client =
         let clientHandler = new HttpClientHandler(CookieContainer = cookies)
-        let cl = new HttpClient(clientHandler, true, BaseAddress = new Uri(SiriusXMClient.REST_BASE))
-        cl.DefaultRequestHeaders.Add("User-Agent", SiriusXMClient.USER_AGENT)
+        let cl = new HttpClient(clientHandler, true, BaseAddress = new Uri(REST_BASE))
+        cl.DefaultRequestHeaders.Add("User-Agent", USER_AGENT)
         cl
 
     let getCookie (name: string) =
@@ -42,109 +51,117 @@ type SiriusXMClient(
         |> Seq.map (fun c -> c.Value)
         |> Seq.tryHead
 
-    let is_logged_in () =
+    let isLoggedIn () =
         getCookie "SXMDATA" <> None
 
-    let is_session_authenticated () =
+    let isSessionAuthenticated () =
         getCookie "AWSALB" <> None && getCookie "JSESSIONID" <> None
 
-    let login () = task {
-        let postdata = {|
-            moduleList = {|
-                modules = [{|
-                    moduleRequest = {|
-                        resultTemplate = "web"
-                        deviceInfo = {|
-                            osVersion = "Mac"
-                            platform = "Web"
-                            sxmAppVersion = "3.1802.10011.0"
-                            browser = "Safari"
-                            browserVersion = "11.0.3"
-                            appRegion = region
-                            deviceModel = "K2WebClient"
-                            clientDeviceId = "null"
-                            player = "html5"
-                            clientDeviceType = "web"
+    let loginAsync () = task {
+        match currentCredentials with
+        | None ->
+            return false
+        | Some credentials ->
+            let postdata = {|
+                moduleList = {|
+                    modules = [{|
+                        moduleRequest = {|
+                            resultTemplate = "web"
+                            deviceInfo = {|
+                                osVersion = "Mac"
+                                platform = "Web"
+                                sxmAppVersion = "3.1802.10011.0"
+                                browser = "Safari"
+                                browserVersion = "11.0.3"
+                                appRegion = credentials.region
+                                deviceModel = "K2WebClient"
+                                clientDeviceId = "null"
+                                player = "html5"
+                                clientDeviceType = "web"
+                            |}
+                            standardAuth = {|
+                                username = credentials.username
+                                password = credentials.password
+                            |}
                         |}
-                        standardAuth = {|
-                            username = username
-                            password = password
-                        |}
-                    |}
-                |}]
+                    |}]
+                |}
             |}
-        |}
 
-        use! resp = client.PostAsync(
-            "modify/authentication",
-            Json.JsonContent.Create(postdata))
+            use! resp = client.PostAsync(
+                "modify/authentication",
+                Json.JsonContent.Create(postdata))
 
-        let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
-        let data = string |> Utility.deserializeAs {|
-            ModuleListResponse = {|
-                status = 0
+            let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            let data = string |> Utility.deserializeAs {|
+                ModuleListResponse = {|
+                    status = 0
+                |}
             |}
-        |}
 
-        return data.ModuleListResponse.status = 1 && is_logged_in()
+            return data.ModuleListResponse.status = 1 && isLoggedIn ()
     }
 
-    let authenticate () = task {
-        let! logged_in = task {
-            if (is_logged_in ())
-            then return true
-            else return! login ()
-        }
+    let authenticateAsync () = task {
+        match currentCredentials with
+        | None ->
+            return false
+        | Some credentials ->
+            let! loggedIn = task {
+                if (isLoggedIn ())
+                then return true
+                else return! loginAsync ()
+            }
 
-        if not logged_in then
-            raise LoginFailedException
+            if not loggedIn then
+                raise LoginFailedException
 
-        let postdata = {|
-            moduleList = {|
-                modules = [{|
-                    moduleRequest = {|
-                        resultTemplate = "web"
-                        deviceInfo = {|
-                            osVersion = "Mac"
-                            platform = "Web"
-                            clientDeviceType = "web"
-                            sxmAppVersion = "3.1802.10011.0"
-                            browser = "Safari"
-                            browserVersion = "11.0.3"
-                            appRegion = region
-                            deviceModel = "K2WebClient"
-                            player = "html5"
-                            clientDeviceId = "null"
+            let postdata = {|
+                moduleList = {|
+                    modules = [{|
+                        moduleRequest = {|
+                            resultTemplate = "web"
+                            deviceInfo = {|
+                                osVersion = "Mac"
+                                platform = "Web"
+                                clientDeviceType = "web"
+                                sxmAppVersion = "3.1802.10011.0"
+                                browser = "Safari"
+                                browserVersion = "11.0.3"
+                                appRegion = credentials.region
+                                deviceModel = "K2WebClient"
+                                player = "html5"
+                                clientDeviceId = "null"
+                            |}
                         |}
-                    |}
-                |}]
+                    |}]
+                |}
             |}
-        |}
 
-        use content = JsonContent.Create(postdata)
+            use content = JsonContent.Create(postdata)
 
-        use! res = client.PostAsync("resume?OAtrial=false", content)
-        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
-        let data = string |> Utility.deserializeAs {|
-            ModuleListResponse = {|
-                status = 0
+            use! res = client.PostAsync("resume?OAtrial=false", content)
+            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            let data = string |> Utility.deserializeAs {|
+                ModuleListResponse = {|
+                    status = 0
+                |}
             |}
-        |}
 
-        return data.ModuleListResponse.status = 1 && is_session_authenticated ()
+            return data.ModuleListResponse.status = 1 && isSessionAuthenticated ()
     }
 
-    let confirm_authentication () = task {
-        let! authentication_ok = task {
-            if (is_session_authenticated ()) then return true
-            else return! authenticate ()
+    let confirmAuthentication () = task {
+        let! ok = task {
+            if (isSessionAuthenticated ()) then return true
+            else return! authenticateAsync ()
         }
 
-        if not authentication_ok then
+        if not ok then
             raise CannotAuthenticateException
     }
 
-    let get_sxmak_token () =
+    let getSxmAkToken () =
         let split (char: char) (string: string) =
             match string.IndexOf(char) with
             | -1 -> None
@@ -157,7 +174,7 @@ type SiriusXMClient(
         |> Option.map fst
         |> Option.get
 
-    let get_gup_id () =
+    let getGupId () =
         getCookie "SXMDATA"
         |> Option.map Uri.UnescapeDataString
         |> Option.map (Utility.deserializeAs {|
@@ -166,74 +183,130 @@ type SiriusXMClient(
         |> Option.map (fun data -> data.gupId)
         |> Option.get
 
-    member this.GetPlaylistUrl(guid: Guid, channel_id, max_attempts) = task {
-        do! confirm_authentication ()
+    let rec getPlaylistUrl (guid: Guid) channelId = task {
+        do! confirmAuthentication ()
 
-        let now = DateTimeOffset.UtcNow
+        let executeAsync () = task {
+            let now = DateTimeOffset.UtcNow
 
-        let parameters = [
-            "assetGUID", string guid
-            "ccRequestType", "AUDIO_VIDEO"
-            "channelId", channel_id
-            "hls_output_mode", "custom"
-            "marker_mode", "all_separate_cue_points"
-            "result-template", "web"
-            "time", string (now.ToUnixTimeMilliseconds())
-            "timestamp", (now.ToString("o"))
-        ]
+            let parameters = [
+                "assetGUID", string guid
+                "ccRequestType", "AUDIO_VIDEO"
+                "channelId", channelId
+                "hls_output_mode", "custom"
+                "marker_mode", "all_separate_cue_points"
+                "result-template", "web"
+                "time", string (now.ToUnixTimeMilliseconds())
+                "timestamp", (now.ToString("o"))
+            ]
 
-        let query_string = String.concat "&" [
-            for key, value in parameters do
-                $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
-        ]
+            let queryString = String.concat "&" [
+                for key, value in parameters do
+                    $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
+            ]
 
-        use! res = client.GetAsync(sprintf "tune/now-playing-live?%s" query_string)
-        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
-        let data = string |> Utility.deserializeAs {|
-            ModuleListResponse = {|
-                messages = [{|
-                    message = ""
-                    code = 0
-                |}]
-                moduleList = {|
-                    modules = [{|
-                        moduleResponse = {|
-                            liveChannelData = {|
-                                hlsAudioInfos = [{|
-                                    size = ""
-                                    url = ""
-                                |}]
-                            |}
-                        |}
+            use! res = client.GetAsync(sprintf "tune/now-playing-live?%s" queryString)
+            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+            File.WriteAllText("""C:\Users\isaac\Desktop\json2.json""", string)
+            return string |> Utility.deserializeAs {|
+                ModuleListResponse = {|
+                    messages = [{|
+                        message = ""
+                        code = 0
                     |}]
+                    moduleList = {|
+                        modules = [{|
+                            moduleResponse = {|
+                                liveChannelData = {|
+                                    hlsAudioInfos = [{|
+                                        name = ""
+                                        size = ""
+                                        url = ""
+                                    |}]
+                                    customAudioInfos = [{|
+                                        name = ""
+                                        chunks = {|
+                                            chunks = [{|
+                                                key = ""
+                                            |}]
+                                        |}
+                                    |}]
+                                    //markerLists = [{|
+                                    //    layer = ""
+                                    //    markers = [{|
+                                    //        cut = {|
+                                    //            title = ""
+                                    //            artists = [{|
+                                    //                name = ""
+                                    //            |}]
+                                    //            album = {|
+                                    //                title = ""
+                                    //            |}
+                                    //            cutContentType = ""
+                                    //        |}
+                                    //    |}]
+                                    //|}]
+                                |}
+                            |}
+                        |}]
+                    |}
                 |}
             |}
-        |}
+        }
 
-        let message = data.ModuleListResponse.messages.Head.message
-        let message_code = data.ModuleListResponse.messages.Head.code
+        let! data = task {
+            let! result = executeAsync ()
 
-        match message_code with
-        | 201 | 208 when max_attempts > 0 ->
-            let! authenticated = authenticate ()
+            let message = result.ModuleListResponse.messages.Head.message
+            let messageCode = result.ModuleListResponse.messages.Head.code
 
-            if not authenticated then
-                raise LoginFailedException
+            match messageCode with
+            | 100 ->
+                return result
+            | 201 | 208 ->
+                let! authenticated = authenticateAsync ()
 
-            return! this.GetPlaylistUrl(guid, channel_id, max_attempts - 1)
-        | 100 ->
-            let url =
-                data.ModuleListResponse.moduleList.modules[0].moduleResponse.liveChannelData.hlsAudioInfos
-                |> Seq.where (fun p -> p.size = "LARGE")
-                |> Seq.map (fun p -> p.url)
-                |> Seq.head
-            return url.Replace("%Live_Primary_HLS%", SiriusXMClient.LIVE_PRIMARY_HLS)
-        | _ ->
-            return raise (RecievedErrorException (message_code, message))
+                if not authenticated then
+                    raise LoginFailedException
+
+                return! executeAsync ()
+            | _ ->
+                return raise (RecievedErrorException (messageCode, message))
+        }
+
+        let liveChannelData = data.ModuleListResponse.moduleList.modules[0].moduleResponse.liveChannelData
+
+        if Option.isNone key then
+            for info in liveChannelData.customAudioInfos do
+                for chunk in info.chunks.chunks do
+                    key <- Some (Convert.FromBase64String chunk.key)
+
+        //let cut =
+        //    liveChannelData.markerLists
+        //    |> Seq.where (fun m -> m.layer = "cut")
+        //    |> Seq.collect (fun m -> m.markers)
+        //    |> Seq.map (fun m -> m.cut)
+        //    |> Seq.tryLast
+
+        //match cut with
+        //| Some c -> sprintf "%s - %s" c.title (String.concat ", " [for a in c.artists do a.name]) |> System.Diagnostics.Debug.WriteLine
+        //| None -> ()
+
+        let url =
+            liveChannelData.hlsAudioInfos
+            |> Seq.where (fun p -> p.name = "primary")
+            |> Seq.sortByDescending (fun p -> [
+                p.size = "LARGE"
+                p.size = "MEDIUM"
+                p.size = "SMALL"
+            ])
+            |> Seq.map (fun p -> p.url)
+            |> Seq.head
+        return url.Replace("%Live_Primary_HLS%", LIVE_PRIMARY_HLS)
     }
 
-    member _.GetChannels() = task {
-        do! confirm_authentication ()
+    let getChannels () = task {
+        do! confirmAuthentication ()
 
         let postdata = {|
             moduleList = {|
@@ -279,22 +352,22 @@ type SiriusXMClient(
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
     }
 
-    member _.GetFile(path: string) = task {
-        do! confirm_authentication ()
+    let getFile (path: string) = task {
+        do! confirmAuthentication ()
 
         let parameters = [
-            "token", get_sxmak_token ()
+            "token", getSxmAkToken ()
             "consumer", "k2"
-            "gupId", get_gup_id ()
+            "gupId", getGupId ()
         ]
 
-        let query_string = String.concat "&" [
+        let queryString = String.concat "&" [
             for key, value in parameters do
                 $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
         ]
 
-        let base_uri = new Uri(SiriusXMClient.LIVE_PRIMARY_HLS)
-        let uri = new Uri(base_uri, sprintf "%s?%s" path query_string)
+        let baseUri = new Uri(LIVE_PRIMARY_HLS)
+        let uri = new Uri(baseUri, sprintf "%s?%s" path queryString)
 
         use! res = client.GetAsync(uri)
         use! stream = res.EnsureSuccessStatusCode().Content.ReadAsStreamAsync()
@@ -305,10 +378,6 @@ type SiriusXMClient(
 
         return {|
             content = data
-            content_type = res.Content.Headers.ContentType.MediaType
+            contentType = res.Content.Headers.ContentType.MediaType
         |}
     }
-
-    interface IDisposable with
-        member _.Dispose() =
-            client.Dispose()

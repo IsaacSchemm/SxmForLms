@@ -53,7 +53,7 @@
     <audio controls></audio>
     <hr />
     @{
-        var bookmarks = BookmarkManager.get_bookmarks();
+        var bookmarks = BookmarkManager.getBookmarks();
         var channels = SiriusXMClientManager.channels.OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2);
     }
     <form asp-action="SetBookmarks">

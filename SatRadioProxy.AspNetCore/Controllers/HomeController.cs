@@ -18,7 +18,7 @@ namespace SatRadioProxy.Web.Controllers
         [HttpPost]
         public IActionResult SetBookmarks(string[] id)
         {
-            BookmarkManager.set_bookmarks(id);
+            BookmarkManager.setBookmarks(id);
             return RedirectToAction(nameof(Index));
         }
 
@@ -36,7 +36,7 @@ namespace SatRadioProxy.Web.Controllers
         public IActionResult PlayBookmark(int num)
         {
             string ipAddress = NetworkInterfaceProvider.address;
-            var bookmarks = BookmarkManager.get_bookmarks();
+            var bookmarks = BookmarkManager.getBookmarks();
             var channel = SiriusXMClientManager.channels
                 .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
                 .ThenBy(c => c.siriusChannelNumber)
@@ -57,7 +57,7 @@ namespace SatRadioProxy.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateIPAddress()
         {
-            await NetworkInterfaceProvider.update_address();
+            await NetworkInterfaceProvider.updateAddress();
             return RedirectToAction(nameof(Index));
         }
 

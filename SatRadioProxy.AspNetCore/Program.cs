@@ -20,7 +20,7 @@ hostApplicationLifetime.ApplicationStarted.Register(async () =>
     {
         await SiriusXMClientManager.refresh_channels();
         LyrionFavoritesManager.refresh_favorites();
-        await NetworkInterfaceProvider.update_address();
+        await NetworkInterfaceProvider.updateAddress();
     }
     catch (Exception ex)
     {

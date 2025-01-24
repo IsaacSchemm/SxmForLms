@@ -10,25 +10,21 @@ module SiriusXMClientManager =
 
     let private read = Utility.readFile
 
-    let mutable private currentProcess: SiriusXMClient option = None
-
     let mutable channels = []
 
-    let stop () =
-        currentProcess |> Option.iter Utility.dispose
-        currentProcess <- None
+    let stop () = ()
 
     let start () =
-        if Option.isNone currentProcess then
-            let credentials = (read usernameFile, read passwordFile)
+        let credentials = (read usernameFile, read passwordFile)
 
-            currentProcess <-
-                match credentials with
-                | Some username, Some password ->
-                    let client = new SiriusXMClient(username, password, "US")
-                    Some client
-                | _ ->
-                    None
+        match credentials with
+        | Some username, Some password ->
+            SiriusXMClient.setCredentials (Some {
+                username = username
+                password = password
+                region = "US"
+            })
+        | _ -> ()
 
     let setCredentials (username, password) =
         File.WriteAllText(usernameFile, username)
@@ -38,8 +34,7 @@ module SiriusXMClientManager =
     let refresh_channels () = task {
         start ()
 
-        let client = Option.get currentProcess
-        let! new_channels = client.GetChannels()
+        let! new_channels = SiriusXMClient.getChannels ()
         channels <- new_channels
     }
 
@@ -50,14 +45,12 @@ module SiriusXMClientManager =
             channels
             |> Seq.where (fun c -> c.channelId = id)
             |> Seq.head
-            
-        let client = Option.get currentProcess
-        return! client.GetPlaylistUrl(channel.channelGuid, channel.channelId, 3)
+
+        return! SiriusXMClient.getPlaylistUrl channel.channelGuid channel.channelId
     }
 
     let get_file url = task {
         start ()
 
-        let client = Option.get currentProcess
-        return! client.GetFile(url)
+        return! SiriusXMClient.getFile url
     }

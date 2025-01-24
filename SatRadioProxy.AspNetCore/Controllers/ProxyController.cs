@@ -13,7 +13,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
             if (path == "playlist.m3u8")
             {
                 var file = await proxy.GetPlaylistAsync(id, cancellationToken);
-                return File(file.content, file.content_type);
+                return File(file.content, file.contentType);
             }
             else if (path.EndsWith(".m3u8"))
             {

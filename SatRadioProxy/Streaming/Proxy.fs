@@ -78,7 +78,7 @@ type Proxy(memoryCache: IMemoryCache) =
 
         return {|
             content = content
-            content_type = data.content_type
+            content_type = data.contentType
         |}
     }
 
@@ -108,7 +108,9 @@ type Proxy(memoryCache: IMemoryCache) =
                 algorithm.KeySize <- 128
                 algorithm.BlockSize <- 128
 
-                algorithm.Key <- SiriusXMClient.KEY.ToArray()
+                match SiriusXMClient.key with
+                | Some key -> algorithm.Key <- key
+                | None -> ()
 
                 algorithm.IV <-
                     let iv = Array.zeroCreate 16

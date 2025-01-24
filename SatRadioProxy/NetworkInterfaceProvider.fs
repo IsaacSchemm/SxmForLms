@@ -7,9 +7,9 @@ open FSharp.Data
 type NetworkInterfaces = JsonProvider<"""[{"ifname":"lo","addr_info":[{"family":"inet","local":"127.0.0.1"}]}]""">
 
 module NetworkInterfaceProvider =
-    let mutable address = "127.0.0.1"
+    let mutable address = "localhost"
 
-    let update_address () = task {
+    let updateAddress () = task {
         let proc =
             new ProcessStartInfo("ip", "-j address", RedirectStandardOutput = true)
             |> Process.Start

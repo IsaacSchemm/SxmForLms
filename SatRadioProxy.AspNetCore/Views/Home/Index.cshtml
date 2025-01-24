@@ -113,7 +113,7 @@
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
     @{
-        var bookmarks = BookmarkManager.get_bookmarks();
+        var bookmarks = BookmarkManager.getBookmarks();
         var bookmarkNumbers = SiriusXMClientManager.channels
             .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
             .Select(c => c.siriusChannelNumber);

@@ -54,7 +54,7 @@
     <hr />
     @{
         var bookmarks = BookmarkManager.getBookmarks();
-        var channels = SiriusXMChannelCache.channels
+        var channels = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
             .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
             .ThenBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0);
     }

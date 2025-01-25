@@ -129,11 +129,11 @@
             referrerpolicy="no-referrer"></script>
     @{
         var bookmarks = BookmarkManager.getBookmarks();
-        var bookmarkNumbers = SiriusXMChannelCache.channels
+        var bookmarkNumbers = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
             .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
             .Select(c => c.channelNumber);
 
-        var channelInfo = SiriusXMChannelCache.channels
+        var channelInfo = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
         .Select(c => new
         {
             c.channelNumber,

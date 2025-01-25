@@ -18,9 +18,9 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
+    <PackageReference Include="System.Runtime.Caching" Version="9.0.1" />
   </ItemGroup>
 
 </Project>

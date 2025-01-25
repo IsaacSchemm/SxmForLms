@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SatRadioProxy.SiriusXM;
+using System.Threading;
 
 namespace SatRadioProxy.Web.Controllers
 {
@@ -22,25 +23,13 @@ namespace SatRadioProxy.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public IActionResult GetChannel(int num)
+        public async Task<IActionResult> PlayChannel(int num, CancellationToken cancellationToken)
         {
             string ipAddress = NetworkInterfaceProvider.address;
-            var channel = SiriusXMChannelCache.channels
-                .Where(c => c.channelNumber == $"{num}")
-                .FirstOrDefault();
-            return channel != null
-                ? Ok(new
-                {
-                    channel.name,
-                    channel.mediumDescription
-                })
-                : NotFound();
-        }
 
-        public IActionResult PlayChannel(int num)
-        {
-            string ipAddress = NetworkInterfaceProvider.address;
-            var channel = SiriusXMChannelCache.channels
+            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+
+            var channel = channels
                 .Where(c => c.channelNumber == $"{num}")
                 .FirstOrDefault();
             return channel != null
@@ -48,15 +37,20 @@ namespace SatRadioProxy.Web.Controllers
                 : NotFound();
         }
 
-        public IActionResult PlayBookmark(int num)
+        public async Task<IActionResult> PlayBookmark(int num, CancellationToken cancellationToken)
         {
             string ipAddress = NetworkInterfaceProvider.address;
+
             var bookmarks = BookmarkManager.getBookmarks();
-            var channel = SiriusXMChannelCache.channels
+
+            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+
+            var channel = channels
                 .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
                 .ThenBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0)
                 .Skip(num - 1)
                 .FirstOrDefault();
+
             return channel != null
                 ? Redirect($"http://{ipAddress}:5000/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();

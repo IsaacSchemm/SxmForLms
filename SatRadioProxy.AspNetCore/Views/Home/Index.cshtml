@@ -123,27 +123,8 @@
             </a>
         </div>
     </main>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
-            integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
-    @{
-        var channelInfo = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
-        .Select(c => new
-        {
-            c.channelNumber,
-            c.name,
-            c.mediumDescription,
-            image = c.images.images
-                .Where(i => i.name == "color channel logo (on dark)")
-                .Where(i => i.width * 1.0 / i.height == 1.25)
-                .Select(i => i.url)
-                .FirstOrDefault()
-        });
-    }
-    <script type="text/javascript">
-        var channelInfo = [@Html.Raw(Json.Serialize(channelInfo))][0];
 
+    <script type="text/javascript">
         if ("wiiu" in window) {
             document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
             document.getElementById("stop").innerHTML = [@Html.Raw(Json.Serialize((char)0xE098))][0];
@@ -224,14 +205,16 @@
         }
 
         function updateLabel(num) {
-            for (var i = 0; i < channelInfo.length; i++) {
-                if (+channelInfo[i].channelNumber == +num) {
-                    document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
-                    document.getElementById("currentImage").src = channelInfo[i].image;
-                    document.getElementById("currentImage").alt = channelInfo[i].name;
-                    document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
-                    document.getElementById("currentChannel").style.display = "block";
-                    return;
+            if ("channelInfo" in window) {
+                for (var i = 0; i < channelInfo.length; i++) {
+                    if (+channelInfo[i].channelNumber == +num) {
+                        document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
+                        document.getElementById("currentImage").src = channelInfo[i].image;
+                        document.getElementById("currentImage").alt = channelInfo[i].name;
+                        document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
+                        document.getElementById("currentChannel").style.display = "block";
+                        return;
+                    }
                 }
             }
 
@@ -260,6 +243,11 @@
             audio.play();
         };
     </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
+            integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
     <script type="text/javascript">
         var hls = null;
@@ -306,5 +294,7 @@
             };
         }
     </script>
+
+    <script type="text/javascript" src="/Home/ChannelInfo"></script>
 </body>
 </html>

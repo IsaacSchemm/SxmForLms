@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <Compile Include="Utility.fs" />
-    <Compile Include="BookmarkManager.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
     <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
     <Compile Include="SiriusXM\SiriusXMClient.fs" />

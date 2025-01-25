@@ -53,48 +53,31 @@
     <audio controls></audio>
     <hr />
     @{
-        var bookmarks = BookmarkManager.getBookmarks();
+        var address = NetworkInterfaceProvider.address;
+        var port = NetworkInterfaceProvider.port;
         var channels = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
-            .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
-            .ThenBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0);
+            .OrderBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0);
     }
-    <form asp-action="SetBookmarks">
-        <table style="">
-            <tbody>
-                @foreach (var channel in channels)
-                {
-                    <tr>
-                        <td>
-                            @if (bookmarks.Contains(channel.channelId))
-                            {
-                                <input type="checkbox" name="id" value="@channel.channelId" checked />
-                            }
-                            else
-                            {
-                                <input type="checkbox" name="id" value="@channel.channelId" />
-                            }
-                        </td>
-                        <td style="text-align: right">
-                            @channel.channelNumber
-                        </td>
-                        <td style="text-align: left">
-                            <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/playlist-@(channel.channelId).m3u8" class="button play">
-                                @channel.name
-                            </a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-        <p>
-            <button type="submit">
-                Save bookmarks
-            </button>
-        </p>
-    </form>
+    <table style="">
+        <tbody>
+            @foreach (var channel in channels)
+            {
+                <tr>
+                    <td style="text-align: right">
+                        @channel.channelNumber
+                    </td>
+                    <td style="text-align: left">
+                        <a href="http://@(address):@(port)/Proxy/playlist-@(channel.channelId).m3u8" class="button play">
+                            @channel.name
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
     <hr />
     <div>
-        <a href="http://@(NetworkInterfaceProvider.address):9000">
+        <a href="http://@(address):9000">
             Lyrion Music Server
         </a>
     </div>

@@ -98,9 +98,9 @@
         <audio controls></audio>
         <table>
             <tr>
-                <td><button id="back">&larr;&#x2605;</button></td>
+                <td></td>
                 <td><button id="stop">&#9724;</button></td>
-                <td><button id="next">&#x2605;&rarr;</button></td>
+                <td></td>
             </tr>
         </table>
         <div id="currentChannel">
@@ -128,11 +128,6 @@
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
     @{
-        var bookmarks = BookmarkManager.getBookmarks();
-        var bookmarkNumbers = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
-            .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
-            .Select(c => c.channelNumber);
-
         var channelInfo = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
         .Select(c => new
         {
@@ -147,9 +142,6 @@
         });
     }
     <script type="text/javascript">
-        var bookmarkNumbers = [@Html.Raw(Json.Serialize(bookmarkNumbers))][0];
-        var number = 0;
-
         var channelInfo = [@Html.Raw(Json.Serialize(channelInfo))][0];
 
         if ("wiiu" in window) {
@@ -219,42 +211,9 @@
             stop();
         });
 
-        function back() {
-            for (var i = bookmarkNumbers.length - 1; i >= 0; i--) {
-                if (bookmarkNumbers[i] < number) {
-                    playNumber(bookmarkNumbers[i]);
-                    return;
-                }
-            }
-
-            playNumber(bookmarkNumbers[bookmarkNumbers.length - 1]);
-        }
-
-        document.getElementById("back").addEventListener("click", function (e) {
-            e.preventDefault();
-            back();
-        });
-
-        function next() {
-            for (var i = 0; i < bookmarkNumbers.length; i++) {
-                if (bookmarkNumbers[i] > number) {
-                    playNumber(bookmarkNumbers[i]);
-                    return;
-                }
-            }
-
-            playNumber(bookmarkNumbers[0]);
-        }
-
-        document.getElementById("next").addEventListener("click", function (e) {
-            e.preventDefault();
-            next();
-        });
-
         function playNumber(num) {
             updateLabel(num);
 
-            number = +num;
             play("/Home/PlayChannel?num=" + encodeURIComponent(num));
         };
 

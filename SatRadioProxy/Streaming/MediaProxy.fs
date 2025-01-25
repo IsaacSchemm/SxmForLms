@@ -98,7 +98,7 @@ module MediaProxy =
 
                 let guid = memoryCache |> store (Chunk chunk)
 
-                { segment with key = "NONE"; path = $"chunk-{guid}.ts" }
+                { segment with key = "NONE"; path = $"chunk-{guid}.ts#${uri.AbsolutePath}" }
         ]
 
         return content

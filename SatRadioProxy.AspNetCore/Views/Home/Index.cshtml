@@ -26,8 +26,16 @@
             max-width: 320px;
         }
 
-        #num {
+        #currentChannel {
+            display: none;
+        }
+
+        #num, #currentNumber {
             font-size: 32pt;
+        }
+
+        #currentDescription {
+            font-size: 12pt;
         }
 
         audio {
@@ -95,6 +103,13 @@
                 <td><button id="next">&#x2605;&rarr;</button></td>
             </tr>
         </table>
+        <div id="currentChannel">
+            <div>
+                <img id="currentImage" width="180" height="144" />
+            </div>
+            <div id="currentNumber"></div>
+            <div id="currentDescription"></div>
+        </div>
         <hr />
         <div>
             <a asp-action="Channels">
@@ -116,11 +131,26 @@
         var bookmarks = BookmarkManager.getBookmarks();
         var bookmarkNumbers = SiriusXMChannelCache.channels
             .Where(c => bookmarks.Contains(c.channelId) || bookmarks.IsEmpty)
-            .Select(c => c.siriusChannelNumber);
+            .Select(c => c.channelNumber);
+
+        var channelInfo = SiriusXMChannelCache.channels
+        .Select(c => new
+        {
+            c.channelNumber,
+            c.name,
+            c.mediumDescription,
+            image = c.images.images
+                .Where(i => i.name == "color channel logo (on dark)")
+                .Where(i => i.width * 1.0 / i.height == 1.25)
+                .Select(i => i.url)
+                .FirstOrDefault()
+        });
     }
     <script type="text/javascript">
         var bookmarkNumbers = [@Html.Raw(Json.Serialize(bookmarkNumbers))][0];
         var number = 0;
+
+        var channelInfo = [@Html.Raw(Json.Serialize(channelInfo))][0];
 
         if ("wiiu" in window) {
             document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
@@ -142,7 +172,7 @@
             if (num)
                 playNumber(num);
             else
-                play(null);
+                stop();
 
             span.innerText = "";
         }
@@ -186,7 +216,7 @@
 
         document.getElementById("stop").addEventListener("click", function (e) {
             e.preventDefault();
-            play(null);
+            stop();
         });
 
         function back() {
@@ -222,9 +252,32 @@
         });
 
         function playNumber(num) {
+            updateLabel(num);
+
             number = +num;
             play("/Home/PlayChannel?num=" + encodeURIComponent(num));
         };
+
+        function stop() {
+            updateLabel("");
+
+            play(null);
+        }
+
+        function updateLabel(num) {
+            for (var i = 0; i < channelInfo.length; i++) {
+                if (+channelInfo[i].channelNumber == +num) {
+                    document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
+                    document.getElementById("currentImage").src = channelInfo[i].image;
+                    document.getElementById("currentImage").alt = channelInfo[i].name;
+                    document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
+                    document.getElementById("currentChannel").style.display = "block";
+                    return;
+                }
+            }
+
+            document.getElementById("currentChannel").style.display = "none";
+        }
 
         function play(url) {
             if ("wiiu" in window) {

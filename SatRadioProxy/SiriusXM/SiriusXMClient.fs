@@ -17,12 +17,6 @@ exception LoginFailedException
 exception RecievedErrorException of code: int * message: string
 
 module SiriusXMClient =
-    type Credentials = {
-        username: string
-        password: string
-        region: string
-    }
-
     let USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6"
     let REST_BASE = "https://player.siriusxm.com/rest/v2/experience/modules/"
     let LIVE_PRIMARY_HLS = "https://siriusxm-priprodlive.akamaized.net"
@@ -30,6 +24,12 @@ module SiriusXMClient =
     let mutable key = None
 
     let cookies = new CookieContainer()
+
+    type Credentials = {
+        username: string
+        password: string
+        region: string
+    }
 
     let mutable private currentCredentials = None
 
@@ -274,13 +274,9 @@ module SiriusXMClient =
         let url =
             liveChannelData.hlsAudioInfos
             |> Seq.where (fun p -> p.name = "primary")
-            |> Seq.sortByDescending (fun p -> [
-                p.size = "LARGE"
-                p.size = "MEDIUM"
-                p.size = "SMALL"
-            ])
             |> Seq.map (fun p -> p.url)
             |> Seq.head
+
         return url.Replace("%Live_Primary_HLS%", LIVE_PRIMARY_HLS)
     }
 
@@ -321,7 +317,19 @@ module SiriusXMClient =
                                         channelGuid = Guid.Empty
                                         channelId = ""
                                         name = ""
-                                        siriusChannelNumber = ""
+                                        shortName = ""
+                                        shortDescription = ""
+                                        mediumDescription = ""
+                                        url = ""
+                                        channelNumber = ""
+                                        images = {|
+                                            images = [{|
+                                                name = ""
+                                                url = ""
+                                                height = 0
+                                                width = 0
+                                            |}]
+                                        |}
                                     |}]
                                 |}
                             |}

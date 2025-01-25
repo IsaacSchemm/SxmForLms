@@ -67,8 +67,8 @@ module LyrionFavoritesManager =
     let refresh_favorites () =
         let desiredFavorites = [
             for channel in SiriusXMChannelCache.channels do {
-                url = $"http://{NetworkInterfaceProvider.address}:5000/Home/PlayChannel?num={channel.siriusChannelNumber}"
-                text = $"[{channel.siriusChannelNumber}] {channel.name}"
+                url = $"http://{NetworkInterfaceProvider.address}:5000/Home/PlayChannel?num={channel.channelNumber}"
+                text = $"[{channel.channelNumber}] {channel.name}"
             }
 
             for i in 1 .. 10 do {

@@ -22,11 +22,26 @@ namespace SatRadioProxy.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        public IActionResult GetChannel(int num)
+        {
+            string ipAddress = NetworkInterfaceProvider.address;
+            var channel = SiriusXMChannelCache.channels
+                .Where(c => c.channelNumber == $"{num}")
+                .FirstOrDefault();
+            return channel != null
+                ? Ok(new
+                {
+                    channel.name,
+                    channel.mediumDescription
+                })
+                : NotFound();
+        }
+
         public IActionResult PlayChannel(int num)
         {
             string ipAddress = NetworkInterfaceProvider.address;
             var channel = SiriusXMChannelCache.channels
-                .Where(c => c.siriusChannelNumber == $"{num}")
+                .Where(c => c.channelNumber == $"{num}")
                 .FirstOrDefault();
             return channel != null
                 ? Redirect($"http://{ipAddress}:5000/Proxy/playlist-{channel.channelId}.m3u8")
@@ -39,7 +54,7 @@ namespace SatRadioProxy.Web.Controllers
             var bookmarks = BookmarkManager.getBookmarks();
             var channel = SiriusXMChannelCache.channels
                 .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
-                .ThenBy(c => c.siriusChannelNumber)
+                .ThenBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0)
                 .Skip(num - 1)
                 .FirstOrDefault();
             return channel != null

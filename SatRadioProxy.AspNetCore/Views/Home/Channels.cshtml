@@ -54,7 +54,9 @@
     <hr />
     @{
         var bookmarks = BookmarkManager.getBookmarks();
-        var channels = SiriusXMChannelCache.channels.OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2);
+        var channels = SiriusXMChannelCache.channels
+            .OrderBy(c => bookmarks.Contains(c.channelId) ? 1 : 2)
+            .ThenBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0);
     }
     <form asp-action="SetBookmarks">
         <table style="">
@@ -73,7 +75,7 @@
                             }
                         </td>
                         <td style="text-align: right">
-                            @channel.siriusChannelNumber
+                            @channel.channelNumber
                         </td>
                         <td style="text-align: left">
                             <a href="http://@(NetworkInterfaceProvider.address):5000/Proxy/playlist-@(channel.channelId).m3u8" class="button play">

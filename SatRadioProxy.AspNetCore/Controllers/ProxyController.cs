@@ -33,11 +33,12 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 Encoding.UTF8);
         }
 
-        [Route("Proxy/chunk-{guid}.ts")]
-        public async Task<IActionResult> Chunk(Guid guid, CancellationToken cancellationToken)
+        [Route("Proxy/chunk-{guid}-{sequenceNumber}.ts")]
+        public async Task<IActionResult> Chunk(Guid guid, UInt128 sequenceNumber, CancellationToken cancellationToken)
         {
             var data = await MediaProxy.getChunkAsync(
                 guid,
+                sequenceNumber,
                 cancellationToken);
 
             return File(

@@ -12,34 +12,47 @@ open SatRadioProxy
 open SatRadioProxy.SiriusXM
 
 module MediaProxy =
+    type Chunklist = {
+        guid: Guid
+        uri: Uri
+    }
+
     type Encryption = Key1 | NoEncryption
 
     type Chunk = {
+        chunklist: Chunklist
         uri: Uri
         sequenceNumber: UInt128
         encryption: Encryption
     }
-
-    type CacheItem = Chunklist of Uri | Chunk of Chunk
 
     exception MediaNotCachedException
     exception UnknownEncryptionException
 
     let cache = MemoryCache.Default
 
-    let store (value: CacheItem) =
-        let key = $"{Guid.NewGuid()}"
-        let _ = cache.Add(key, value, new CacheItemPolicy(SlidingExpiration = TimeSpan.FromMinutes(5)))
-        key
+    let storeChunklist (chunklist: Chunklist) =
+        let _ = cache.Add(
+            $"{chunklist.guid}",
+            chunklist,
+            new CacheItemPolicy(SlidingExpiration = TimeSpan.FromMinutes(5)))
+        chunklist
 
-    let retrieveChunklist (key: Guid) =
-        match cache.Get($"{key}") with
-        | :? CacheItem as Chunklist uri -> uri
+    let retrieveChunklist guid =
+        match cache.Get($"{guid}") with
+        | :? Chunklist as item -> item
         | _ -> raise MediaNotCachedException
 
-    let retrieveChunk (key: Guid) =
-        match cache.Get($"{key}") with
-        | :? CacheItem as Chunk chunk -> chunk
+    let storeChunk (chunk: Chunk) =
+        let _ = cache.Add(
+            $"{chunk.chunklist.guid}-{chunk.sequenceNumber}",
+            chunk,
+            new CacheItemPolicy(SlidingExpiration = TimeSpan.FromMinutes(5)))
+        chunk
+
+    let retrieveChunk guid sequenceNumber =
+        match cache.Get($"{guid}-{sequenceNumber}") with
+        | :? Chunk as item -> item
         | _ -> raise MediaNotCachedException
 
     let getPlaylistAsync id cancellationToken = task {
@@ -65,18 +78,20 @@ module MediaProxy =
                 if line.StartsWith('#') then
                     line
                 else
-                    let uri = new Uri(baseUri, line)
-                    let guid = store (Chunklist uri)
-                    $"chunklist-{guid}.m3u8"
+                    let chunklist = storeChunklist {
+                        guid = Guid.NewGuid()
+                        uri = new Uri(baseUri, line)
+                    }
+                    $"chunklist-{chunklist.guid}.m3u8"
         ]
 
         return content
     }
 
     let getChunklistAsync key cancellationToken = task {
-        let chunklistUri = retrieveChunklist key
+        let chunklist = retrieveChunklist key
 
-        let! data = SiriusXMClient.getFile chunklistUri.AbsoluteUri cancellationToken
+        let! data = SiriusXMClient.getFile chunklist.uri.AbsoluteUri cancellationToken
 
         let list =
             data.content
@@ -84,10 +99,11 @@ module MediaProxy =
             |> ChunklistParser.parse
 
         let content = ChunklistParser.write [
-            for segment in list |> List.skip (list.Length - 5) do
-                let uri = new Uri(chunklistUri, segment.path)
+            for segment in list |> List.skip (list.Length - 3) do
+                let uri = new Uri(chunklist.uri, segment.path)
 
-                let chunk = {
+                let chunk = storeChunk {
+                    chunklist = chunklist
                     uri = uri
                     sequenceNumber = segment.mediaSequence
                     encryption =
@@ -97,16 +113,14 @@ module MediaProxy =
                         | _ -> raise UnknownEncryptionException
                 }
 
-                let guid = store (Chunk chunk)
-
-                { segment with key = "NONE"; path = $"chunk-{guid}.ts#${uri.AbsolutePath}" }
+                { segment with key = "NONE"; path = $"chunk-{chunk.chunklist.guid}-{chunk.sequenceNumber}.ts" }
         ]
 
         return content
     }
 
-    let getChunkAsync key cancellationToken = task {
-        let chunk = retrieveChunk key
+    let getChunkAsync guid sequenceNumber cancellationToken = task {
+        let chunk = retrieveChunk guid sequenceNumber
 
         let! encryptedData = SiriusXMClient.getFile chunk.uri.AbsoluteUri cancellationToken
 

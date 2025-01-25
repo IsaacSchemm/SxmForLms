@@ -167,22 +167,26 @@
             }
         });
 
+        function addHandler(button, handler) {
+            button.addEventListener("click", handler);
+            button.addEventListener("touchstart", handler);
+        }
+
         for (var i = 0; i <= 9; i++) {
             const button = document.getElementById("button" + i);
             var handler = function (e) {
                 e.preventDefault();
                 document.getElementById("num").innerText += e.target.innerText;
             };
-            button.addEventListener("click", handler);
-            button.addEventListener("touchstart", handler);
+            addHandler(button, handler);
         }
 
-        document.getElementById("clear").addEventListener("click", function (e) {
+        addHandler(document.getElementById("clear"), function (e) {
             e.preventDefault();
             backspace();
         });
 
-        document.getElementById("play").addEventListener("click", function (e) {
+        addHandler(document.getElementById("play"), function (e) {
             e.preventDefault();
             enter();
         });

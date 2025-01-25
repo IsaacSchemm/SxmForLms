@@ -5,6 +5,8 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Net.Http.Json
+open System.Threading
+open System.Threading.Tasks
 
 open SatRadioProxy
 
@@ -43,9 +45,6 @@ module SiriusXMClient =
 
     let isLoggedIn () =
         getCookie "SXMDATA" <> None
-
-    let isSessionAuthenticated () =
-        getCookie "AWSALB" <> None && getCookie "JSESSIONID" <> None
 
     let loginAsync cancellationToken = task {
         let postdata = {|
@@ -134,17 +133,9 @@ module SiriusXMClient =
             |}
         |}
 
-        return data.ModuleListResponse.status = 1 && isSessionAuthenticated ()
-    }
-
-    let confirmAuthentication cancellationToken = task {
-        let! ok = task {
-            if (isSessionAuthenticated ()) then return true
-            else return! authenticateAsync cancellationToken
-        }
-
-        if not ok then
-            raise CannotAuthenticateException
+        return data.ModuleListResponse.status = 1
+            && getCookie "AWSALB" <> None
+            && getCookie "JSESSIONID" <> None
     }
 
     let getSxmAkToken () =
@@ -169,83 +160,91 @@ module SiriusXMClient =
         |> Option.map (fun data -> data.gupId)
         |> Option.get
 
+    let rec getResponseAsync cancellationToken (f: unit -> Task<HttpResponseMessage>) = task {
+        use! response = f ()
+        let! string = response.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+
+        let responseBody = string |> Utility.deserializeAs {|
+            ModuleListResponse = {|
+                messages = [{|
+                    message = ""
+                    code = 0
+                |}]
+            |}
+        |}
+
+        let message =
+            responseBody.ModuleListResponse.messages
+            |> Seq.head
+
+        match message.code with
+        | 100 ->
+            return string
+        | 201 | 208 ->
+            let! authenticated = authenticateAsync cancellationToken
+
+            if not authenticated then
+                raise LoginFailedException
+
+            return! getResponseAsync cancellationToken f
+        | _ ->
+            return raise (RecievedErrorException (message.code, message.message))
+    }
+
     let rec getPlaylistUrl (guid: Guid) channelId cancellationToken = task {
-        do! confirmAuthentication cancellationToken
+        let now = DateTimeOffset.UtcNow
 
-        let executeAsync () = task {
-            let now = DateTimeOffset.UtcNow
+        let parameters = [
+            "assetGUID", string guid
+            "ccRequestType", "AUDIO_VIDEO"
+            "channelId", channelId
+            "hls_output_mode", "custom"
+            "marker_mode", "all_separate_cue_points"
+            "result-template", "web"
+            "time", string (now.ToUnixTimeMilliseconds())
+            "timestamp", (now.ToString("o"))
+        ]
 
-            let parameters = [
-                "assetGUID", string guid
-                "ccRequestType", "AUDIO_VIDEO"
-                "channelId", channelId
-                "hls_output_mode", "custom"
-                "marker_mode", "all_separate_cue_points"
-                "result-template", "web"
-                "time", string (now.ToUnixTimeMilliseconds())
-                "timestamp", (now.ToString("o"))
-            ]
+        let queryString = String.concat "&" [
+            for key, value in parameters do
+                $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
+        ]
 
-            let queryString = String.concat "&" [
-                for key, value in parameters do
-                    $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
-            ]
-
-            use! res = client.GetAsync(
+        let! string = getResponseAsync cancellationToken (fun () -> task {
+            return! client.GetAsync(
                 sprintf "tune/now-playing-live?%s" queryString,
                 cancellationToken)
-            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+        })
 
-            return string |> Utility.deserializeAs {|
-                ModuleListResponse = {|
-                    messages = [{|
-                        message = ""
-                        code = 0
-                    |}]
-                    moduleList = {|
-                        modules = [{|
-                            moduleResponse = {|
-                                liveChannelData = {|
-                                    hlsAudioInfos = [{|
-                                        name = ""
-                                        size = ""
-                                        url = ""
-                                    |}]
-                                    customAudioInfos = [{|
-                                        name = ""
-                                        chunks = {|
-                                            chunks = [{|
-                                                key = ""
-                                            |}]
-                                        |}
-                                    |}]
-                                |}
+        let data = string |> Utility.deserializeAs {|
+            ModuleListResponse = {|
+                messages = [{|
+                    message = ""
+                    code = 0
+                |}]
+                moduleList = {|
+                    modules = [{|
+                        moduleResponse = {|
+                            liveChannelData = {|
+                                hlsAudioInfos = [{|
+                                    name = ""
+                                    size = ""
+                                    url = ""
+                                |}]
+                                customAudioInfos = [{|
+                                    name = ""
+                                    chunks = {|
+                                        chunks = [{|
+                                            key = ""
+                                        |}]
+                                    |}
+                                |}]
                             |}
-                        |}]
-                    |}
+                        |}
+                    |}]
                 |}
             |}
-        }
-
-        let! data = task {
-            let! result = executeAsync ()
-
-            let message = result.ModuleListResponse.messages.Head.message
-            let messageCode = result.ModuleListResponse.messages.Head.code
-
-            match messageCode with
-            | 100 ->
-                return result
-            | 201 | 208 ->
-                let! authenticated = authenticateAsync cancellationToken
-
-                if not authenticated then
-                    raise LoginFailedException
-
-                return! executeAsync ()
-            | _ ->
-                return raise (RecievedErrorException (messageCode, message))
-        }
+        |}
 
         let liveChannelData = data.ModuleListResponse.moduleList.modules[0].moduleResponse.liveChannelData
 
@@ -264,8 +263,6 @@ module SiriusXMClient =
     }
 
     let getChannels cancellationToken = task {
-        do! confirmAuthentication cancellationToken
-
         let postdata = {|
             moduleList = {|
                 modules = {|
@@ -283,11 +280,12 @@ module SiriusXMClient =
 
         use content = JsonContent.Create(postdata)
 
-        use! res = client.PostAsync(
-            "get",
-            content,
-            cancellationToken)
-        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+        let! string = getResponseAsync cancellationToken (fun () -> task {
+            return! client.PostAsync(
+                "get",
+                content,
+                cancellationToken)
+        })
 
         let data = string |> Utility.deserializeAs {|
             ModuleListResponse = {|
@@ -325,9 +323,7 @@ module SiriusXMClient =
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
     }
 
-    let getFile path cancellationToken = task {
-        do! confirmAuthentication cancellationToken
-
+    let getFile path (cancellationToken: CancellationToken) = task {
         let parameters = [
             "token", getSxmAkToken ()
             "consumer", "k2"

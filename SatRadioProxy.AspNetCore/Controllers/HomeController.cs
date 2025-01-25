@@ -29,7 +29,9 @@ namespace SatRadioProxy.Web.Controllers
                 image = c.images.images
                         .Where(i => i.name == "color channel logo (on dark)")
                         .Where(i => i.width * 1.0 / i.height == 1.25)
-                        .Select(i => i.url)
+                        .Select(i => i.url.StartsWith("https://")
+                            ? i.url[6..]
+                            : i.url)
                         .FirstOrDefault()
             });
 

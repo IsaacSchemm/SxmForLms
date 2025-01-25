@@ -8,9 +8,9 @@
     <Compile Include="Utility.fs" />
     <Compile Include="BookmarkManager.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
+    <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
     <Compile Include="SiriusXM\SiriusXMClient.fs" />
     <Compile Include="SiriusXM\SiriusXMChannelCache.fs" />
-    <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
   </ItemGroup>
@@ -19,6 +19,7 @@
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
   </ItemGroup>
 

@@ -21,22 +21,13 @@ module SiriusXMClient =
     let REST_BASE = "https://player.siriusxm.com/rest/v2/experience/modules/"
     let LIVE_PRIMARY_HLS = "https://siriusxm-priprodlive.akamaized.net"
 
+    let username = File.ReadAllText("username.txt")
+    let password = File.ReadAllText("password.txt")
+    let region = "US"
+
     let mutable key = None
 
     let cookies = new CookieContainer()
-
-    type Credentials = {
-        username: string
-        password: string
-        region: string
-    }
-
-    let mutable private currentCredentials = None
-
-    let setCredentials creds =
-        currentCredentials <- Some creds
-        for cookie in cookies.GetAllCookies() do
-            cookie.Expired <- true
 
     let client =
         let clientHandler = new HttpClientHandler(CookieContainer = cookies)
@@ -57,101 +48,93 @@ module SiriusXMClient =
         getCookie "AWSALB" <> None && getCookie "JSESSIONID" <> None
 
     let loginAsync cancellationToken = task {
-        match currentCredentials with
-        | None ->
-            return false
-        | Some credentials ->
-            let postdata = {|
-                moduleList = {|
-                    modules = [{|
-                        moduleRequest = {|
-                            resultTemplate = "web"
-                            deviceInfo = {|
-                                osVersion = "Mac"
-                                platform = "Web"
-                                sxmAppVersion = "3.1802.10011.0"
-                                browser = "Safari"
-                                browserVersion = "11.0.3"
-                                appRegion = credentials.region
-                                deviceModel = "K2WebClient"
-                                clientDeviceId = "null"
-                                player = "html5"
-                                clientDeviceType = "web"
-                            |}
-                            standardAuth = {|
-                                username = credentials.username
-                                password = credentials.password
-                            |}
+        let postdata = {|
+            moduleList = {|
+                modules = [{|
+                    moduleRequest = {|
+                        resultTemplate = "web"
+                        deviceInfo = {|
+                            osVersion = "Mac"
+                            platform = "Web"
+                            sxmAppVersion = "3.1802.10011.0"
+                            browser = "Safari"
+                            browserVersion = "11.0.3"
+                            appRegion = region
+                            deviceModel = "K2WebClient"
+                            clientDeviceId = "null"
+                            player = "html5"
+                            clientDeviceType = "web"
                         |}
-                    |}]
-                |}
+                        standardAuth = {|
+                            username = username
+                            password = password
+                        |}
+                    |}
+                |}]
             |}
+        |}
 
-            use! resp = client.PostAsync(
-                "modify/authentication",
-                Json.JsonContent.Create(postdata),
-                cancellationToken)
+        use! resp = client.PostAsync(
+            "modify/authentication",
+            Json.JsonContent.Create(postdata),
+            cancellationToken)
 
-            let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
-            let data = string |> Utility.deserializeAs {|
-                ModuleListResponse = {|
-                    status = 0
-                |}
+        let! string = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+        let data = string |> Utility.deserializeAs {|
+            ModuleListResponse = {|
+                status = 0
             |}
+        |}
 
-            return data.ModuleListResponse.status = 1 && isLoggedIn ()
+        return data.ModuleListResponse.status = 1 && isLoggedIn ()
     }
 
     let authenticateAsync cancellationToken = task {
-        match currentCredentials with
-        | None ->
-            return false
-        | Some credentials ->
-            let! loggedIn = task {
-                if (isLoggedIn ())
-                then return true
-                else return! loginAsync cancellationToken
-            }
+        let! loggedIn = task {
+            if (isLoggedIn ())
+            then return true
+            else return! loginAsync cancellationToken
+        }
 
-            if not loggedIn then
-                raise LoginFailedException
+        if not loggedIn then
+            raise LoginFailedException
 
-            let postdata = {|
-                moduleList = {|
-                    modules = [{|
-                        moduleRequest = {|
-                            resultTemplate = "web"
-                            deviceInfo = {|
-                                osVersion = "Mac"
-                                platform = "Web"
-                                clientDeviceType = "web"
-                                sxmAppVersion = "3.1802.10011.0"
-                                browser = "Safari"
-                                browserVersion = "11.0.3"
-                                appRegion = credentials.region
-                                deviceModel = "K2WebClient"
-                                player = "html5"
-                                clientDeviceId = "null"
-                            |}
+        let postdata = {|
+            moduleList = {|
+                modules = [{|
+                    moduleRequest = {|
+                        resultTemplate = "web"
+                        deviceInfo = {|
+                            osVersion = "Mac"
+                            platform = "Web"
+                            clientDeviceType = "web"
+                            sxmAppVersion = "3.1802.10011.0"
+                            browser = "Safari"
+                            browserVersion = "11.0.3"
+                            appRegion = region
+                            deviceModel = "K2WebClient"
+                            player = "html5"
+                            clientDeviceId = "null"
                         |}
-                    |}]
-                |}
+                    |}
+                |}]
             |}
+        |}
 
-            use content = JsonContent.Create(postdata)
+        use content = JsonContent.Create(postdata)
 
-            use! res = client.PostAsync(
-                "resume?OAtrial=false",
-                content,
-                cancellationToken)
-            let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
-            let data = string |> Utility.deserializeAs {|
-                ModuleListResponse = {|
-                    status = 0
-                |}
+        use! res = client.PostAsync(
+            "resume?OAtrial=false",
+            content,
+            cancellationToken)
+        let! string = res.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+        let data = string |> Utility.deserializeAs {|
+            ModuleListResponse = {|
+                status = 0
             |}
+        |}
 
-            return data.ModuleListResponse.status = 1 && isSessionAuthenticated ()
+        return data.ModuleListResponse.status = 1 && isSessionAuthenticated ()
     }
 
     let confirmAuthentication cancellationToken = task {

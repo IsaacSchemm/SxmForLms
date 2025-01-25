@@ -61,19 +61,5 @@ namespace SatRadioProxy.Web.Controllers
                 ? Redirect($"http://{ipAddress}:5000/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();
         }
-
-        [HttpPost]
-        public async Task<IActionResult> RefreshChannels(CancellationToken cancellationToken)
-        {
-            await SiriusXMChannelCache.refresh(cancellationToken);
-            return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateIPAddress()
-        {
-            await NetworkInterfaceProvider.updateAddress();
-            return RedirectToAction(nameof(Index));
-        }
     }
 }

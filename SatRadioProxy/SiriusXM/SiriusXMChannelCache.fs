@@ -25,6 +25,10 @@ module SiriusXMChannelCache =
             SiriusXMClient.getChannels cancellationToken
             |> Async.AwaitTask
             |> Async.RunSynchronously
+            |> List.sortBy (fun c ->
+                match Int32.TryParse(c.channelNumber) with
+                | true, num -> num
+                | false, _ -> 0)
 
         LyrionFavoritesManager.updateFavorites "SiriusXM" [
             for channel in channels do {|

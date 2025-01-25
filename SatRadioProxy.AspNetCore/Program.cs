@@ -1,4 +1,7 @@
 using SatRadioProxy;
+using SatRadioProxy.SiriusXM;
+
+await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None);
 
 var builder = WebApplication.CreateBuilder(args);
 

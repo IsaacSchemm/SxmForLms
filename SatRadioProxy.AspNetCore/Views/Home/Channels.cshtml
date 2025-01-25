@@ -55,8 +55,7 @@
     @{
         var address = NetworkInterfaceProvider.address;
         var port = NetworkInterfaceProvider.port;
-        var channels = (await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None))
-            .OrderBy(c => int.TryParse(c.channelNumber, out int n) ? n : 0);
+        var channels = await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None);
     }
     <table style="">
         <tbody>

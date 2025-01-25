@@ -3,9 +3,9 @@ using SatRadioProxy.SiriusXM;
 using System.Text;
 using System.Text.Json;
 
-namespace SatRadioProxy.Web.Controllers
+namespace SatRadioProxy.AspNetCore.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController(IHttpClientFactory httpClientFactory) : Controller
     {
         public IActionResult Index()
         {
@@ -25,14 +25,7 @@ namespace SatRadioProxy.Web.Controllers
             {
                 c.channelNumber,
                 c.name,
-                c.mediumDescription,
-                image = c.images.images
-                        .Where(i => i.name == "color channel logo (on dark)")
-                        .Where(i => i.width * 1.0 / i.height == 1.25)
-                        .Select(i => i.url.StartsWith("https://")
-                            ? i.url[6..]
-                            : i.url)
-                        .FirstOrDefault()
+                c.mediumDescription
             });
 
             string json = JsonSerializer.Serialize(channelInfo);
@@ -41,6 +34,35 @@ namespace SatRadioProxy.Web.Controllers
                 $"var channelInfo = {json};",
                 "text/javascript",
                 Encoding.UTF8);
+        }
+
+        public async Task<IActionResult> ChannelImage(int num, CancellationToken cancellationToken)
+        {
+            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+
+            var imageUrl = channels
+                .Where(c => c.channelNumber == $"{num}")
+                .SelectMany(c => c.images.images)
+                .Where(i => i.name == "color channel logo (on dark)")
+                .Where(i => i.width * 1.0 / i.height == 1.25)
+                .Select(i => i.url)
+                .FirstOrDefault();
+
+            if (imageUrl == null)
+            {
+                return Content(
+                    "<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\"/>",
+                    "image/svg+xml",
+                    Encoding.UTF8);
+            }
+
+            using var client = httpClientFactory.CreateClient();
+            using var resp = await client.GetAsync(imageUrl, cancellationToken);
+            var data = await resp.Content.ReadAsByteArrayAsync(cancellationToken);
+
+            return File(
+                data,
+                resp.Content.Headers.ContentType?.MediaType ?? "application/octet-stream");
         }
 
         public async Task<IActionResult> PlayChannel(int num, CancellationToken cancellationToken)

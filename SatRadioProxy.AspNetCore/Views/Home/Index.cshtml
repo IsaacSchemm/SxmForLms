@@ -26,21 +26,23 @@
             max-width: 320px;
         }
 
-        #currentChannel {
-            display: none;
-        }
-
         #num, #currentNumber {
             font-size: 32pt;
-        }
-
-        #currentDescription {
-            font-size: 12pt;
         }
 
         audio {
             visibility: hidden;
             width: 100%;
+        }
+
+        #currentNumber {
+            font-size: 32pt;
+            min-height: 60px;
+        }
+
+        #currentDescription {
+            font-size: 12pt;
+            min-height: 64px;
         }
 
         a {
@@ -95,21 +97,19 @@
             <span id="num"></span>
             &nbsp;
         </div>
-        <audio controls></audio>
+        <div>
+            <img id="currentImage" width="180" height="144" src="/Home/ChannelImage?num=0" />
+        </div>
+        <div id="currentNumber"></div>
+        <div id="currentDescription"></div>
         <table>
             <tr>
-                <td></td>
+                <td><button id="prev">&larr;</button></td>
                 <td><button id="stop">&#9724;</button></td>
-                <td></td>
+                <td><button id="next">&rarr;</button></td>
             </tr>
         </table>
-        <div id="currentChannel">
-            <div>
-                <img id="currentImage" width="180" height="144" />
-            </div>
-            <div id="currentNumber"></div>
-            <div id="currentDescription"></div>
-        </div>
+        <audio controls></audio>
         <hr />
         <div>
             <a asp-action="Channels">
@@ -190,9 +190,39 @@
             enter();
         });
 
+        document.getElementById("prev").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            var current = +document.getElementById("currentNumber").innerText;
+            for (var i = channelInfo.length - 1; i >= 0; i--) {
+                var num = +channelInfo[i].channelNumber;
+                if (num < current) {
+                    playNumber(num);
+                    return;
+                }
+            }
+
+            playNumber(+channelInfo[channelInfo.length - 1].channelNumber);
+        });
+
         document.getElementById("stop").addEventListener("click", function (e) {
             e.preventDefault();
             stop();
+        });
+
+        document.getElementById("next").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            var current = +document.getElementById("currentNumber").innerText;
+            for (var i = 0; i < channelInfo.length; i++) {
+                var num = +channelInfo[i].channelNumber;
+                if (num > current) {
+                    playNumber(num);
+                    return;
+                }
+            }
+
+            playNumber(+channelInfo[0].channelNumber);
         });
 
         function playNumber(num) {
@@ -212,16 +242,18 @@
                 for (var i = 0; i < channelInfo.length; i++) {
                     if (+channelInfo[i].channelNumber == +num) {
                         document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
-                        document.getElementById("currentImage").src = channelInfo[i].image;
+                        document.getElementById("currentImage").src = "/Home/ChannelImage?num=" + channelInfo[i].channelNumber;
                         document.getElementById("currentImage").alt = channelInfo[i].name;
                         document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
-                        document.getElementById("currentChannel").style.display = "block";
                         return;
                     }
                 }
             }
 
-            document.getElementById("currentChannel").style.display = "none";
+            document.getElementById("currentNumber").innerText = "";
+            document.getElementById("currentImage").src = "/Home/ChannelImage?num=0";
+            document.getElementById("currentImage").alt = "";
+            document.getElementById("currentDescription").innerText = "";
         }
 
         function play(url) {

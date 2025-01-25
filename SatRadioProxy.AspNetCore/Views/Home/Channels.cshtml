@@ -107,12 +107,6 @@
                         audio.play();
                     };
 
-                    document.getElementById("playByNumber").addEventListener("submit", e => {
-                        e.preventDefault();
-                        const number = e.target.querySelector("input[type=number]").value;
-                        play(`/Home/PlayChannel?num=${number}`);
-                    });
-
                     for (const playButton of document.querySelectorAll(".button.play")) {
                         playButton.addEventListener("click", e => {
                             e.preventDefault();

@@ -384,22 +384,39 @@ module SiriusXMClient =
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
     })
 
-    let getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
-        let parameters = [
-            "token", getSxmAkToken ()
-            "consumer", "k2"
-            "gupId", getGupId ()
-        ]
+    let rec getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
+        let executeAsync () = task {
+            let parameters = [
+                "token", getSxmAkToken ()
+                "consumer", "k2"
+                "gupId", getGupId ()
+            ]
 
-        let queryString = String.concat "&" [
-            for key, value in parameters do
-                $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
-        ]
+            let queryString = String.concat "&" [
+                for key, value in parameters do
+                    $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
+            ]
 
-        use! res = client.GetAsync(
-            $"{uri.GetLeftPart(UriPartial.Path)}?{queryString}",
-            cancellationToken)
-        use! stream = res.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
+            return! client.GetAsync(
+                $"{uri.GetLeftPart(UriPartial.Path)}?{queryString}",
+                cancellationToken)
+        }
+
+        use! initialResponse = executeAsync ()
+
+        use! finalResponse = task {
+            if initialResponse.StatusCode = HttpStatusCode.Forbidden then
+                let! authenticated = authenticateAsync cancellationToken
+
+                if not authenticated then
+                    raise LoginFailedException
+
+                return! executeAsync ()
+            else
+                return initialResponse.EnsureSuccessStatusCode()
+        }
+
+        use! stream = finalResponse.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
 
         use ms = new MemoryStream()
         do! stream.CopyToAsync(ms)
@@ -407,6 +424,6 @@ module SiriusXMClient =
 
         return {|
             content = data
-            contentType = res.Content.Headers.ContentType.MediaType
+            contentType = finalResponse.Content.Headers.ContentType.MediaType
         |}
     }

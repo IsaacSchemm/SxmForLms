@@ -62,7 +62,7 @@
                 color: white;
                 cursor: pointer;
                 font-size: 24pt;
-                height: 64px;
+                height: 56px;
                 padding: 0;
                 width: 100%;
             }
@@ -97,6 +97,7 @@
             <span id="num"></span>
             &nbsp;
         </div>
+        <hr />
         <div>
             <img id="currentImage" width="180" height="144" src="/Home/ChannelImage?num=0" />
         </div>
@@ -104,9 +105,10 @@
         <div id="currentDescription"></div>
         <table>
             <tr>
-                <td><button id="prev">&larr;</button></td>
                 <td><button id="stop">&#9724;</button></td>
+                <td><button id="prev">&larr;</button></td>
                 <td><button id="next">&rarr;</button></td>
+                <td><button id="info">&#x1F6C8;</button></td>
             </tr>
         </table>
         <audio controls></audio>
@@ -190,6 +192,11 @@
             enter();
         });
 
+        document.getElementById("stop").addEventListener("click", function (e) {
+            e.preventDefault();
+            stop();
+        });
+
         document.getElementById("prev").addEventListener("click", function (e) {
             e.preventDefault();
 
@@ -205,11 +212,6 @@
             playNumber(+channelInfo[channelInfo.length - 1].channelNumber);
         });
 
-        document.getElementById("stop").addEventListener("click", function (e) {
-            e.preventDefault();
-            stop();
-        });
-
         document.getElementById("next").addEventListener("click", function (e) {
             e.preventDefault();
 
@@ -223,6 +225,15 @@
             }
 
             playNumber(+channelInfo[0].channelNumber);
+        });
+
+        document.getElementById("info").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            var current = +document.getElementById("currentNumber").innerText;
+            if (current) {
+                window.open("/Home/NowPlaying?num=" + current);
+            }
         });
 
         function playNumber(num) {

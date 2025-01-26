@@ -69,10 +69,11 @@ module MediaProxy =
             |> Seq.where (fun c -> c.channelId = id)
             |> Seq.head
 
-        let! url = SiriusXMClient.getPlaylistUrlAsync channel.channelGuid channel.channelId cancellationToken
-        let! data = SiriusXMClient.getFileAsync (new Uri(url)) cancellationToken
+        let! playlist = SiriusXMClient.getPlaylistAsync channel.channelGuid channel.channelId cancellationToken
 
-        let baseUri = new Uri(url)
+        let playlistUri = new Uri(playlist.url)
+
+        let! data = SiriusXMClient.getFileAsync playlistUri cancellationToken
 
         let lines =
             data.content
@@ -88,7 +89,7 @@ module MediaProxy =
                     MetadataCache.store $"{id}-{i}" {
                         channelId = id
                         index = i
-                        uri = new Uri(baseUri, line)
+                        uri = new Uri(playlistUri, line)
                     }
                     $"chunklist-{id}-{i}.m3u8"
                     i <- i + 1

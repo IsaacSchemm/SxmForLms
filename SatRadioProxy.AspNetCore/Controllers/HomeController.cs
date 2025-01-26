@@ -1,5 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using SatRadioProxy.AspNetCore.Models;
 using SatRadioProxy.SiriusXM;
+using SatRadioProxy.Streaming;
+using System;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -76,6 +80,34 @@ namespace SatRadioProxy.AspNetCore.Controllers
             return channel != null
                 ? Redirect($"/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();
+        }
+
+        public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
+        {
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
+
+            var channel = channels
+                .Where(c => c.channelNumber == $"{num}")
+                .First();
+
+            var playlist = await SiriusXMClient.getPlaylistAsync(
+                channel.channelGuid,
+                channel.channelId,
+                cancellationToken);
+
+            var models = playlist.cuts
+                .OrderByDescending(c => c.startTime)
+                .Take(5)
+                .Select(c => new NowPlayingModel
+                {
+                    Title = c.title,
+                    Artist = string.Join(" / ", c.artists.Except([c.title])),
+                    Album = c.albums.Select(a => a.title).FirstOrDefault(),
+                    Image = c.albums.SelectMany(a => a.images).FirstOrDefault()
+                })
+                .ToList();
+
+            return View(models);
         }
     }
 }

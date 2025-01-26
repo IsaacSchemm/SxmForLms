@@ -1,0 +1,65 @@
+﻿@model IEnumerable<NowPlayingModel>
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>SatRadioProxy</title>
+    <style type="text/css">
+        body {
+            background-color: black;
+            color: white;
+            font-family: sans-serif;
+            font-size: 16pt;
+            margin: 0;
+            text-align: center;
+        }
+
+        main {
+            display: block;
+            margin: auto;
+            max-width: 320px;
+        }
+
+        section {
+            padding: 1em 0;
+        }
+
+        section:not(:last-child) {
+            border-bottom: 1px dashed currentColor;
+        }
+
+        .title {
+            font-size: 20pt;
+            margin: 0.5em 0;
+        }
+
+        .album {
+            font-size: 12pt;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        @foreach (var item in Model)
+        {
+            <section aria-label="@item.Title">
+                @if (item.Image != null)
+                {
+                    <div>
+                        <img src="@item.Image" alt="" width="225" height="225" />
+                    </div>
+                }
+                <div class="title">@item.Title</div>
+                <div class="artist">@item.Artist</div>
+                <div class="album">@item.Album</div>
+            </section>
+        }
+    </main>
+</body>
+</html>

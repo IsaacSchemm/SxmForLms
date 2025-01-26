@@ -44,6 +44,8 @@ module SiriusXMClient =
         let configurationAsync = cacheAsync "be5a43d6-b814-4c8c-ac6f-567edd86bbb4" (TimeSpan.FromHours(1))
         let channelsAsync = cacheAsync "35bfe531-3fe6-4b14-93df-9826cfb3d0f2" (TimeSpan.FromHours(1))
 
+        let playlistAsync = cacheAsync "095b434e-3e07-43b1-96bd-607d6ef94f2c" (TimeSpan.FromSeconds(10))
+
     let mutable key = None
 
     let cookies = new CookieContainer()
@@ -104,14 +106,10 @@ module SiriusXMClient =
     }
 
     let authenticateAsync cancellationToken = task {
-        let! loggedIn = task {
-            if getCookie "SXMDATA" <> None
-            then return true
-            else return! loginAsync cancellationToken
-        }
-
-        if not loggedIn then
-            raise LoginFailedException
+        if getCookie "SXMDATA" = None then
+            let! loggedIn = loginAsync cancellationToken
+            if not loggedIn then
+                raise LoginFailedException
 
         let postdata = {|
             moduleList = {|
@@ -221,12 +219,19 @@ module SiriusXMClient =
                 |> Seq.collect (fun comp -> comp.settings)
                 |> Seq.where (fun setting -> setting.platform = "WEB")
                 |> Seq.collect (fun setting -> setting.relativeUrls)
-                |> Seq.map (fun rel -> rel.name, rel.url)
+                |> Seq.map (fun rel -> (rel.name, rel.url))
                 |> Seq.toList
         |}
     })
 
-    let rec getPlaylistUrlAsync (guid: Guid) channelId cancellationToken = task {
+    let rec replacePlaceholders (mappings: (string * string) list) (string: string) =
+        match mappings with
+        | [] -> string
+        | (name, value) :: tail -> (replacePlaceholders tail string).Replace($"%%{name}%%", value)
+
+    let rec getPlaylistAsync (guid: Guid) channelId cancellationToken = Cache.playlistAsync (fun () -> task {
+        let! configuration = getConfigurationAsync cancellationToken
+
         let now = DateTimeOffset.UtcNow
 
         let parameters = [
@@ -270,6 +275,30 @@ module SiriusXMClient =
                                         |}]
                                     |}
                                 |}]
+                                markerLists = [{|
+                                    layer = ""
+                                    markers = [{|
+                                        assetGUID = Guid.Empty
+                                        time = 0L
+                                        duration = 0.0
+                                        cut = {|
+                                            title = ""
+                                            artists = [{|
+                                                name = ""
+                                            |}]
+                                            album = Some {|
+                                                title = ""
+                                                creativeArts = Some [{|
+                                                    encrypted = false
+                                                    size = ""
+                                                    ``type`` = ""
+                                                    relativeUrl = ""
+                                                |}]
+                                            |}
+                                            cutContentType = ""
+                                        |}
+                                    |}]
+                                |}]
                             |}
                         |}
                     |}]
@@ -284,20 +313,46 @@ module SiriusXMClient =
                 for chunk in info.chunks.chunks do
                     key <- Some (Convert.FromBase64String chunk.key)
 
-        let url =
-            liveChannelData.hlsAudioInfos
-            |> Seq.where (fun p -> p.name = "primary")
-            |> Seq.map (fun p -> p.url)
-            |> Seq.head
-
-        let! configuration = getConfigurationAsync cancellationToken
-
-        let stringBuilder = new StringBuilder(url)
-        for name, value in configuration.relativeUrls do
-            stringBuilder.Replace($"%%{name}%%", value) |> ignore
-
-        return stringBuilder.ToString()
-    }
+        return {|
+            url =
+                liveChannelData.hlsAudioInfos
+                |> Seq.where (fun p -> p.name = "primary")
+                |> Seq.map (fun p -> p.url)
+                |> Seq.head
+                |> replacePlaceholders configuration.relativeUrls
+            cuts =
+                liveChannelData.markerLists
+                |> List.where (fun l -> l.layer = "cut")
+                |> List.collect (fun l -> l.markers)
+                |> List.map (fun m -> {|
+                    title = m.cut.title
+                    artists = [for a in m.cut.artists do a.name]
+                    albums = [
+                        for a in Option.toList m.cut.album do {|
+                            title = a.title
+                            images =
+                                a.creativeArts
+                                |> Option.defaultValue []
+                                |> Seq.where (fun c -> not c.encrypted)
+                                |> Seq.where (fun c -> c.``type`` = "IMAGE")
+                                |> Seq.sortByDescending (fun c -> [
+                                    c.size = "MEDIUM"
+                                    c.size = "SMALL"
+                                    c.size = "THUMBNAIL"
+                                ])
+                                |> Seq.map (fun c -> c.relativeUrl)
+                                |> Seq.map (replacePlaceholders configuration.relativeUrls)
+                                |> Seq.toList
+                        |}
+                    ]
+                    startTime = DateTimeOffset.FromUnixTimeMilliseconds(m.time)
+                    endTime =
+                        match m.duration with
+                        | 0.0 -> None
+                        | _ -> Some (DateTimeOffset.FromUnixTimeMilliseconds(m.time) + TimeSpan.FromSeconds(m.duration))
+                |})
+        |}
+    })
 
     let getChannelsAsync cancellationToken = Cache.channelsAsync (fun () -> task {
         let postdata = {|

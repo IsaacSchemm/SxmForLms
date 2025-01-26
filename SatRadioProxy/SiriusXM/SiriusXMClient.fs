@@ -6,6 +6,7 @@ open System.Net
 open System.Net.Http
 open System.Net.Http.Json
 open System.Runtime.Caching
+open System.Text
 open System.Threading
 open System.Threading.Tasks
 
@@ -22,9 +23,6 @@ exception RecievedErrorException of code: int * message: string
 module SiriusXMClient =
     let USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6"
     let REST_BASE = "https://player.siriusxm.com/rest/v2/experience/modules/"
-
-    // TODO: get this from https://player.siriusxm.com/rest/v2/experience/modules/get/configuration
-    let LIVE_PRIMARY_HLS = "https://siriusxm-priprodlive.akamaized.net"
 
     let username = File.ReadAllText("username.txt")
     let password = File.ReadAllText("password.txt")
@@ -43,6 +41,7 @@ module SiriusXMClient =
                 return item
         }
 
+        let configurationAsync = cacheAsync "be5a43d6-b814-4c8c-ac6f-567edd86bbb4" (TimeSpan.FromHours(1))
         let channelsAsync = cacheAsync "35bfe531-3fe6-4b14-93df-9826cfb3d0f2" (TimeSpan.FromHours(1))
 
     let mutable key = None
@@ -209,6 +208,48 @@ module SiriusXMClient =
             return raise (RecievedErrorException (message.code, message.message))
     }
 
+    let getConfigurationAsync cancellationToken = Cache.configurationAsync (fun () -> task {
+        let! string = getResponseAsync cancellationToken (fun () -> task {
+            return! client.GetAsync(
+                "get/configuration",
+                cancellationToken)
+        })
+
+        let data = string |> Utility.deserializeAs {|
+            ModuleListResponse = {|
+                moduleList = {|
+                    modules = [{|
+                        moduleResponse = {|
+                            configuration = {|
+                                components = [{|
+                                    name = ""
+                                    settings = [{|
+                                        platform = ""
+                                        relativeUrls = [{|
+                                            name = ""
+                                            url = ""
+                                        |}]
+                                    |}]
+                                |}]
+                            |}
+                        |}
+                    |}]
+                |}
+            |}
+        |}
+
+        return {|
+            relativeUrls =
+                data.ModuleListResponse.moduleList.modules[0].moduleResponse.configuration.components
+                |> Seq.where (fun comp -> comp.name = "relativeUrls")
+                |> Seq.collect (fun comp -> comp.settings)
+                |> Seq.where (fun setting -> setting.platform = "WEB")
+                |> Seq.collect (fun setting -> setting.relativeUrls)
+                |> Seq.map (fun rel -> rel.name, rel.url)
+                |> Seq.toList
+        |}
+    })
+
     let rec getPlaylistUrlAsync (guid: Guid) channelId cancellationToken = task {
         let now = DateTimeOffset.UtcNow
 
@@ -236,10 +277,6 @@ module SiriusXMClient =
 
         let data = string |> Utility.deserializeAs {|
             ModuleListResponse = {|
-                messages = [{|
-                    message = ""
-                    code = 0
-                |}]
                 moduleList = {|
                     modules = [{|
                         moduleResponse = {|
@@ -277,7 +314,13 @@ module SiriusXMClient =
             |> Seq.map (fun p -> p.url)
             |> Seq.head
 
-        return url.Replace("%Live_Primary_HLS%", LIVE_PRIMARY_HLS)
+        let! configuration = getConfigurationAsync cancellationToken
+
+        let stringBuilder = new StringBuilder(url)
+        for name, value in configuration.relativeUrls do
+            stringBuilder.Replace($"%%{name}%%", value) |> ignore
+
+        return stringBuilder.ToString()
     }
 
     let getChannelsAsync cancellationToken = Cache.channelsAsync (fun () -> task {
@@ -341,7 +384,7 @@ module SiriusXMClient =
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
     })
 
-    let getFileAsync path (cancellationToken: CancellationToken) = task {
+    let getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
         let parameters = [
             "token", getSxmAkToken ()
             "consumer", "k2"
@@ -353,13 +396,8 @@ module SiriusXMClient =
                 $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
         ]
 
-        let baseUri = new Uri(LIVE_PRIMARY_HLS)
-        let uri = new Uri(
-            baseUri,
-            sprintf "%s?%s" path queryString)
-
         use! res = client.GetAsync(
-            uri,
+            $"{uri.GetLeftPart(UriPartial.Path)}?{queryString}",
             cancellationToken)
         use! stream = res.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
 

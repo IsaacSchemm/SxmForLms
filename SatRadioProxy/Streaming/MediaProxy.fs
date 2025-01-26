@@ -64,7 +64,7 @@ module MediaProxy =
             |> Seq.head
 
         let! url = SiriusXMClient.getPlaylistUrlAsync channel.channelGuid channel.channelId cancellationToken
-        let! data = SiriusXMClient.getFileAsync url cancellationToken
+        let! data = SiriusXMClient.getFileAsync (new Uri(url)) cancellationToken
 
         let baseUri = new Uri(url)
 
@@ -91,7 +91,7 @@ module MediaProxy =
     let getChunklistAsync key cancellationToken = task {
         let chunklist = retrieveChunklist key
 
-        let! data = SiriusXMClient.getFileAsync chunklist.uri.AbsoluteUri cancellationToken
+        let! data = SiriusXMClient.getFileAsync chunklist.uri cancellationToken
 
         let list =
             data.content
@@ -122,7 +122,7 @@ module MediaProxy =
     let getChunkAsync guid sequenceNumber cancellationToken = task {
         let chunk = retrieveChunk guid sequenceNumber
 
-        let! encryptedData = SiriusXMClient.getFileAsync chunk.uri.AbsoluteUri cancellationToken
+        let! encryptedData = SiriusXMClient.getFileAsync chunk.uri cancellationToken
 
         let! data = task {
             match chunk.encryption with

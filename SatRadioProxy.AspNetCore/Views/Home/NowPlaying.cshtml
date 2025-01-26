@@ -1,4 +1,4 @@
-﻿@model IEnumerable<NowPlayingModel>
+﻿@model NowPlayingModel
 @{
     Layout = null;
 }
@@ -26,12 +26,18 @@
             max-width: 320px;
         }
 
-        section {
-            padding: 1em 0;
+        #currentNumber {
+            font-size: 32pt;
+            min-height: 60px;
         }
 
-        section:not(:last-child) {
-            border-bottom: 1px dashed currentColor;
+        #currentDescription {
+            font-size: 12pt;
+            min-height: 64px;
+        }
+
+        section {
+            padding: 1em 0;
         }
 
         .title {
@@ -46,8 +52,14 @@
 </head>
 <body>
     <main>
-        @foreach (var item in Model)
+        <div>
+            <img id="currentImage" width="180" height="144" src="/Home/ChannelImage?num=@Model.Number" alt="@Model.Name" />
+        </div>
+        <div id="currentNumber">@Model.Number</div>
+        <div id="currentDescription">@Model.Description</div>
+        @foreach (var item in Model.Songs)
         {
+            <hr />
             <section aria-label="@item.Title">
                 @if (item.Image != null)
                 {

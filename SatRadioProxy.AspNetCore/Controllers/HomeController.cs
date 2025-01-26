@@ -90,19 +90,26 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 channel.channelId,
                 cancellationToken);
 
-            var models = playlist.cuts
-                .OrderByDescending(c => c.startTime)
-                .Take(5)
-                .Select(c => new NowPlayingModel
-                {
-                    Title = c.title,
-                    Artist = string.Join(" / ", c.artists.Except([c.title])),
-                    Album = c.albums.Select(a => a.title).FirstOrDefault(),
-                    Image = c.albums.SelectMany(a => a.images).FirstOrDefault()
-                })
-                .ToList();
+            var model = new NowPlayingModel
+            {
+                Name = channel.name,
+                Number = num,
+                Description = channel.mediumDescription,
+                Songs = [
+                    ..playlist.cuts
+                        .OrderByDescending(c => c.startTime)
+                        .Take(5)
+                        .Select(c => new NowPlayingModel.Song
+                        {
+                            Title = c.title,
+                            Artist = string.Join(" / ", c.artists.Except([c.title])),
+                            Album = c.albums.Select(a => a.title).FirstOrDefault(),
+                            Image = c.albums.SelectMany(a => a.images).FirstOrDefault()
+                        })
+                ]
+            };
 
-            return View(models);
+            return View(model);
         }
     }
 }

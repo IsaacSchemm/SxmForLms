@@ -20,12 +20,10 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 Encoding.UTF8);
         }
 
-        [Route("Proxy/chunklist-{guid}.m3u8")]
-        public async Task<IActionResult> Chunklist(Guid guid, CancellationToken cancellationToken)
+        [Route("Proxy/chunklist-{id}-{index}.m3u8")]
+        public async Task<IActionResult> Chunklist(string id, int index, CancellationToken cancellationToken)
         {
-            string contents = await MediaProxy.getChunklistAsync(
-                guid,
-                cancellationToken);
+            string contents = await MediaProxy.getChunklistAsync(id, index, cancellationToken);
 
             return Content(
                 contents,
@@ -33,13 +31,10 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 Encoding.UTF8);
         }
 
-        [Route("Proxy/chunk-{guid}-{sequenceNumber}.ts")]
-        public async Task<IActionResult> Chunk(Guid guid, UInt128 sequenceNumber, CancellationToken cancellationToken)
+        [Route("Proxy/chunk-{id}-{index}-{sequenceNumber}.ts")]
+        public async Task<IActionResult> Chunk(string id, int index, UInt128 sequenceNumber, CancellationToken cancellationToken)
         {
-            var data = await MediaProxy.getChunkAsync(
-                guid,
-                sequenceNumber,
-                cancellationToken);
+            var data = await MediaProxy.getChunkAsync(id, index, sequenceNumber, cancellationToken);
 
             return File(
                 data,

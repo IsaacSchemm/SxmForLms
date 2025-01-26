@@ -7,13 +7,15 @@ open System.IO
 open System.Runtime.Caching
 open System.Security.Cryptography
 open System.Text
+open System.Threading.Tasks
 
 open SatRadioProxy
 open SatRadioProxy.SiriusXM
 
 module MediaProxy =
     type Chunklist = {
-        guid: Guid
+        channelId: string
+        index: int
         uri: Uri
     }
 
@@ -29,31 +31,35 @@ module MediaProxy =
     exception MediaNotCachedException
     exception UnknownEncryptionException
 
-    let cache = MemoryCache.Default
+    module MetadataCache =
+        let cache = MemoryCache.Default
+        let cacheKey = Guid.NewGuid()
 
-    let storeChunklist (chunklist: Chunklist) =
-        let _ = cache.Add(
-            $"{chunklist.guid}",
-            chunklist,
-            new CacheItemPolicy(SlidingExpiration = TimeSpan.FromMinutes(5)))
-        chunklist
+        let store key item =
+            let _ = cache.Add(
+                $"{cacheKey}-{key}",
+                item,
+                new CacheItemPolicy(AbsoluteExpiration = DateTimeOffset.Now + TimeSpan.FromMinutes(1)))
+            ()
 
-    let retrieveChunklist guid =
-        match cache.Get($"{guid}") with
-        | :? Chunklist as item -> item
-        | _ -> raise MediaNotCachedException
+        let tryRetrieve key =
+            match cache.Get($"{cacheKey}-{key}") with
+            | :? 'T as item -> Some item
+            | _ -> None
 
-    let storeChunk (chunk: Chunk) =
-        let _ = cache.Add(
-            $"{chunk.chunklist.guid}-{chunk.sequenceNumber}",
-            chunk,
-            new CacheItemPolicy(SlidingExpiration = TimeSpan.FromMinutes(5)))
-        chunk
+        type RetrievalOptions = {
+            key: string
+            onRetryAsync: unit -> Task
+        }
 
-    let retrieveChunk guid sequenceNumber =
-        match cache.Get($"{guid}-{sequenceNumber}") with
-        | :? Chunk as item -> item
-        | _ -> raise MediaNotCachedException
+        let tryRetrieveWithRetryAsync retrieval = task {
+            match tryRetrieve retrieval.key with
+            | Some item ->
+                return item
+            | None ->
+                let! _ = retrieval.onRetryAsync ()
+                return tryRetrieve retrieval.key |> Option.defaultWith (fun () -> raise MediaNotCachedException)
+        }
 
     let getPlaylistAsync id cancellationToken = task {
         let! channels = SiriusXMClient.getChannelsAsync cancellationToken
@@ -74,22 +80,28 @@ module MediaProxy =
             |> Utility.split '\n'
 
         let content = String.concat "\n" [
+            let mutable i = 0
             for line in lines do
                 if line.StartsWith('#') then
                     line
                 else
-                    let chunklist = storeChunklist {
-                        guid = Guid.NewGuid()
+                    MetadataCache.store $"{id}-{i}" {
+                        channelId = id
+                        index = i
                         uri = new Uri(baseUri, line)
                     }
-                    $"chunklist-{chunklist.guid}.m3u8"
+                    $"chunklist-{id}-{i}.m3u8"
+                    i <- i + 1
         ]
 
         return content
     }
 
-    let getChunklistAsync key cancellationToken = task {
-        let chunklist = retrieveChunklist key
+    let getChunklistAsync id index cancellationToken = task {
+        let! (chunklist: Chunklist) = MetadataCache.tryRetrieveWithRetryAsync {
+            key = $"{id}-{index}"
+            onRetryAsync = fun () -> getPlaylistAsync id cancellationToken
+        }
 
         let! data = SiriusXMClient.getFileAsync chunklist.uri cancellationToken
 
@@ -102,7 +114,7 @@ module MediaProxy =
             for segment in list |> List.skip (list.Length - 3) do
                 let uri = new Uri(chunklist.uri, segment.path)
 
-                let chunk = storeChunk {
+                MetadataCache.store $"{chunklist.channelId}-{chunklist.index}-{segment.mediaSequence}" {
                     chunklist = chunklist
                     uri = uri
                     sequenceNumber = segment.mediaSequence
@@ -113,14 +125,17 @@ module MediaProxy =
                         | _ -> raise UnknownEncryptionException
                 }
 
-                { segment with key = "NONE"; path = $"chunk-{chunk.chunklist.guid}-{chunk.sequenceNumber}.ts" }
+                { segment with key = "NONE"; path = $"chunk-{chunklist.channelId}-{chunklist.index}-{segment.mediaSequence}.ts" }
         ]
 
         return content
     }
 
-    let getChunkAsync guid sequenceNumber cancellationToken = task {
-        let chunk = retrieveChunk guid sequenceNumber
+    let getChunkAsync id index sequenceNumber cancellationToken = task {
+        let! (chunk: Chunk) = MetadataCache.tryRetrieveWithRetryAsync {
+            key = $"{id}-{index}-{sequenceNumber}"
+            onRetryAsync = fun () -> getChunklistAsync id index cancellationToken
+        }
 
         let! encryptedData = SiriusXMClient.getFileAsync chunk.uri cancellationToken
 

@@ -44,8 +44,6 @@ module SiriusXMClient =
         let configurationAsync = cacheAsync "be5a43d6-b814-4c8c-ac6f-567edd86bbb4" (TimeSpan.FromHours(1))
         let channelsAsync = cacheAsync "35bfe531-3fe6-4b14-93df-9826cfb3d0f2" (TimeSpan.FromHours(1))
 
-        let playlistAsync = cacheAsync "095b434e-3e07-43b1-96bd-607d6ef94f2c" (TimeSpan.FromSeconds(10))
-
     let mutable key = None
 
     let cookies = new CookieContainer()
@@ -229,7 +227,7 @@ module SiriusXMClient =
         | [] -> string
         | (name, value) :: tail -> (replacePlaceholders tail string).Replace($"%%{name}%%", value)
 
-    let rec getPlaylistAsync (guid: Guid) channelId cancellationToken = Cache.playlistAsync (fun () -> task {
+    let getPlaylistAsync (guid: Guid) channelId cancellationToken = task {
         let! configuration = getConfigurationAsync cancellationToken
 
         let now = DateTimeOffset.UtcNow
@@ -352,7 +350,7 @@ module SiriusXMClient =
                         | _ -> Some (DateTimeOffset.FromUnixTimeMilliseconds(m.time) + TimeSpan.FromSeconds(m.duration))
                 |})
         |}
-    })
+    }
 
     let getChannelsAsync cancellationToken = Cache.channelsAsync (fun () -> task {
         let postdata = {|

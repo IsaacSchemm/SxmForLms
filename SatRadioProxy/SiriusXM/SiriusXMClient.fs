@@ -16,8 +16,8 @@ open SatRadioProxy
 // - https://github.com/andrew0/SiriusXM
 // - https://github.com/PaulWebster/SiriusXM/tree/PaulWebster-cookies
 
-exception CannotAuthenticateException
 exception LoginFailedException
+exception MissingCookieException
 exception RecievedErrorException of code: int * message: string
 
 module SiriusXMClient =
@@ -60,9 +60,6 @@ module SiriusXMClient =
         |> Seq.map (fun c -> c.Value)
         |> Seq.tryHead
 
-    let isLoggedIn () =
-        getCookie "SXMDATA" <> None
-
     let loginAsync cancellationToken = task {
         let postdata = {|
             moduleList = {|
@@ -102,12 +99,13 @@ module SiriusXMClient =
             |}
         |}
 
-        return data.ModuleListResponse.status = 1 && isLoggedIn ()
+        return data.ModuleListResponse.status = 1
+            && getCookie "SXMDATA" <> None
     }
 
     let authenticateAsync cancellationToken = task {
         let! loggedIn = task {
-            if (isLoggedIn ())
+            if getCookie "SXMDATA" <> None
             then return true
             else return! loginAsync cancellationToken
         }
@@ -154,28 +152,6 @@ module SiriusXMClient =
             && getCookie "AWSALB" <> None
             && getCookie "JSESSIONID" <> None
     }
-
-    let getSxmAkToken () =
-        let split (char: char) (string: string) =
-            match string.IndexOf(char) with
-            | -1 -> None
-            | index -> Some (string.Substring(0, index), string.Substring(index + 1))
-
-        getCookie "SXMAKTOKEN"
-        |> Option.bind (split '=')
-        |> Option.map snd
-        |> Option.bind (split ',')
-        |> Option.map fst
-        |> Option.get
-
-    let getGupId () =
-        getCookie "SXMDATA"
-        |> Option.map Uri.UnescapeDataString
-        |> Option.map (Utility.deserializeAs {|
-            gupId = ""
-        |})
-        |> Option.map (fun data -> data.gupId)
-        |> Option.get
 
     let rec getResponseAsync cancellationToken (f: unit -> Task<HttpResponseMessage>) = task {
         use! response = f ()
@@ -391,37 +367,58 @@ module SiriusXMClient =
         return channels
     })
 
+    let getToken () =
+        let split (char: char) (string: string) =
+            match string.IndexOf(char) with
+            | -1 -> None
+            | index -> Some (string.Substring(0, index), string.Substring(index + 1))
+
+        getCookie "SXMAKTOKEN"
+        |> Option.bind (split '=')
+        |> Option.map snd
+        |> Option.bind (split ',')
+        |> Option.map fst
+
+    let getGupId () =
+        getCookie "SXMDATA"
+        |> Option.map Uri.UnescapeDataString
+        |> Option.map (Utility.deserializeAs {|
+            gupId = ""
+        |})
+        |> Option.map (fun data -> data.gupId)
+
+    let reauthenticateIfNecessaryAsync f cancellationToken = task {
+        match f () with
+        | Some value -> 
+            return value
+        | None ->
+            let! authenticated = authenticateAsync cancellationToken
+
+            if not authenticated then
+                raise LoginFailedException
+
+            return f ()
+                |> Option.defaultWith (fun () -> raise MissingCookieException)
+    }
+
     let rec getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
-        let executeAsync () = task {
-            let parameters = [
-                "token", getSxmAkToken ()
-                "consumer", "k2"
-                "gupId", getGupId ()
-            ]
+        let! token = reauthenticateIfNecessaryAsync getToken cancellationToken
+        let! gupId = reauthenticateIfNecessaryAsync getGupId cancellationToken
 
-            let queryString = String.concat "&" [
-                for key, value in parameters do
-                    $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
-            ]
+        let parameters = [
+            "token", token
+            "consumer", "k2"
+            "gupId", gupId
+        ]
 
-            return! client.GetAsync(
-                $"{uri.GetLeftPart(UriPartial.Path)}?{queryString}",
-                cancellationToken)
-        }
+        let queryString = String.concat "&" [
+            for key, value in parameters do
+                $"{Uri.EscapeDataString(key)}={Uri.EscapeDataString(value)}"
+        ]
 
-        use! initialResponse = executeAsync ()
-
-        use! finalResponse = task {
-            if initialResponse.StatusCode = HttpStatusCode.Forbidden then
-                let! authenticated = authenticateAsync cancellationToken
-
-                if not authenticated then
-                    raise LoginFailedException
-
-                return! executeAsync ()
-            else
-                return initialResponse.EnsureSuccessStatusCode()
-        }
+        use! finalResponse = client.GetAsync(
+            $"{uri.GetLeftPart(UriPartial.Path)}?{queryString}",
+            cancellationToken)
 
         use! stream = finalResponse.EnsureSuccessStatusCode().Content.ReadAsStreamAsync(cancellationToken)
 

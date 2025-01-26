@@ -1,12 +1,11 @@
 using SatRadioProxy;
-using SatRadioProxy.SiriusXM;
-
-await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None);
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
+
+builder.Services.AddHostedService<SiriusXMLyrionFavoritesService>();
 
 var app = builder.Build();
 

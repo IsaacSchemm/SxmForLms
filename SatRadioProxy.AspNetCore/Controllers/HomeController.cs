@@ -19,7 +19,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
 
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)
         {
-            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 
             var channelInfo = channels.Select(c => new
             {
@@ -38,7 +38,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
 
         public async Task<IActionResult> ChannelImage(int num, CancellationToken cancellationToken)
         {
-            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 
             var imageUrl = channels
                 .Where(c => c.channelNumber == $"{num}")
@@ -67,7 +67,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
 
         public async Task<IActionResult> PlayChannel(int num, CancellationToken cancellationToken)
         {
-            var channels = await SiriusXMChannelCache.getChannelsAsync(cancellationToken);
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 
             var channel = channels
                 .Where(c => c.channelNumber == $"{num}")

@@ -5,6 +5,7 @@ open System.IO
 open System.Net
 open System.Net.Http
 open System.Net.Http.Json
+open System.Runtime.Caching
 open System.Threading
 open System.Threading.Tasks
 
@@ -21,11 +22,28 @@ exception RecievedErrorException of code: int * message: string
 module SiriusXMClient =
     let USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6"
     let REST_BASE = "https://player.siriusxm.com/rest/v2/experience/modules/"
+
+    // TODO: get this from https://player.siriusxm.com/rest/v2/experience/modules/get/configuration
     let LIVE_PRIMARY_HLS = "https://siriusxm-priprodlive.akamaized.net"
 
     let username = File.ReadAllText("username.txt")
     let password = File.ReadAllText("password.txt")
     let region = "US"
+
+    module Cache =
+        let cache = MemoryCache.Default
+
+        let cacheAsync key timeSpan f = task {
+            match cache.Get(key) with
+            | :? 'T as item ->
+                return item
+            | _ ->
+                let! item = f ()
+                let _ = cache.Add(key, item, DateTimeOffset.UtcNow + timeSpan)
+                return item
+        }
+
+        let channelsAsync = cacheAsync "35bfe531-3fe6-4b14-93df-9826cfb3d0f2" (TimeSpan.FromHours(1))
 
     let mutable key = None
 
@@ -191,7 +209,7 @@ module SiriusXMClient =
             return raise (RecievedErrorException (message.code, message.message))
     }
 
-    let rec getPlaylistUrl (guid: Guid) channelId cancellationToken = task {
+    let rec getPlaylistUrlAsync (guid: Guid) channelId cancellationToken = task {
         let now = DateTimeOffset.UtcNow
 
         let parameters = [
@@ -262,7 +280,7 @@ module SiriusXMClient =
         return url.Replace("%Live_Primary_HLS%", LIVE_PRIMARY_HLS)
     }
 
-    let getChannels cancellationToken = task {
+    let getChannelsAsync cancellationToken = Cache.channelsAsync (fun () -> task {
         let postdata = {|
             moduleList = {|
                 modules = {|
@@ -321,9 +339,9 @@ module SiriusXMClient =
         |}
 
         return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
-    }
+    })
 
-    let getFile path (cancellationToken: CancellationToken) = task {
+    let getFileAsync path (cancellationToken: CancellationToken) = task {
         let parameters = [
             "token", getSxmAkToken ()
             "consumer", "k2"

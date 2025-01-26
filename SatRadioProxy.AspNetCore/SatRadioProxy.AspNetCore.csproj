@@ -7,11 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SatRadioProxy\SatRadioProxy.fsproj" />
+    <Compile Remove="Views\Shared\**" />
+    <Content Remove="Views\Shared\**" />
+    <EmbeddedResource Remove="Views\Shared\**" />
+    <None Remove="Views\Shared\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Views\Shared\" />
+    <ProjectReference Include="..\SatRadioProxy\SatRadioProxy.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

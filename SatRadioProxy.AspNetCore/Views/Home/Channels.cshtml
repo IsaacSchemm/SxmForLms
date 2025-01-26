@@ -55,7 +55,7 @@
     @{
         var address = NetworkInterfaceProvider.address;
         var port = NetworkInterfaceProvider.port;
-        var channels = await SiriusXMChannelCache.getChannelsAsync(CancellationToken.None);
+        var channels = await SiriusXMClient.getChannelsAsync(CancellationToken.None);
     }
     <table style="">
         <tbody>

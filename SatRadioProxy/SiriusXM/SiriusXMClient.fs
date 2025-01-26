@@ -381,7 +381,14 @@ module SiriusXMClient =
             |}
         |}
 
-        return data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
+        let channels =
+            data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
+            |> Seq.sortBy (fun channel ->
+                match Int32.TryParse(channel.channelNumber) with
+                | true, value -> value
+                | false, _ -> Int32.MaxValue)
+
+        return channels
     })
 
     let rec getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {

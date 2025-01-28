@@ -78,23 +78,10 @@ namespace SatRadioProxy.AspNetCore.Controllers
 
         public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
         {
-            return View(
-                await GetNowPlayingModelAsync(
-                    num,
-                    cancellationToken));
+            return await RecentlyPlaying(num, cancellationToken);
         }
 
         public async Task<IActionResult> RecentlyPlaying(int num, CancellationToken cancellationToken)
-        {
-            return View(
-                await GetNowPlayingModelAsync(
-                    num,
-                    cancellationToken));
-        }
-
-        private static async Task<NowPlayingModel> GetNowPlayingModelAsync(
-            int num,
-            CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
             var channel = channels
@@ -106,7 +93,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 channel.channelId,
                 cancellationToken);
 
-            return new NowPlayingModel
+            return View(new NowPlayingModel
             {
                 Name = channel.name,
                 Number = num,
@@ -123,7 +110,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
                             Image = c.albums.SelectMany(a => a.images).FirstOrDefault()
                         })
                 ]
-            };
+            });
         }
     }
 }

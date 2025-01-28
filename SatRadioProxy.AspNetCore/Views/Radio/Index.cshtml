@@ -99,7 +99,7 @@
         </div>
         <hr />
         <div>
-            <img id="currentImage" width="180" height="144" src="/Home/ChannelImage?num=0" />
+            <img id="currentImage" width="180" height="144" src="/Radio/ChannelImage?num=0" />
         </div>
         <div id="currentNumber"></div>
         <div id="currentDescription"></div>
@@ -226,14 +226,14 @@
 
             var current = +document.getElementById("currentNumber").innerText;
             if (current) {
-                window.open("/Home/NowPlaying?num=" + current);
+                window.open("/Radio/RecentlyPlaying?num=" + current);
             }
         });
 
         function playNumber(num) {
             updateLabel(num);
 
-            play("/Home/PlayChannel?num=" + encodeURIComponent(num));
+            play("/Radio/PlayChannel?num=" + encodeURIComponent(num));
         };
 
         function stop() {
@@ -247,7 +247,7 @@
                 for (var i = 0; i < channelInfo.length; i++) {
                     if (+channelInfo[i].channelNumber == +num) {
                         document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
-                        document.getElementById("currentImage").src = "/Home/ChannelImage?num=" + channelInfo[i].channelNumber;
+                        document.getElementById("currentImage").src = "/Radio/ChannelImage?num=" + channelInfo[i].channelNumber;
                         document.getElementById("currentImage").alt = channelInfo[i].name;
                         document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
                         return;
@@ -256,7 +256,7 @@
             }
 
             document.getElementById("currentNumber").innerText = "";
-            document.getElementById("currentImage").src = "/Home/ChannelImage?num=0";
+            document.getElementById("currentImage").src = "/Radio/ChannelImage?num=0";
             document.getElementById("currentImage").alt = "";
             document.getElementById("currentDescription").innerText = "";
         }
@@ -335,6 +335,6 @@
         }
     </script>
 
-    <script type="text/javascript" src="/Home/ChannelInfo"></script>
+    <script type="text/javascript" src="/Radio/ChannelInfo"></script>
 </body>
 </html>

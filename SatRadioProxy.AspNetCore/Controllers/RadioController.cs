@@ -9,7 +9,7 @@ using System.Text.Json;
 
 namespace SatRadioProxy.AspNetCore.Controllers
 {
-    public class HomeController(IHttpClientFactory httpClientFactory) : Controller
+    public class RadioController(IHttpClientFactory httpClientFactory) : Controller
     {
         public IActionResult Index()
         {
@@ -77,7 +77,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 : NotFound();
         }
 
-        public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
+        public async Task<IActionResult> RecentlyPlaying(int num, CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 

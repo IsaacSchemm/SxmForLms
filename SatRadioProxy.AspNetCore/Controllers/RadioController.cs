@@ -1,11 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SatRadioProxy.AspNetCore.Models;
 using SatRadioProxy.SiriusXM;
-using SatRadioProxy.Streaming;
 using System;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace SatRadioProxy.AspNetCore.Controllers
 {
@@ -77,10 +76,27 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 : NotFound();
         }
 
+        public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
+        {
+            return View(
+                await GetNowPlayingModelAsync(
+                    num,
+                    cancellationToken));
+        }
+
         public async Task<IActionResult> RecentlyPlaying(int num, CancellationToken cancellationToken)
         {
-            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
+            return View(
+                await GetNowPlayingModelAsync(
+                    num,
+                    cancellationToken));
+        }
 
+        private static async Task<NowPlayingModel> GetNowPlayingModelAsync(
+            int num,
+            CancellationToken cancellationToken)
+        {
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
             var channel = channels
                 .Where(c => c.channelNumber == $"{num}")
                 .First();
@@ -90,7 +106,7 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 channel.channelId,
                 cancellationToken);
 
-            var model = new NowPlayingModel
+            return new NowPlayingModel
             {
                 Name = channel.name,
                 Number = num,
@@ -108,8 +124,6 @@ namespace SatRadioProxy.AspNetCore.Controllers
                         })
                 ]
             };
-
-            return View(model);
         }
     }
 }

@@ -35,22 +35,17 @@
             width: 100%;
         }
 
-        #currentNumber {
-            font-size: 32pt;
-            min-height: 60px;
-        }
-
-        #currentDescription {
-            font-size: 12pt;
-            min-height: 64px;
-        }
-
         a {
             color: inherit;
         }
 
+        #nowPlaying {
+            border: 0;
+            height: 400px;
+            width: 100%;
+        }
+
         table {
-            flex: 1 1 auto;
             table-layout: fixed;
             width: 100%;
         }
@@ -97,12 +92,8 @@
             <span id="num"></span>
             &nbsp;
         </div>
-        <hr />
-        <div>
-            <img id="currentImage" width="180" height="144" src="/Radio/ChannelImage?num=0" />
-        </div>
-        <div id="currentNumber"></div>
-        <div id="currentDescription"></div>
+        <audio></audio>
+        <iframe id="nowPlaying"></iframe>
         <table>
             <tr>
                 <td><button id="stop">&#9724;</button></td>
@@ -111,7 +102,6 @@
                 <td><button id="info">&#8505;</button></td>
             </tr>
         </table>
-        <audio controls></audio>
         <hr />
         <div>
             <a href="http://@(NetworkInterfaceProvider.address):9000">
@@ -121,6 +111,8 @@
     </main>
 
     <script type="text/javascript">
+        var current = 0;
+
         if ("wiiu" in window) {
             document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
             document.getElementById("stop").innerHTML = [@Html.Raw(Json.Serialize((char)0xE098))][0];
@@ -194,7 +186,6 @@
         document.getElementById("prev").addEventListener("click", function (e) {
             e.preventDefault();
 
-            var current = +document.getElementById("currentNumber").innerText;
             for (var i = channelInfo.length - 1; i >= 0; i--) {
                 var num = +channelInfo[i].channelNumber;
                 if (num < current) {
@@ -209,7 +200,6 @@
         document.getElementById("next").addEventListener("click", function (e) {
             e.preventDefault();
 
-            var current = +document.getElementById("currentNumber").innerText;
             for (var i = 0; i < channelInfo.length; i++) {
                 var num = +channelInfo[i].channelNumber;
                 if (num > current) {
@@ -224,7 +214,6 @@
         document.getElementById("info").addEventListener("click", function (e) {
             e.preventDefault();
 
-            var current = +document.getElementById("currentNumber").innerText;
             if (current) {
                 window.open("/Radio/RecentlyPlaying?num=" + current);
             }
@@ -243,22 +232,18 @@
         }
 
         function updateLabel(num) {
+            current = +num;
+
             if ("channelInfo" in window) {
                 for (var i = 0; i < channelInfo.length; i++) {
                     if (+channelInfo[i].channelNumber == +num) {
-                        document.getElementById("currentNumber").innerText = channelInfo[i].channelNumber;
-                        document.getElementById("currentImage").src = "/Radio/ChannelImage?num=" + channelInfo[i].channelNumber;
-                        document.getElementById("currentImage").alt = channelInfo[i].name;
-                        document.getElementById("currentDescription").innerText = channelInfo[i].mediumDescription;
+                        document.getElementById("nowPlaying").src = "/Radio/NowPlaying?num=" + channelInfo[i].channelNumber;
                         return;
                     }
                 }
             }
 
-            document.getElementById("currentNumber").innerText = "";
-            document.getElementById("currentImage").src = "/Radio/ChannelImage?num=0";
-            document.getElementById("currentImage").alt = "";
-            document.getElementById("currentDescription").innerText = "";
+            document.getElementById("nowPlaying").src = "about:blank";
         }
 
         function play(url) {

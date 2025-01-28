@@ -6,7 +6,6 @@ open System.Net
 open System.Net.Http
 open System.Net.Http.Json
 open System.Runtime.Caching
-open System.Text
 open System.Threading
 open System.Threading.Tasks
 
@@ -54,9 +53,14 @@ module SiriusXMClient =
         cl.DefaultRequestHeaders.Add("User-Agent", USER_AGENT)
         cl
 
+    let notExpiringSoon (cookie: Cookie) =
+        cookie.Expires = DateTime.MinValue
+        || cookie.Expires.ToUniversalTime() - TimeSpan.FromMinutes(19) > DateTime.UtcNow
+
     let getCookie (name: string) =
         cookies.GetAllCookies()
         |> Seq.where (fun c -> c.Name = name)
+        |> Seq.where notExpiringSoon
         |> Seq.map (fun c -> c.Value)
         |> Seq.tryHead
 
@@ -420,48 +424,37 @@ module SiriusXMClient =
         return channels
     })
 
-    let getToken () =
-        let split (char: char) (string: string) =
-            match string.IndexOf(char) with
-            | -1 -> None
-            | index -> Some (string.Substring(0, index), string.Substring(index + 1))
-
-        getCookie "SXMAKTOKEN"
-        |> Option.bind (split '=')
-        |> Option.map snd
-        |> Option.bind (split ',')
-        |> Option.map fst
-
-    let getGupId () =
-        getCookie "SXMDATA"
-        |> Option.map Uri.UnescapeDataString
-        |> Option.map (Utility.deserializeAs {|
-            gupId = ""
-        |})
-        |> Option.map (fun data -> data.gupId)
-
-    let reauthenticateIfNecessaryAsync f cancellationToken = task {
-        match f () with
-        | Some value -> 
-            return value
-        | None ->
+    let rec getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
+        if getCookie "SXMAKTOKEN" = None || getCookie "SXMDATA" = None then
             let! authenticated = authenticateAsync cancellationToken
 
             if not authenticated then
                 raise LoginFailedException
 
-            return f ()
-                |> Option.defaultWith (fun () -> raise MissingCookieException)
-    }
+        let token =
+            let split (char: char) (string: string) =
+                let index = string.IndexOf(char)
+                string.Substring(0, index), string.Substring(index + 1)
 
-    let rec getFileAsync (uri: Uri) (cancellationToken: CancellationToken) = task {
-        let! token = reauthenticateIfNecessaryAsync getToken cancellationToken
-        let! gupId = reauthenticateIfNecessaryAsync getGupId cancellationToken
+            getCookie "SXMAKTOKEN"
+            |> Option.get
+            |> split '='
+            |> snd
+            |> split ','
+            |> fst
+
+        let sxmData =
+            getCookie "SXMDATA"
+            |> Option.get
+            |> Uri.UnescapeDataString
+            |> Utility.deserializeAs {|
+                gupId = ""
+            |}
 
         let parameters = [
             "token", token
             "consumer", "k2"
-            "gupId", gupId
+            "gupId", sxmData.gupId
         ]
 
         let queryString = String.concat "&" [

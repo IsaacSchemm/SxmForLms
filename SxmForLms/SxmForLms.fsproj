@@ -7,7 +7,6 @@
   <ItemGroup>
     <Compile Include="Config.fs" />
     <Compile Include="Utility.fs" />
-    <Compile Include="NetworkInterfaceProvider.fs" />
     <Compile Include="LyrionFavoritesManager.fs" />
     <Compile Include="SiriusXMClient.fs" />
     <Compile Include="ChunklistParser.fs" />

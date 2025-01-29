@@ -6,10 +6,19 @@ open SxmForLms
 
 module ChunklistParser =
     type Segment = {
+        /// The value of the EXT-X-KEY tag that applies to this segment. May be inherited from the previous segment.
         key: string
+
+        /// Any miscellaneous tags that apply to the entire chunklist.
         headerTags: string list
+
+        /// The value of the EXT-X-MEDIA-SEQUENCE tag for this segment.
         mediaSequence: UInt128
+
+        /// Any miscellaneous tags for this segment.
         segmentTags: string list
+
+        /// The path to the chunk, relative to the chunklist.
         path: string
     }
 
@@ -29,13 +38,6 @@ module ChunklistParser =
             let name = str.Substring(1, index - 1)
             let value = str.Substring(index + 1)
             Some (name, value)
-
-    let isSegmentTag name =
-        match name with
-        | "EXTINF"
-        | "EXT-X-BYTERANGE"
-        | "EXT-X-PROGRAM-DATE-TIME" -> true
-        | _ -> false
 
     let parse text = [
         let mutable key = "NONE"
@@ -70,7 +72,7 @@ module ChunklistParser =
     ]
 
     let write segments = String.concat "\n" [
-        "#EXTM3U"
+        yield "#EXTM3U"
 
         match Seq.tryHead segments with
         | None -> ()
@@ -78,16 +80,16 @@ module ChunklistParser =
             yield! segment.headerTags
 
             if segment.mediaSequence <> zero then
-                $"#EXT-X-MEDIA-SEQUENCE:{segment.mediaSequence}"
+                yield $"#EXT-X-MEDIA-SEQUENCE:{segment.mediaSequence}"
 
         let mutable lastKey = "NONE"
 
         for segment in segments do
             if segment.key <> lastKey then
-                $"EXT-X-KEY:{segment.key}"
+                yield $"EXT-X-KEY:{segment.key}"
                 lastKey <- segment.key
 
             yield! segment.segmentTags
 
-            segment.path
+            yield segment.path
     ]

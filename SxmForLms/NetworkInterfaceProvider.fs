@@ -25,5 +25,3 @@ module NetworkInterfaceProvider =
         with ex ->
             Console.Error.WriteLine(ex)
             "localhost"
-
-    let port = 5000

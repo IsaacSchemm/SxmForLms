@@ -5,12 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Config.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="NetworkInterfaceProvider.fs" />
-    <Compile Include="Lyrion\LyrionFavoritesManager.fs" />
-    <Compile Include="SiriusXM\SiriusXMClient.fs" />
-    <Compile Include="Streaming\ChunklistParser.fs" />
-    <Compile Include="Streaming\MediaProxy.fs" />
+    <Compile Include="LyrionFavoritesManager.fs" />
+    <Compile Include="SiriusXMClient.fs" />
+    <Compile Include="ChunklistParser.fs" />
+    <Compile Include="MediaProxy.fs" />
     <Compile Include="SiriusXMLyrionFavoritesService.fs" />
   </ItemGroup>
 

@@ -11,10 +11,6 @@ open System.Threading.Tasks
 
 open SxmForLms
 
-// Based on Python scripts from:
-// - https://github.com/andrew0/SiriusXM
-// - https://github.com/PaulWebster/SiriusXM/tree/PaulWebster-cookies
-
 exception LoginFailedException
 exception MissingCookieException
 exception RecievedErrorException of code: int * message: string
@@ -25,7 +21,7 @@ module SiriusXMClient =
 
     let username = File.ReadAllText("username.txt")
     let password = File.ReadAllText("password.txt")
-    let region = "US"
+    let region = Config.region
 
     module Cache =
         let cache = MemoryCache.Default

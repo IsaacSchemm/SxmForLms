@@ -255,7 +255,11 @@
 
         function play(url) {
             if ("wiiu" in window) {
-                window.open(url);
+                if (url)
+                    window.open(url);
+                else
+                    wiiu.videoplayer.end();
+
                 return;
             }
 

@@ -20,10 +20,19 @@
             text-align: center;
         }
 
-        main {
+        section {
             display: block;
             margin: auto;
             max-width: 320px;
+        }
+
+        @@media (min-width: 800px) and (orientation: landscape) {
+            #numpad, #display {
+                display: inline-block;
+                margin: 0 40px;
+                vertical-align: top;
+                width: 320px;
+            }
         }
 
         #num {
@@ -64,7 +73,7 @@
     </style>
 </head>
 <body>
-    <main>
+    <section id="numpad">
         <table>
             <tr>
                 <td><button id="button1">1</button></td>
@@ -92,8 +101,12 @@
             <span id="num"></span>
             &nbsp;
         </div>
+    </section>
+    <section id="display">
         <audio></audio>
         <iframe id="nowPlaying"></iframe>
+    </section>
+    <section>
         <table>
             <tr>
                 <td><button id="stop">&#9724;</button></td>
@@ -108,7 +121,7 @@
                 Lyrion Music Server
             </a>
         </div>
-    </main>
+    </section>
 
     <script type="text/javascript">
         var current = 0;
@@ -116,6 +129,7 @@
         if ("wiiu" in window) {
             document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
             document.getElementById("stop").innerHTML = [@Html.Raw(Json.Serialize((char)0xE098))][0];
+            document.getElementById("info").innerHTML = [@Html.Raw(Json.Serialize((char)0xE06B))][0];
         }
 
         function backspace() {
@@ -234,25 +248,14 @@
         function updateLabel(num) {
             current = +num;
 
-            if ("channelInfo" in window) {
-                for (var i = 0; i < channelInfo.length; i++) {
-                    if (+channelInfo[i].channelNumber == +num) {
-                        document.getElementById("nowPlaying").src = "/Radio/NowPlaying?num=" + channelInfo[i].channelNumber;
-                        return;
-                    }
-                }
-            }
-
-            document.getElementById("nowPlaying").src = "about:blank";
+            document.getElementById("nowPlaying").src = num
+                ? "/Radio/NowPlaying?num=" + encodeURIComponent(num)
+                : "about:blank";
         }
 
         function play(url) {
             if ("wiiu" in window) {
-                if (url)
-                    location.href = url;
-                else
-                    wiiu.videoplayer.end();
-
+                window.open(url);
                 return;
             }
 

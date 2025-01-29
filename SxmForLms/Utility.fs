@@ -1,4 +1,4 @@
-﻿namespace SatRadioProxy
+﻿namespace SxmForLms
 
 open System
 open System.IO

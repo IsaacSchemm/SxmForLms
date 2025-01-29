@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SatRadioProxy\SatRadioProxy.fsproj" />
+    <ProjectReference Include="..\SxmForLms\SxmForLms.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

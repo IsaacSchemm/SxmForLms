@@ -1,4 +1,4 @@
-﻿namespace SatRadioProxy.Streaming
+﻿namespace SxmForLms.Streaming
 
 open System
 open System.Buffers.Binary
@@ -9,8 +9,8 @@ open System.Security.Cryptography
 open System.Text
 open System.Threading.Tasks
 
-open SatRadioProxy
-open SatRadioProxy.SiriusXM
+open SxmForLms
+open SxmForLms.SiriusXM
 
 module MediaProxy =
     type Chunklist = {

@@ -1,12 +1,12 @@
-﻿namespace SatRadioProxy
+﻿namespace SxmForLms
 
 open System
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
 
-open SatRadioProxy.Lyrion
-open SatRadioProxy.SiriusXM
+open SxmForLms.Lyrion
+open SxmForLms.SiriusXM
 
 type SiriusXMLyrionFavoritesService() =
     inherit BackgroundService()

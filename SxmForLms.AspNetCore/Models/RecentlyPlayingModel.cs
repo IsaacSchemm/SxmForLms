@@ -1,6 +1,6 @@
 ﻿using Microsoft.FSharp.Collections;
 
-namespace SatRadioProxy.AspNetCore.Models
+namespace SxmForLms.AspNetCore.Models
 {
     public record RecentlyPlayingModel
     {

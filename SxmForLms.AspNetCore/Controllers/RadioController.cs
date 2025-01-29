@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SatRadioProxy.AspNetCore.Models;
-using SatRadioProxy.SiriusXM;
+using SxmForLms.AspNetCore.Models;
+using SxmForLms.SiriusXM;
 using System;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 
-namespace SatRadioProxy.AspNetCore.Controllers
+namespace SxmForLms.AspNetCore.Controllers
 {
     public class RadioController(IHttpClientFactory httpClientFactory) : Controller
     {

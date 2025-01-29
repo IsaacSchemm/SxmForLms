@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SatRadioProxy.Streaming;
+using SxmForLms.Streaming;
 using System.Text;
 
-namespace SatRadioProxy.AspNetCore.Controllers
+namespace SxmForLms.AspNetCore.Controllers
 {
     public class ProxyController : Controller
     {

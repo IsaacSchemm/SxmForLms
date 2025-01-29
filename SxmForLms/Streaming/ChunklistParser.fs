@@ -1,8 +1,8 @@
-﻿namespace SatRadioProxy.Streaming
+﻿namespace SxmForLms.Streaming
 
 open System
 
-open SatRadioProxy
+open SxmForLms
 
 module ChunklistParser =
     type Segment = {

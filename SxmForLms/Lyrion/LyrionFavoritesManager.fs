@@ -1,4 +1,4 @@
-﻿namespace SatRadioProxy.Lyrion
+﻿namespace SxmForLms.Lyrion
 
 open System.Diagnostics
 open System.IO

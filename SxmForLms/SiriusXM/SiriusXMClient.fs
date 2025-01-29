@@ -1,4 +1,4 @@
-﻿namespace SatRadioProxy.SiriusXM
+﻿namespace SxmForLms.SiriusXM
 
 open System
 open System.IO
@@ -9,7 +9,7 @@ open System.Runtime.Caching
 open System.Threading
 open System.Threading.Tasks
 
-open SatRadioProxy
+open SxmForLms
 
 // Based on Python scripts from:
 // - https://github.com/andrew0/SiriusXM

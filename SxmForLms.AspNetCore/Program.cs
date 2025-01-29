@@ -1,4 +1,4 @@
-using SatRadioProxy;
+using SxmForLms;
 
 var builder = WebApplication.CreateBuilder(args);
 

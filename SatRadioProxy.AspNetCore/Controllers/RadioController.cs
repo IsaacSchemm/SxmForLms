@@ -78,7 +78,34 @@ namespace SatRadioProxy.AspNetCore.Controllers
 
         public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
         {
-            return await RecentlyPlaying(num, cancellationToken);
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
+            var channel = channels
+                .Where(c => c.channelNumber == $"{num}")
+                .First();
+
+            var playlist = await SiriusXMClient.getPlaylistAsync(
+                channel.channelGuid,
+                channel.channelId,
+                cancellationToken);
+
+            return View(new NowPlayingModel
+            {
+                Channel = new ChannelModel
+                {
+                    Name = channel.name,
+                    Number = num,
+                    Description = channel.mediumDescription,
+                },
+                Song = playlist.cuts
+                    .OrderByDescending(c => c.startTime)
+                    .Select(c => new SongModel
+                    {
+                        Title = c.title,
+                        Artist = string.Join(" / ", c.artists.Except([c.title])),
+                        Album = c.albums.Select(a => a.title).FirstOrDefault()
+                    })
+                    .FirstOrDefault()
+            });
         }
 
         public async Task<IActionResult> RecentlyPlaying(int num, CancellationToken cancellationToken)
@@ -93,16 +120,19 @@ namespace SatRadioProxy.AspNetCore.Controllers
                 channel.channelId,
                 cancellationToken);
 
-            return View(new NowPlayingModel
+            return View(new RecentlyPlayingModel
             {
-                Name = channel.name,
-                Number = num,
-                Description = channel.mediumDescription,
+                Channel = new ChannelModel
+                {
+                    Name = channel.name,
+                    Number = num,
+                    Description = channel.mediumDescription
+                },
                 Songs = [
                     ..playlist.cuts
                         .OrderByDescending(c => c.startTime)
-                        .Take(5)
-                        .Select(c => new NowPlayingModel.Song
+                        .Take(10)
+                        .Select(c => new SongModel
                         {
                             Title = c.title,
                             Artist = string.Join(" / ", c.artists.Except([c.title])),

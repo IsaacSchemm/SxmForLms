@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
-    <title>SatRadioProxy</title>
+    <title>@Model.Channel.Name - Now Playing</title>
     <style type="text/css">
         body {
             background-color: black;
@@ -25,44 +25,25 @@
             margin: auto;
             max-width: 320px;
         }
-
-        #currentNumber {
-            font-size: 32pt;
-            min-height: 60px;
-        }
-
-        #currentDescription {
-            font-size: 12pt;
-            min-height: 64px;
-        }
-
-        section {
-            padding: 1em 0;
-        }
-
-        .title {
-            font-size: 20pt;
-            margin: 0.5em 0;
-        }
-
-        .album {
-            font-size: 12pt;
-        }
     </style>
 </head>
 <body>
     <main>
-        @foreach (var item in Model.Songs.Take(1))
+        <div id="channel">
+            @await Html.PartialAsync("_Channel", Model.Channel)
+        </div>
+        @if (Model.Song != null)
         {
-            @if (item.Image != null)
-            {
-                <div>
-                    <img src="@item.Image" alt="" width="225" height="225" />
-                </div>
-            }
-            <div class="title">@item.Title</div>
-            <div class="artist">@item.Artist</div>
-            <div class="album">@item.Album</div>
+            <div id="song" style="transition: opacity 0.5s linear">
+                <hr />
+                @await Html.PartialAsync("_Song", Model.Song)
+            </div>
+
+            <script type="text/javascript">
+                setTimeout(function () {
+                    document.getElementById("song").style.opacity = 0;
+                }, 5000);
+            </script>
         }
     </main>
 </body>

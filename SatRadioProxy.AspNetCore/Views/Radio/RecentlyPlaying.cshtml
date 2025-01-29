@@ -1,4 +1,4 @@
-﻿@model NowPlayingModel
+﻿@model RecentlyPlayingModel
 @{
     Layout = null;
 }
@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
-    <title>SatRadioProxy</title>
+    <title>@Model.Channel.Name - Recently Playing</title>
     <style type="text/css">
         body {
             background-color: black;
@@ -25,51 +25,18 @@
             margin: auto;
             max-width: 320px;
         }
-
-        #currentNumber {
-            font-size: 32pt;
-            min-height: 60px;
-        }
-
-        #currentDescription {
-            font-size: 12pt;
-            min-height: 64px;
-        }
-
-        section {
-            padding: 1em 0;
-        }
-
-        .title {
-            font-size: 20pt;
-            margin: 0.5em 0;
-        }
-
-        .album {
-            font-size: 12pt;
-        }
     </style>
 </head>
 <body>
     <main>
-        <div>
-            <img id="currentImage" width="180" height="144" src="/Radio/ChannelImage?num=@Model.Number" alt="@Model.Name" />
+        <div id="channel">
+            @await Html.PartialAsync("_Channel", Model.Channel)
         </div>
-        <div id="currentNumber">@Model.Number</div>
-        <div id="currentDescription">@Model.Description</div>
         @foreach (var item in Model.Songs)
         {
             <hr />
             <section aria-label="@item.Title">
-                @if (item.Image != null)
-                {
-                    <div>
-                        <img src="@item.Image" alt="" width="225" height="225" />
-                    </div>
-                }
-                <div class="title">@item.Title</div>
-                <div class="artist">@item.Artist</div>
-                <div class="album">@item.Album</div>
+                @await Html.PartialAsync("_Song", item)
             </section>
         }
     </main>

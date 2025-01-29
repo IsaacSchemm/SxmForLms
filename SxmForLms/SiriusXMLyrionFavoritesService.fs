@@ -22,5 +22,5 @@ type SiriusXMLyrionFavoritesService() =
                 |}
             ]
 
-            do! Task.Delay(TimeSpan.FromMinutes(0.5), cancellationToken)
+            do! Task.Delay(TimeSpan.FromHours(12), cancellationToken)
     }

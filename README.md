@@ -22,7 +22,6 @@ The SiriusXM username and password are read from `username.txt` and `password.tx
 
 * **SxmForLms** (F#)
     * **Config**: defines the HTTP port number (default is 5000) and SiriusXM region (US / CA).
-    * **NetworkInterfaceProvider**: lets SxmForLms find its own IP address (the IP address that the radio will see); used when updating LMS favorites
     * **LyrionFavoritesManager**: looks for the "SiriusXM" favorites category on LMS; if it does not exist or does not match the current list of SiriusXM channels, it will be updated and LMS will be restarted
     * **SiriusXMClient**: communicates with SiriusXM APIs by simulating a SiriusXM app, and fetches media using SiriusXM cookies that it obtains; essentially an F# port of https://github.com/PaulWebster/SiriusXM/tree/PaulWebster-cookies
     * **ChunklistParser**: parses an HLS chunklist line-by-line, recording all data necessary for MediaProxy to rebuild it with new file paths

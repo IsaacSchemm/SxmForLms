@@ -48,6 +48,7 @@ type SiriusXMLyrionFavoritesService() =
         LyrionFavoritesManager.updateFavorites "SiriusXM" [
             for channel in channels do {|
                 url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
+                icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
                 text = $"[{channel.channelNumber}] {channel.name}"
             |}
         ]

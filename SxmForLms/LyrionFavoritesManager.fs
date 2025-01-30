@@ -21,8 +21,13 @@ module LyrionFavoritesManager =
             for category in doc.GetElementsByTagName("outline") do
                 if attr "text" category = Some categoryName then
                     for favorite in category.ChildNodes do
-                        match attr "URL" favorite, attr "text" favorite with
-                        | Some url, Some text -> {| url = url; text = text |}
+                        match attr "URL" favorite, attr "icon" favorite, attr "text" favorite with
+                        | Some url, Some icon, Some text ->
+                            yield {|
+                                url = url
+                                icon = icon
+                                text = text
+                            |}
                         | _ -> ()
     ]
 
@@ -46,7 +51,7 @@ module LyrionFavoritesManager =
             for favorite in desiredFavorites do
                 let newFavorite = doc.CreateElement("outline")
                 newFavorite.SetAttribute("URL", favorite.url)
-                newFavorite.SetAttribute("icon", "html/images/radio.png")
+                newFavorite.SetAttribute("icon", favorite.icon)
                 newFavorite.SetAttribute("text", favorite.text)
                 newFavorite.SetAttribute("type", "audio")
                 newCategory.AppendChild(newFavorite) |> ignore

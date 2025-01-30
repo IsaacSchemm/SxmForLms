@@ -22,6 +22,7 @@ module ChunklistParser =
         path: string
     }
 
+    /// An active pattern that parses a string as a 128-bit unsigned integer.
     let (|UInt128|_|) (str: string) =
         match UInt128.TryParse(str) with
         | true, value -> Some value
@@ -30,6 +31,7 @@ module ChunklistParser =
     let zero = UInt128.Zero
     let one = UInt128.One
 
+    /// An active pattern that parses a string as an M3U directive.
     let (|Tag|_|) (str: string) =
         match str.StartsWith('#'), str.IndexOf(':') with
         | false, _
@@ -49,16 +51,20 @@ module ChunklistParser =
         for line in Utility.split '\n' text do
             match line with
             | Tag ("EXT-X-KEY", value) ->
+                // This tag usually applies to the whole chunklist, but theoretically, it can be changed between chunks.
                 key <- value
             | Tag ("EXT-X-MEDIA-SEQUENCE", UInt128 value) ->
                 mediaSequence <- value
             | Tag ("EXTINF", _)
             | Tag ("EXT-X-BYTERANGE", _)
             | Tag ("EXT-X-PROGRAM-DATE-TIME", _) ->
+                // These tags are associated with a specific segment.
                 segmentTags <- List.rev (line :: segmentTags)
             | Tag _ ->
+                // All other tags are associated with the entire chunklist.
                 headerTags <- List.rev (line :: headerTags)
             | _ when not (line.StartsWith('#')) ->
+                // This line is not a tag, so it represents an actual chunk.
                 {
                     key = key
                     headerTags = headerTags

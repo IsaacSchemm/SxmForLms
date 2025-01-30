@@ -18,16 +18,12 @@ If you're running LMS on an ordinary PC, you'll probably want to create a single
 
 The SiriusXM username and password are read from `username.txt` and `password.txt`, respectively.
 
-## Architecture
+## Features
 
-* **SxmForLms** (F#)
-    * **Config**: defines the HTTP port number (default is 5000) and SiriusXM region (US / CA).
-    * **LyrionFavoritesManager**: looks for the "SiriusXM" favorites category on LMS; if it does not exist or does not match the current list of SiriusXM channels, it will be updated and LMS will be restarted
-    * **SiriusXMClient**: communicates with SiriusXM APIs by simulating a SiriusXM app, and fetches media using SiriusXM cookies that it obtains; essentially an F# port of https://github.com/PaulWebster/SiriusXM/tree/PaulWebster-cookies
-    * **ChunklistParser**: parses an HLS chunklist line-by-line, recording all data necessary for MediaProxy to rebuild it with new file paths
-    * **MediaProxy**: fetches HLS playlists (given a channel ID), chunklists (given a channel ID and index), and chunks (given a channel ID, index, and sequence number); decrypts chunks and recontainerizes them to MPEG-TS (using `ffmpeg`)
-    * **SiriusXMLyrionFavoritesService**: runs as a `BackgroundService` and runs the update method in `LyrionFavoritesManager` every so often
-* **SxmForLms.AspNetCore** (C#)
-    * **Controllers**
-        * **ProxyController**: exposes the proxied media from `MediaProxy` over HTTP
-        * **HomeController**: provides the web browser UI
+* Makes SiriusXM stations available over HLS on HTTP port 5000 at `/Proxy/playlist-{id}.m3u8`
+    * A redirect is available that accepts a SiriusXM channel number at `/Radio/PlayChannel?num={number}`
+    * Channel logos are available at `/Radio/ChannelImage?num={number}`
+    * Segments are decrypted and recontainerized to MPEG-TS (from AAC) to aid compatibility with old devices
+* Provides a web interface to play SiriusXM stations, and see what songs a station has recently played, on HTTP port 5000
+* If Lyrion Media Server is installed to `/var/lib/squeezeboxserver`:
+    * Periodically updates LMS favorites with the current list of SiriusXM stations (placed in a "SiriusXM" folder)

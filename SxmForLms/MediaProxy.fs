@@ -31,7 +31,32 @@ module MediaProxy =
     exception MediaNotCachedException
     exception UnknownEncryptionException
 
-    module MetadataCache =
+    // To avoid having long, redundant URLs for media content, SxmForLms will
+    // expose chunklists (renditions) and chunks (segments) with custom IDs
+    // that consist of:
+    //
+    // * the channel ID
+    // * the index (starting at 0) of the chunklist
+    // * the chunk's sequence number (which is also used in decryption)
+    //
+    // When handling a client request for a chunklist or a chunk, this
+    // application can't know everything it needs to know from the URL alone;
+    // it needs some metadata from the parent level:
+    //
+    // * To serve the chunklist, we need to know its original URI.
+    //
+    // * To serve a chunk, we need to know its original URI, and whether it
+    //   uses an encryption key or not (although all SiriusXM streams do).
+    //
+    // To allow us to use these simplified identifiers in our chunklist and
+    // chunk URLs, we cache the rest of the info we need when we fetch the
+    // original list, and if the info is missing from the cache, we re-fetch
+    // the original list and then try again.
+    //
+    // This metadata will remain in the cache until it hasn't been used for
+    // five minutes. (The actual raw media data is not cached.)
+
+    module Cache =
         let cache = MemoryCache.Default
         let cacheKey = Guid.NewGuid()
 
@@ -86,7 +111,7 @@ module MediaProxy =
                 if line.StartsWith('#') then
                     line
                 else
-                    MetadataCache.store $"{id}-{i}" {
+                    Cache.store $"{id}-{i}" {
                         channelId = id
                         index = i
                         uri = new Uri(playlistUri, line)
@@ -99,7 +124,7 @@ module MediaProxy =
     }
 
     let getChunklistAsync id index cancellationToken = task {
-        let! (chunklist: Chunklist) = MetadataCache.tryRetrieveWithRetryAsync {
+        let! (chunklist: Chunklist) = Cache.tryRetrieveWithRetryAsync {
             key = $"{id}-{index}"
             onRetryAsync = fun () -> getPlaylistAsync id cancellationToken
         }
@@ -115,7 +140,7 @@ module MediaProxy =
             for segment in list |> List.skip (list.Length - 3) do
                 let uri = new Uri(chunklist.uri, segment.path)
 
-                MetadataCache.store $"{chunklist.channelId}-{chunklist.index}-{segment.mediaSequence}" {
+                Cache.store $"{chunklist.channelId}-{chunklist.index}-{segment.mediaSequence}" {
                     chunklist = chunklist
                     uri = uri
                     sequenceNumber = segment.mediaSequence
@@ -133,7 +158,7 @@ module MediaProxy =
     }
 
     let getChunkAsync id index sequenceNumber cancellationToken = task {
-        let! (chunk: Chunk) = MetadataCache.tryRetrieveWithRetryAsync {
+        let! (chunk: Chunk) = Cache.tryRetrieveWithRetryAsync {
             key = $"{id}-{index}-{sequenceNumber}"
             onRetryAsync = fun () -> getChunklistAsync id index cancellationToken
         }

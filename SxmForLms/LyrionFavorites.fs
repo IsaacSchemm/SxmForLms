@@ -4,7 +4,7 @@ open System.Diagnostics
 open System.IO
 open System.Xml
 
-module LyrionFavoritesManager =
+module LyrionFavorites =
     let path = "/var/lib/squeezeboxserver/prefs/favorites.opml"
 
     let attr (name: string) (node: XmlNode) =

@@ -13,9 +13,7 @@ open System.Diagnostics
 
 type NetworkInterfaces = JsonProvider<"""[{"ifname":"lo","addr_info":[{"family":"inet","local":"127.0.0.1"}]}]""">
 
-type SiriusXMLyrionFavoritesService() =
-    inherit BackgroundService()
-
+module SiriusXMFavorites =
     let getAddressAsync cancellationToken = task {
         try
             let proc =
@@ -45,7 +43,7 @@ type SiriusXMLyrionFavoritesService() =
 
         let! channels = SiriusXMClient.getChannelsAsync cancellationToken
 
-        LyrionFavoritesManager.updateFavorites "SiriusXM" [
+        LyrionFavorites.updateFavorites "SiriusXM" [
             for channel in channels do {|
                 url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
                 icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
@@ -56,7 +54,10 @@ type SiriusXMLyrionFavoritesService() =
         do! Task.Delay(TimeSpan.FromHours(12), cancellationToken)
     }
 
-    override _.ExecuteAsync cancellationToken = task {
-        while not cancellationToken.IsCancellationRequested do
-            do! runAsync cancellationToken
-    }
+    type Service() =
+        inherit BackgroundService()
+
+        override _.ExecuteAsync cancellationToken = task {
+            while not cancellationToken.IsCancellationRequested do
+                do! runAsync cancellationToken
+        }

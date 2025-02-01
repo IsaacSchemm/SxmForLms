@@ -101,7 +101,7 @@ module LyrionCLI =
         ]
 
         if completed <> tcs.Task then
-            failwith $"Did not recieve expected response from LMS within {waitFor}"
+            failwith $"Did not recieve expected response from LMS to {command} within {waitFor}"
 
         return! tcs.Task
     }
@@ -182,3 +182,46 @@ module LyrionCLI =
             line2
             $"{duration.TotalSeconds}"
         ]
+
+    module Playlist =
+        let playAsync playerid = sendAsync [
+            sprintf "%s" playerid
+            "play"
+        ]
+
+        let stopAsync playerid = sendAsync [
+            sprintf "%s" playerid
+            "stop"
+        ]
+
+        let setPauseAsync playerid state = sendAsync [
+            sprintf "%s" playerid
+            "pause"
+            if state then "1" else "0"
+        ]
+
+        let togglePauseAsync playerid = sendAsync [
+            sprintf "%s" playerid
+            "pause"
+        ]
+
+        type Mode = Playing | Stopped | Paused
+
+        let getModeAsync playerid = listenForAsync [playerid; "mode"; "?"] (fun command ->
+            match command with
+            | [id; "mode"; "play"] when id = playerid -> Some Playing
+            | [id; "mode"; "stop"] when id = playerid -> Some Stopped
+            | [id; "mode"; "pause"] when id = playerid -> Some Paused
+            | _ -> None)
+
+        let playItemAsync playerid item title = sendAsync [
+            sprintf "%s" playerid
+            "play"
+            item
+            title
+        ]
+
+        let getPathAsync playerid = listenForAsync [playerid; "path"; "?"] (fun command ->
+            match command with
+            | [id; "path"; path] when id = playerid -> Some path
+            | _ -> None)

@@ -14,25 +14,16 @@ namespace SxmForLms.AspNetCore.Controllers
             for (int i = 0; i < count; i++)
             {
                 string id = await LyrionCLI.Players.getIdAsync(i);
-                //await LyrionCLI.Players.showAsync(id, new LyrionCLI.Players.ShowMessage(
-                //    FSharpOption<string>.Some(Environment.MachineName),
-                //    FSharpOption<string>.Some(Environment.CurrentDirectory),
-                //    FSharpOption<TimeSpan>.Some(TimeSpan.FromSeconds(5)),
-                //    FSharpOption<LyrionCLI.Players.Brightness>.Some(LyrionCLI.Players.Brightness.PowerOn),
-                //    false,
-                //    false));
-                await LyrionCLI.Players.setDisplayAsync(
-                    id,
-                    Environment.MachineName,
-                    Environment.CurrentDirectory,
-                    TimeSpan.FromSeconds(5));
-                await Task.Delay(1111);
                 yield return new
                 {
                     id,
                     display = await LyrionCLI.Players.getDisplayAsync(id),
-                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(id)
+                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(id),
+                    mode = $"{await LyrionCLI.Playlist.getModeAsync(id)}",
+                    path = await LyrionCLI.Playlist.getPathAsync(id)
                 };
+                await Task.Delay(1000);
+                await LyrionCLI.Playlist.playAsync(id);
             }
         }
 

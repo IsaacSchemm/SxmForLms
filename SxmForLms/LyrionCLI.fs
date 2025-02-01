@@ -56,7 +56,6 @@ module LyrionCLI =
                                 client.Close()
                                 finished <- true
                             else
-                                printfn "<-- %s" line
                                 let command =
                                     line
                                     |> Utility.split ' '
@@ -74,10 +73,8 @@ module LyrionCLI =
 
                         while not cancellationToken.IsCancellationRequested do
                             let! string = channel.Reader.ReadAsync(cancellationToken)
-                            printfn "--> %s" string
                             let sb = new StringBuilder(string)
                             do! sw.WriteLineAsync(sb, cancellationToken)
-                            printfn "==> %s" string
                     with
                         | :? IOException when not client.Connected -> ()
                         | :? TaskCanceledException -> ()

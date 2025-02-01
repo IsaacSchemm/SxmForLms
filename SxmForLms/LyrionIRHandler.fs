@@ -28,36 +28,35 @@ module LyrionIRHandler =
 
     type Behavior =
     | Normal
-    | PresetEntry of text: string
-    | SiriusXMEntry of text: string
+    | PresetEntry of string
+    | SiriusXMEntry of string
 
     type Handler(player: Player) =
         let mutable power = false
 
         let mutable buttonsPressed = Map.empty
 
-        let mutable lastMode = None
+        let mutable lastBehavior = Normal
+        let mutable lastHeader = ""
 
-        let setModeAsync behavior = task {
-            let expirationTimeSpan = TimeSpan.FromSeconds(15)
-
-            lastMode <- Some {|
-                behavior = behavior
-                expires = DateTime.UtcNow + expirationTimeSpan
-            |}
-
+        let setBehaviorAsync behavior = task {
             match behavior with
             | Normal -> ()
             | PresetEntry text ->
-                do! Players.setDisplayAsync player "Enter Preset" text expirationTimeSpan
+                lastHeader <- "Enter Preset"
+                do! Players.setDisplayAsync player lastHeader text (TimeSpan.FromSeconds(30))
             | SiriusXMEntry text ->
-                do! Players.setDisplayAsync player "Enter SiriusXM Channel Number" text expirationTimeSpan
+                lastHeader <- "Enter SiriusXM Channel"
+                do! Players.setDisplayAsync player lastHeader text (TimeSpan.FromSeconds(30))
+
+            lastBehavior <- behavior
         }
 
-        let clearModeAsync () = task {
-            lastMode <- None
-
-            do! Players.setDisplayAsync player "" "" (TimeSpan.FromSeconds(0.05))
+        let checkBehaviorAsync () = task {
+            if lastBehavior <> Normal then
+                let! line1, _ = Players.getDisplayNowAsync player
+                if line1 <> lastHeader then
+                    lastBehavior <- Normal
         }
 
         let doOnceAsync ircode action = task {
@@ -79,24 +78,22 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            let behavior =
-                lastMode
-                |> Option.filter (fun m -> m.expires > DateTime.UtcNow)
-                |> Option.map (fun m -> m.behavior)
-                |> Option.defaultValue Normal
+            do! checkBehaviorAsync ()
 
             let mapping =
                 CustomMappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue LyrionIR.NoAction
 
-            match power, behavior, mapping with
+            match power, lastBehavior, mapping with
             | _, _, Power ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.togglePowerAsync player
                 })
 
-            | true, Normal, Info ->
+            | false, _, _ -> ()
+
+            | _, _, Info ->
                 do! doOnceAsync ircode (fun () -> task {
                     let mutable handled = false
 
@@ -128,57 +125,50 @@ module LyrionIRHandler =
                         do! Players.simulateButtonAsync player "now_playing"
                 })
 
-            | true, Normal, EnterPreset ->
+            | _, _, EnterPreset ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (PresetEntry "")
+                    do! setBehaviorAsync (PresetEntry "")
                 })
 
-            | true, PresetEntry text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | _, (PresetEntry text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (PresetEntry $"{text}{n}")
+                    do! setBehaviorAsync (PresetEntry $"{text}{n}")
                 })
 
-            | true, PresetEntry preset, Button "knob_push" ->
+            | _, (PresetEntry text), Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player $"playPreset_{preset}"
-                    do! clearModeAsync ()
+                    do! Players.simulateButtonAsync player $"playPreset_{text}"
                 })
 
-            | true, Normal, EnterSiriusXMChannel ->
+            | _, _, EnterSiriusXMChannel ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (SiriusXMEntry "")
+                    do! setBehaviorAsync (SiriusXMEntry "")
                 })
 
-            | true, SiriusXMEntry text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | _, (SiriusXMEntry text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (SiriusXMEntry $"{text}{n}")
+                    do! setBehaviorAsync (SiriusXMEntry $"{text}{n}")
                 })
 
-            | true, SiriusXMEntry number, Button "knob_push" ->
+            | _, (SiriusXMEntry text), Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
                     //let! address = Network.getAddressAsync CancellationToken.None
                     let address = "192.168.4.36"
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channelName =
                         channels
-                        |> Seq.where (fun c -> c.channelNumber = number)
+                        |> Seq.where (fun c -> c.channelNumber = text)
                         |> Seq.map (fun c -> c.name)
                         |> Seq.tryHead
-                        |> Option.defaultValue number
-                    do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={number}" channelName
-                    do! clearModeAsync ()
+                        |> Option.defaultValue text
+
+                    do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={text}" channelName
                 })
 
-            | true, _, Simulate name ->
-                if behavior <> Normal then
-                    do! clearModeAsync ()
-
+            | _, _, Simulate name ->
                 do! Players.simulateIRAsync player Slim[name] time
 
-            | true, _, Button button ->
-                if behavior <> Normal then
-                    do! clearModeAsync ()
-
+            | _, _, Button button ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player button
                 })

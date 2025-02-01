@@ -4,12 +4,13 @@ open System
 open System.IO
 open System.Net.Sockets
 open System.Text
+open System.Threading
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
 
 module LyrionCLI =
-    let ip = "localhost"
+    let ip = "192.168.4.36"
 
     let mutable private current = None
     let mutable private readTask = Task.CompletedTask
@@ -92,6 +93,16 @@ module LyrionCLI =
 
         do! sendAsync command
 
+        let waitFor = TimeSpan.FromSeconds(3)
+
+        let! completed = Task.WhenAny [
+            Task.Delay(waitFor)
+            tcs.Task
+        ]
+
+        if completed <> tcs.Task then
+            failwith $"Did not recieve expected response from LMS within {waitFor}"
+
         return! tcs.Task
     }
 
@@ -112,19 +123,28 @@ module LyrionCLI =
             | [id; "power"; "1"] when id = playerid -> Some true
             | _ -> None)
 
-        let setPowerAsync playerid =
-            sendAsync [playerid; "power"]
+        let setPowerAsync playerid = sendAsync [
+            sprintf "%s" playerid
+            "power"
+        ]
 
-        let togglePowerAsync playerid state =
-            sendAsync [playerid; "power"; (if state then "1" else "0")]
+        let togglePowerAsync playerid state = sendAsync [
+            sprintf "%s" playerid
+            "power"
+            if state then "1" else "0"
+        ]
 
         let getVolumeAsync playerid = listenForAsync [playerid; "mixer"; "volume"; "?"] (fun command ->
             match command with
             | [id; "mixer"; "volume"; Decimal value] when id = playerid -> Some value
             | _ -> None)
 
-        let setVolumeAsync playerid volume =
-            sendAsync [playerid; "mixer"; "volume"; volume]
+        let setVolumeAsync playerid volume = sendAsync [
+            sprintf "%s" playerid
+            "mixer"
+            "volume"
+            volume
+        ]
 
         let getMutingAsync playerid = listenForAsync [playerid; "mixer"; "muting"; "?"] (fun command ->
             match command with
@@ -132,11 +152,18 @@ module LyrionCLI =
             | [id; "mixer"; "muting"; "1"] when id = playerid -> Some true
             | _ -> None)
 
-        let setMutingAsync playerid state =
-            sendAsync [playerid; "mixer"; "muting"; (if state then "1" else "0")]
+        let setMutingAsync playerid state = sendAsync [
+            sprintf "%s" playerid
+            "mixer"
+            "muting"
+            if state then "1" else "0"
+        ]
 
-        let toggleMutingAsync playerid =
-            sendAsync [playerid; "mixer"; "muting"]
+        let toggleMutingAsync playerid = sendAsync [
+            sprintf "%s" playerid
+            "mixer"
+            "muting"
+        ]
 
         type Brightness =
         | PowerOn
@@ -153,29 +180,40 @@ module LyrionCLI =
             centered: bool
         }
 
-        let showAsync (playerid: string) message =
-            sendAsync [
-                playerid
+        let showAsync playerid message = sendAsync [
+            sprintf "%s" playerid
 
-                "show"
+            "show"
 
-                match message.line1 with Some x -> $"line1:{x}" | None -> ()
-                match message.line2 with Some x -> $"line2:{x}" | None -> ()
-                match message.duration with Some x -> $"duration:{x.TotalSeconds}" | None -> ()
+            match message.line1 with Some x -> $"line1:{x}" | None -> ()
+            match message.line2 with Some x -> $"line2:{x}" | None -> ()
+            match message.duration with Some x -> $"duration:{x.TotalSeconds}" | None -> ()
 
-                match message.brightness with
-                | Some PowerOn -> "brightness:powerOn"
-                | Some PowerOff -> "brightness:powerOff"
-                | Some Idle -> "brightness:idle"
-                | Some (Brightness x) -> $"brightness:{x}"
-                | None -> ()
+            match message.brightness with
+            | Some PowerOn -> "brightness:powerOn"
+            | Some PowerOff -> "brightness:powerOff"
+            | Some Idle -> "brightness:idle"
+            | Some (Brightness x) -> $"brightness:{x}"
+            | None -> ()
 
-                if message.huge then "font:huge"
-                if message.centered then "centered:1"
-            ]
+            if message.huge then "font:huge"
+            if message.centered then "centered:1"
+        ]
 
         let getDisplayAsync playerid = listenForAsync [playerid; "display"; "?"; "?"] (fun command ->
             match command with
             | [id; "display"; line1; line2] when id = playerid -> Some (line1, line2)
-            | id :: "show" :: _ when id = playerid -> raise (new NotImplementedException())
             | _ -> None)
+
+        let getDisplayNowAsync playerid = listenForAsync [playerid; "displaynow"; "?"; "?"] (fun command ->
+            match command with
+            | [id; "displaynow"; line1; line2] when id = playerid -> Some (line1, line2)
+            | _ -> None)
+
+        let setDisplayAsync playerid line1 line2 (duration: TimeSpan) = sendAsync [
+            sprintf "%s" playerid
+            "display"
+            line1
+            line2
+            $"{duration.TotalSeconds}"
+        ]

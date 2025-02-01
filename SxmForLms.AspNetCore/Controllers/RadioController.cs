@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.FSharp.Core;
 using SxmForLms.AspNetCore.Models;
 using System.Text;
 using System.Text.Json;
@@ -7,9 +8,32 @@ namespace SxmForLms.AspNetCore.Controllers
 {
     public class RadioController(IHttpClientFactory httpClientFactory) : Controller
     {
-        public IActionResult Index()
+        public async IAsyncEnumerable<object> Index()
         {
-            return View();
+            int count = await LyrionCLI.Players.countAsync();
+            for (int i = 0; i < count; i++)
+            {
+                string id = await LyrionCLI.Players.getIdAsync(i);
+                //await LyrionCLI.Players.showAsync(id, new LyrionCLI.Players.ShowMessage(
+                //    FSharpOption<string>.Some(Environment.MachineName),
+                //    FSharpOption<string>.Some(Environment.CurrentDirectory),
+                //    FSharpOption<TimeSpan>.Some(TimeSpan.FromSeconds(5)),
+                //    FSharpOption<LyrionCLI.Players.Brightness>.Some(LyrionCLI.Players.Brightness.PowerOn),
+                //    false,
+                //    false));
+                await LyrionCLI.Players.setDisplayAsync(
+                    id,
+                    Environment.MachineName,
+                    Environment.CurrentDirectory,
+                    TimeSpan.FromSeconds(5));
+                await Task.Delay(1111);
+                yield return new
+                {
+                    id,
+                    display = await LyrionCLI.Players.getDisplayAsync(id),
+                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(id)
+                };
+            }
         }
 
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)

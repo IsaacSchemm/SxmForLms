@@ -72,6 +72,7 @@ module LyrionIR =
     | Power
     | Simulate of string
     | Button of string
+    | Info
     | EnterPreset
     | EnterSiriusXMChannel
     | NoAction
@@ -96,7 +97,7 @@ module LyrionIR =
         0x61a028d7, Simulate "home" // Menu
         0x61a09d62, Simulate "home"
         0x61a0d827, Button "exit_left"
-        0x61a0e817, Simulate "now_playing" // Info*
+        0x61a0e817, Info
 
         0x61a042bd, Simulate "arrow_up"
         0x61a0c23d, Simulate "arrow_down"

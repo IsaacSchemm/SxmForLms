@@ -56,6 +56,7 @@ module LyrionCLI =
                                 client.Close()
                                 finished <- true
                             else
+                                printfn "<-- %s" line
                                 let command =
                                     line
                                     |> Utility.split ' '
@@ -73,8 +74,10 @@ module LyrionCLI =
 
                         while not cancellationToken.IsCancellationRequested do
                             let! string = channel.Reader.ReadAsync(cancellationToken)
+                            printfn "--> %s" string
                             let sb = new StringBuilder(string)
                             do! sw.WriteLineAsync(sb, cancellationToken)
+                            printfn "==> %s" string
                     with
                         | :? IOException when not client.Connected -> ()
                         | :? TaskCanceledException -> ()
@@ -103,7 +106,7 @@ module LyrionCLI =
 
         do! sendAsync command
 
-        let period = TimeSpan.FromSeconds(3)
+        let period = TimeSpan.FromSeconds(5)
 
         let! completed = Task.WhenAny [
             Task.Delay(period)
@@ -254,4 +257,4 @@ module LyrionCLI =
         let getPathAsync (Player id) = listenForAsync [id; "path"; "?"] (fun command ->
             match command with
             | [x; "path"; path] when x = id -> Some path
-            | _ -> None)
+            | b -> None)

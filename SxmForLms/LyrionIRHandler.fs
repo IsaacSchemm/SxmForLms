@@ -2,6 +2,7 @@
 
 open System
 open System.Globalization
+open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 
@@ -16,10 +17,19 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
+    let proxyPathPattern = new Regex("""^http://[^/]+:[0-9]+/Proxy/playlist-(.+)\.m3u8""")
+
+    let (|ProxyPath|_|) (str: string) =
+        let m = proxyPathPattern.Match(str)
+        if m.Success then
+            Some m.Groups[1].Value
+        else
+            None
+
     type Behavior =
     | Normal
-    | EnterPresetBehavior of text: string
-    | EnterSiriusXMChannelBehavior of text: string
+    | PresetEntry of text: string
+    | SiriusXMEntry of text: string
 
     type Handler(player: Player) =
         let mutable power = false
@@ -38,9 +48,9 @@ module LyrionIRHandler =
 
             match behavior with
             | Normal -> ()
-            | EnterPresetBehavior text ->
+            | PresetEntry text ->
                 do! Players.setDisplayAsync player "Enter Preset" text expirationTimeSpan
-            | EnterSiriusXMChannelBehavior text ->
+            | SiriusXMEntry text ->
                 do! Players.setDisplayAsync player "Enter SiriusXM Channel Number" text expirationTimeSpan
         }
 
@@ -86,25 +96,49 @@ module LyrionIRHandler =
                     do! Players.togglePowerAsync player
                 })
 
-            | true, Normal, Simulate name ->
-                do! Players.simulateIRAsync player Slim[name] time
-
-            | true, Normal, Button button ->
+            | true, Normal, Info ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player button
+                    let mutable handled = false
+
+                    let! path = Playlist.getPathAsync player
+
+                    match Uri.TryCreate(path, UriKind.Absolute) with
+                    | false, _ -> ()
+                    | true, uri ->
+                        let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
+                        let m = proxyPathPattern.Match(uri.AbsolutePath)
+
+                        if m.Success then
+                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                            for c in channels do
+                                if c.channelId = m.Groups[1].Value then
+                                    let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                                    let cut =
+                                        playlist.cuts
+                                        |> Seq.sortByDescending (fun cut -> cut.startTime)
+                                        |> Seq.tryHead
+                                    match cut with
+                                    | None -> ()
+                                    | Some c ->
+                                        let artist = String.concat " / " c.artists
+                                        do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+                                        handled <- true
+
+                    if not handled then
+                        do! Players.simulateButtonAsync player "now_playing"
                 })
 
             | true, Normal, EnterPreset ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (EnterPresetBehavior "")
+                    do! setModeAsync (PresetEntry "")
                 })
 
-            | true, EnterPresetBehavior text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | true, PresetEntry text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (EnterPresetBehavior $"{text}{n}")
+                    do! setModeAsync (PresetEntry $"{text}{n}")
                 })
 
-            | true, EnterPresetBehavior preset, Button "knob_push" ->
+            | true, PresetEntry preset, Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player $"playPreset_{preset}"
                     do! clearModeAsync ()
@@ -112,15 +146,15 @@ module LyrionIRHandler =
 
             | true, Normal, EnterSiriusXMChannel ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (EnterSiriusXMChannelBehavior "")
+                    do! setModeAsync (SiriusXMEntry "")
                 })
 
-            | true, EnterSiriusXMChannelBehavior text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | true, SiriusXMEntry text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setModeAsync (EnterSiriusXMChannelBehavior $"{text}{n}")
+                    do! setModeAsync (SiriusXMEntry $"{text}{n}")
                 })
 
-            | true, EnterSiriusXMChannelBehavior number, Button "knob_push" ->
+            | true, SiriusXMEntry number, Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
                     //let! address = Network.getAddressAsync CancellationToken.None
                     let address = "192.168.4.36"
@@ -135,26 +169,38 @@ module LyrionIRHandler =
                     do! clearModeAsync ()
                 })
 
-            | true, EnterPresetBehavior _, Button "exit_left"
-            | true, EnterSiriusXMChannelBehavior _, Button "exit_left" ->
-                do! clearModeAsync ()
+            | true, _, Simulate name ->
+                if behavior <> Normal then
+                    do! clearModeAsync ()
+
+                do! Players.simulateIRAsync player Slim[name] time
+
+            | true, _, Button button ->
+                if behavior <> Normal then
+                    do! clearModeAsync ()
+
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.simulateButtonAsync player button
+                })
 
             | _ -> ()
         }
 
         let processCommandAsync command = task {
-            match command with
-            | [x; "power"; "0"] when Player x = player ->
-                power <- false
-            | [x; "power"; "1"] when Player x = player ->
-                power <- true
-            | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
-                do! processIRAsync ircode time
-            | _ -> ()
+            try
+                match command with
+                | [x; "power"; "0"] when Player x = player ->
+                    power <- false
+                | [x; "power"; "1"] when Player x = player ->
+                    power <- true
+                | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
+                    do! processIRAsync ircode time
+                | _ -> ()
+            with ex -> Console.Error.WriteLine(ex)
         }
 
         let subscriber = reader |> Observable.subscribe (fun command ->
-            (processCommandAsync command).GetAwaiter().GetResult())
+            ignore (processCommandAsync command))
 
         interface IDisposable with
             member _.Dispose() = subscriber.Dispose()

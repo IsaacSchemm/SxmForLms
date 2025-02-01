@@ -7,12 +7,14 @@
   <ItemGroup>
     <Compile Include="Config.fs" />
     <Compile Include="Utility.fs" />
+    <Compile Include="ActivePatterns.fs" />
     <Compile Include="LyrionCLI.fs" />
     <Compile Include="LyrionFavorites.fs" />
     <Compile Include="SiriusXMClient.fs" />
     <Compile Include="ChunklistParser.fs" />
     <Compile Include="MediaProxy.fs" />
-    <Compile Include="SiriusXMFavorites.fs" />
+    <Compile Include="Network.fs" />
+    <Compile Include="FavoritesManager.fs" />
   </ItemGroup>
 
   <ItemGroup>

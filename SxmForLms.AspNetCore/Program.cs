@@ -6,7 +6,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
 
 builder.Services.AddHostedService<LyrionCLI.Service>();
-builder.Services.AddHostedService<SiriusXMFavorites.Service>();
+builder.Services.AddHostedService<FavoritesManager.Service>();
 
 var app = builder.Build();
 

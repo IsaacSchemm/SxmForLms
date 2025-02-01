@@ -1,8 +1,6 @@
-﻿namespace SxmForLms.Streaming
+﻿namespace SxmForLms
 
 open System
-
-open SxmForLms
 
 module ChunklistParser =
     type Segment = {

@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SxmForLms.AspNetCore.Models;
-using SxmForLms.SiriusXM;
-using System;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 
 namespace SxmForLms.AspNetCore.Controllers
 {

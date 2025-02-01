@@ -1,4 +1,4 @@
-﻿namespace SxmForLms.SiriusXM
+﻿namespace SxmForLms
 
 open System
 open System.IO
@@ -8,8 +8,6 @@ open System.Net.Http.Json
 open System.Runtime.Caching
 open System.Threading
 open System.Threading.Tasks
-
-open SxmForLms
 
 exception LoginFailedException
 exception MissingCookieException

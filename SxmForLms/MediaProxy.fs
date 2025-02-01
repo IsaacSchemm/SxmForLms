@@ -1,4 +1,4 @@
-﻿namespace SxmForLms.Streaming
+﻿namespace SxmForLms
 
 open System
 open System.Buffers.Binary
@@ -8,9 +8,6 @@ open System.Runtime.Caching
 open System.Security.Cryptography
 open System.Text
 open System.Threading.Tasks
-
-open SxmForLms
-open SxmForLms.SiriusXM
 
 module MediaProxy =
     type Chunklist = {

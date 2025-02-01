@@ -1,4 +1,4 @@
-﻿namespace SxmForLms.Lyrion
+﻿namespace SxmForLms
 
 open System.Diagnostics
 open System.IO

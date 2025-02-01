@@ -9,7 +9,7 @@ open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 
 module LyrionCLI =
-    let ip = "localhost"
+    let ip = "192.168.4.36"
     let port = 9090
 
     let encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier = false)
@@ -98,6 +98,8 @@ module LyrionCLI =
         return! tcs.Task
     }
 
+    type Player = Player of string
+
     module General =
         let exitAsync () = sendAsync ["exit"]
         let restartServer () = sendAsync ["restartserver"]
@@ -110,69 +112,69 @@ module LyrionCLI =
 
         let getIdAsync index = listenForAsync ["player"; "id"; sprintf "%d" index; "?"] (fun command ->
             match command with
-            | ["player"; "id"; Int32 i; id] when i = index -> Some id
+            | ["player"; "id"; Int32 i; id] when i = index -> Some (Player id)
             | _ -> None)
 
-        let getPowerAsync playerid = listenForAsync [playerid; "power"; "?"] (fun command ->
+        let getPowerAsync (Player id) = listenForAsync [id; "power"; "?"] (fun command ->
             match command with
-            | [id; "power"; "0"] when id = playerid -> Some false
-            | [id; "power"; "1"] when id = playerid -> Some true
+            | [x; "power"; "0"] when x = id -> Some false
+            | [x; "power"; "1"] when x = id -> Some true
             | _ -> None)
 
-        let setPowerAsync playerid = sendAsync [
-            sprintf "%s" playerid
+        let setPowerAsync (Player id) = sendAsync [
+            id
             "power"
         ]
 
-        let togglePowerAsync playerid state = sendAsync [
-            sprintf "%s" playerid
+        let togglePowerAsync (Player id) state = sendAsync [
+            id
             "power"
             if state then "1" else "0"
         ]
 
-        let getVolumeAsync playerid = listenForAsync [playerid; "mixer"; "volume"; "?"] (fun command ->
+        let getVolumeAsync (Player id) = listenForAsync [id; "mixer"; "volume"; "?"] (fun command ->
             match command with
-            | [id; "mixer"; "volume"; Decimal value] when id = playerid -> Some value
+            | [x; "mixer"; "volume"; Decimal value] when x = id -> Some value
             | _ -> None)
 
-        let setVolumeAsync playerid volume = sendAsync [
-            sprintf "%s" playerid
+        let setVolumeAsync (Player id) volume = sendAsync [
+            id
             "mixer"
             "volume"
             volume
         ]
 
-        let getMutingAsync playerid = listenForAsync [playerid; "mixer"; "muting"; "?"] (fun command ->
+        let getMutingAsync (Player id) = listenForAsync [id; "mixer"; "muting"; "?"] (fun command ->
             match command with
-            | [id; "mixer"; "muting"; "0"] when id = playerid -> Some false
-            | [id; "mixer"; "muting"; "1"] when id = playerid -> Some true
+            | [x; "mixer"; "muting"; "0"] when x = id -> Some false
+            | [x; "mixer"; "muting"; "1"] when x = id -> Some true
             | _ -> None)
 
-        let setMutingAsync playerid state = sendAsync [
-            sprintf "%s" playerid
+        let setMutingAsync (Player id) state = sendAsync [
+            id
             "mixer"
             "muting"
             if state then "1" else "0"
         ]
 
-        let toggleMutingAsync playerid = sendAsync [
-            sprintf "%s" playerid
+        let toggleMutingAsync (Player id) = sendAsync [
+            id
             "mixer"
             "muting"
         ]
 
-        let getDisplayAsync playerid = listenForAsync [playerid; "display"; "?"; "?"] (fun command ->
+        let getDisplayAsync (Player id) = listenForAsync [id; "display"; "?"; "?"] (fun command ->
             match command with
-            | [id; "display"; line1; line2] when id = playerid -> Some (line1, line2)
+            | [x; "display"; line1; line2] when x = id -> Some (line1, line2)
             | _ -> None)
 
-        let getDisplayNowAsync playerid = listenForAsync [playerid; "displaynow"; "?"; "?"] (fun command ->
+        let getDisplayNowAsync (Player id) = listenForAsync [id; "displaynow"; "?"; "?"] (fun command ->
             match command with
-            | [id; "displaynow"; line1; line2] when id = playerid -> Some (line1, line2)
+            | [x; "displaynow"; line1; line2] when x = id -> Some (line1, line2)
             | _ -> None)
 
-        let setDisplayAsync playerid line1 line2 (duration: TimeSpan) = sendAsync [
-            sprintf "%s" playerid
+        let setDisplayAsync (Player id) line1 line2 (duration: TimeSpan) = sendAsync [
+            id
             "display"
             line1
             line2
@@ -180,44 +182,44 @@ module LyrionCLI =
         ]
 
     module Playlist =
-        let playAsync playerid = sendAsync [
-            sprintf "%s" playerid
+        let playAsync (Player id) = sendAsync [
+            id
             "play"
         ]
 
-        let stopAsync playerid = sendAsync [
-            sprintf "%s" playerid
+        let stopAsync (Player id) = sendAsync [
+            id
             "stop"
         ]
 
-        let setPauseAsync playerid state = sendAsync [
-            sprintf "%s" playerid
+        let setPauseAsync (Player id) state = sendAsync [
+            id
             "pause"
             if state then "1" else "0"
         ]
 
-        let togglePauseAsync playerid = sendAsync [
-            sprintf "%s" playerid
+        let togglePauseAsync (Player id) = sendAsync [
+            id
             "pause"
         ]
 
         type Mode = Playing | Stopped | Paused
 
-        let getModeAsync playerid = listenForAsync [playerid; "mode"; "?"] (fun command ->
+        let getModeAsync (Player id) = listenForAsync [id; "mode"; "?"] (fun command ->
             match command with
-            | [id; "mode"; "play"] when id = playerid -> Some Playing
-            | [id; "mode"; "stop"] when id = playerid -> Some Stopped
-            | [id; "mode"; "pause"] when id = playerid -> Some Paused
+            | [x; "mode"; "play"] when x = id -> Some Playing
+            | [x; "mode"; "stop"] when x = id -> Some Stopped
+            | [x; "mode"; "pause"] when x = id -> Some Paused
             | _ -> None)
 
-        let playItemAsync playerid item title = sendAsync [
-            sprintf "%s" playerid
+        let playItemAsync (Player id) item title = sendAsync [
+            id
             "play"
             item
             title
         ]
 
-        let getPathAsync playerid = listenForAsync [playerid; "path"; "?"] (fun command ->
+        let getPathAsync (Player id) = listenForAsync [id; "path"; "?"] (fun command ->
             match command with
-            | [id; "path"; path] when id = playerid -> Some path
+            | [x; "path"; path] when x = id -> Some path
             | _ -> None)

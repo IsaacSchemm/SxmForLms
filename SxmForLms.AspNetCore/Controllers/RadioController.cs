@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.FSharp.Core;
 using SxmForLms.AspNetCore.Models;
 using System.Text;
 using System.Text.Json;
@@ -13,19 +12,16 @@ namespace SxmForLms.AspNetCore.Controllers
             int count = await LyrionCLI.Players.countAsync();
             for (int i = 0; i < count; i++)
             {
-                string id = await LyrionCLI.Players.getIdAsync(i);
+                var id = await LyrionCLI.Players.getIdAsync(i);
                 yield return new
                 {
-                    id,
+                    id = $"{id}",
                     display = await LyrionCLI.Players.getDisplayAsync(id),
                     displaynow = await LyrionCLI.Players.getDisplayNowAsync(id),
                     mode = $"{await LyrionCLI.Playlist.getModeAsync(id)}",
                     path = await LyrionCLI.Playlist.getPathAsync(id)
                 };
-                await Task.Delay(1000);
             }
-
-            await LyrionCLI.General.restartServer();
         }
 
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)

@@ -13,3 +13,8 @@ module ActivePatterns =
         match Int32.TryParse(str) with
         | true, value -> Some value
         | false, _ -> None
+
+    let (|UInt128|_|) (str: string) =
+        match UInt128.TryParse(str) with
+        | true, value -> Some value
+        | false, _ -> None

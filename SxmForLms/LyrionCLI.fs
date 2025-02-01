@@ -9,14 +9,15 @@ open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 
 module LyrionCLI =
-    let ip = "192.168.4.36"
+    let ip = "localhost"
     let port = 9090
-
-    let mutable private writer = TextWriter.Null
 
     let encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier = false)
 
     let recieved = new Event<string list>()
+
+    let reader = recieved.Publish
+    let mutable writer = TextWriter.Null
 
     let sendAsync (command: string seq) =
         command
@@ -72,6 +73,8 @@ module LyrionCLI =
                 do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
         }
 
+    exception NoMatchingResponseException of command: string list * period: TimeSpan
+
     let listenForAsync command chooser = task {
         let tcs = new TaskCompletionSource<'T>()
 
@@ -82,15 +85,15 @@ module LyrionCLI =
 
         do! sendAsync command
 
-        let waitFor = TimeSpan.FromSeconds(3)
+        let period = TimeSpan.FromSeconds(3)
 
         let! completed = Task.WhenAny [
-            Task.Delay(waitFor)
+            Task.Delay(period)
             tcs.Task
         ]
 
         if completed <> tcs.Task then
-            failwith $"Did not recieve expected response from LMS to {command} within {waitFor}"
+            raise (NoMatchingResponseException (command, period))
 
         return! tcs.Task
     }

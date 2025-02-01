@@ -20,12 +20,6 @@ module ChunklistParser =
         path: string
     }
 
-    /// An active pattern that parses a string as a 128-bit unsigned integer.
-    let (|UInt128|_|) (str: string) =
-        match UInt128.TryParse(str) with
-        | true, value -> Some value
-        | false, _ -> None
-
     let zero = UInt128.Zero
     let one = UInt128.One
 

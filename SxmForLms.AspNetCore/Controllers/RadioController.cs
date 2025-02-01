@@ -23,8 +23,9 @@ namespace SxmForLms.AspNetCore.Controllers
                     path = await LyrionCLI.Playlist.getPathAsync(id)
                 };
                 await Task.Delay(1000);
-                await LyrionCLI.Playlist.playAsync(id);
             }
+
+            await LyrionCLI.General.restartServer();
         }
 
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)

@@ -17,6 +17,44 @@ module LyrionIRHandler =
     type Handler(player: Player) =
         let mutable power = false
 
+        let mutable buttonsPressed = Map.empty
+
+        let doOnceAsync ircode action = task {
+            let now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+
+            let lastPressedAt =
+                buttonsPressed
+                |> Map.tryFind ircode
+                |> Option.defaultValue 0L
+
+            let wasPressed = lastPressedAt > now - 150L
+
+            buttonsPressed <-
+                buttonsPressed
+                |> Map.add ircode now
+
+            if not wasPressed then
+                do! action ()
+        }
+
+        let processIRAsync ircode time = task {
+            let mapping = LyrionIR.CustomMappings |> Map.tryFind ircode
+
+            match power, mapping with
+            | true, Some (LyrionIR.Simulate newcode) ->
+                do! Players.simulateIRAsync player newcode time
+            | true, Some (LyrionIR.Button button) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.simulateButtonAsync player button
+                })
+            | true, Some (LyrionIR.Debug message) ->
+                printfn "%s" message
+            | false, m ->
+                printfn "Player off, not performing action: %A" m
+            | _, None ->
+                printfn "Unknown: %08x" ircode
+        }
+
         let processCommandAsync command = task {
             match command with
             | [x; "power"; "0"] when Player x = player ->
@@ -24,24 +62,12 @@ module LyrionIRHandler =
             | [x; "power"; "1"] when Player x = player ->
                 power <- true
             | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
-                let mapping = LyrionIR.CustomMappings |> Map.tryFind ircode
-
-                match power, mapping with
-                | true, Some (LyrionIR.Simulate newcode) ->
-                    do! Players.simulateIRAsync player newcode time
-                | true, Some (LyrionIR.Debug message) ->
-                    printfn "%s" message
-                | false, m ->
-                    printfn "Player off, not performing action: %A" m
-                | _, None ->
-                    printfn "Unknown: %08x" ircode
+                do! processIRAsync ircode time
             | _ -> ()
         }
 
         let subscriber = reader |> Observable.subscribe (fun command ->
             (processCommandAsync command).GetAwaiter().GetResult())
-
-        let _ = printfn "INIT %A" player
 
         interface IDisposable with
             member _.Dispose() = subscriber.Dispose()

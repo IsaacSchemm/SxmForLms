@@ -67,7 +67,7 @@ module LyrionIR =
         let preset_5 = 0x7689aa55
         let preset_6 = 0x76896a95
 
-    type Action = Simulate of int | Debug of string
+    type Action = Simulate of int | Button of string | Debug of string
 
     let CustomMappings = Map.ofList [
         0x61a0f00f, Debug "Power"
@@ -86,7 +86,7 @@ module LyrionIR =
         0x61a0906f, Simulate Slim.``0``
         0x61a008f7, Simulate Slim.repeat
 
-        0x61a028d7, Simulate Slim.menu_browse_music
+        0x61a028d7, Simulate Slim.home // Menu
         0x61a09d62, Simulate Slim.home
         0x61a0d827, Simulate Slim.arrow_left // Exit
         0x61a0e817, Simulate Slim.now_playing // Info*
@@ -95,7 +95,7 @@ module LyrionIR =
         0x61a0c23d, Simulate Slim.arrow_down
         0x61a06897, Simulate Slim.arrow_left
         0x61a0a857, Simulate Slim.arrow_right
-        0x61a018e7, Simulate Slim.play // Enter
+        0x61a018e7, Button "knob_push"
 
         0x61a022dd, Debug "Aspect"
         0x61a038c7, Debug "CCD"
@@ -114,11 +114,11 @@ module LyrionIR =
 
         0x61a00ef1, Simulate Slim.play
         0x61a0817e, Simulate Slim.pause
-        0x61a08e71, Debug "Stop"
+        0x61a08e71, Button "stop"
         0x61a012ed, Debug "Audio"
 
         0x61a07e81, Simulate Slim.rew
         0x61a0be41, Simulate Slim.fwd
-        0x61a001fe, Debug "Back"
-        0x61a0fe01, Debug "Next"
+        0x61a001fe, Button "jump_rew"
+        0x61a0fe01, Button "jump_fwd"
     ]

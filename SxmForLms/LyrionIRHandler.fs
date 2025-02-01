@@ -2,11 +2,13 @@
 
 open System
 open System.Globalization
+open System.Threading
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
 
 open LyrionCLI
+open LyrionIR
 
 module LyrionIRHandler =
     let (|IRCode|_|) (str: string) =
@@ -14,10 +16,39 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
+    type Behavior =
+    | Normal
+    | EnterPresetBehavior of text: string
+    | EnterSiriusXMChannelBehavior of text: string
+
     type Handler(player: Player) =
         let mutable power = false
 
         let mutable buttonsPressed = Map.empty
+
+        let mutable lastMode = None
+
+        let setModeAsync behavior = task {
+            let expirationTimeSpan = TimeSpan.FromSeconds(15)
+
+            lastMode <- Some {|
+                behavior = behavior
+                expires = DateTime.UtcNow + expirationTimeSpan
+            |}
+
+            match behavior with
+            | Normal -> ()
+            | EnterPresetBehavior text ->
+                do! Players.setDisplayAsync player "Enter Preset" text expirationTimeSpan
+            | EnterSiriusXMChannelBehavior text ->
+                do! Players.setDisplayAsync player "Enter SiriusXM Channel Number" text expirationTimeSpan
+        }
+
+        let clearModeAsync () = task {
+            lastMode <- None
+
+            do! Players.setDisplayAsync player "" "" (TimeSpan.FromSeconds(0.05))
+        }
 
         let doOnceAsync ircode action = task {
             let now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
@@ -38,21 +69,77 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            let mapping = LyrionIR.CustomMappings |> Map.tryFind ircode
+            let behavior =
+                lastMode
+                |> Option.filter (fun m -> m.expires > DateTime.UtcNow)
+                |> Option.map (fun m -> m.behavior)
+                |> Option.defaultValue Normal
 
-            match power, mapping with
-            | true, Some (LyrionIR.Simulate newcode) ->
-                do! Players.simulateIRAsync player newcode time
-            | true, Some (LyrionIR.Button button) ->
+            let mapping =
+                CustomMappings
+                |> Map.tryFind ircode
+                |> Option.defaultValue LyrionIR.NoAction
+
+            match power, behavior, mapping with
+            | _, _, Power ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.togglePowerAsync player
+                })
+
+            | true, Normal, Simulate name ->
+                do! Players.simulateIRAsync player Slim[name] time
+
+            | true, Normal, Button button ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player button
                 })
-            | true, Some (LyrionIR.Debug message) ->
-                printfn "%s" message
-            | false, m ->
-                printfn "Player off, not performing action: %A" m
-            | _, None ->
-                printfn "Unknown: %08x" ircode
+
+            | true, Normal, EnterPreset ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setModeAsync (EnterPresetBehavior "")
+                })
+
+            | true, EnterPresetBehavior text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setModeAsync (EnterPresetBehavior $"{text}{n}")
+                })
+
+            | true, EnterPresetBehavior preset, Button "knob_push" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.simulateButtonAsync player $"playPreset_{preset}"
+                    do! clearModeAsync ()
+                })
+
+            | true, Normal, EnterSiriusXMChannel ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setModeAsync (EnterSiriusXMChannelBehavior "")
+                })
+
+            | true, EnterSiriusXMChannelBehavior text, Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setModeAsync (EnterSiriusXMChannelBehavior $"{text}{n}")
+                })
+
+            | true, EnterSiriusXMChannelBehavior number, Button "knob_push" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    //let! address = Network.getAddressAsync CancellationToken.None
+                    let address = "192.168.4.36"
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channelName =
+                        channels
+                        |> Seq.where (fun c -> c.channelNumber = number)
+                        |> Seq.map (fun c -> c.name)
+                        |> Seq.tryHead
+                        |> Option.defaultValue number
+                    do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={number}" channelName
+                    do! clearModeAsync ()
+                })
+
+            | true, EnterPresetBehavior _, Button "exit_left"
+            | true, EnterSiriusXMChannelBehavior _, Button "exit_left" ->
+                do! clearModeAsync ()
+
+            | _ -> ()
         }
 
         let processCommandAsync command = task {

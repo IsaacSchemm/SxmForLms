@@ -8,15 +8,15 @@
     <Compile Include="Config.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="ActivePatterns.fs" />
+    <Compile Include="Network.fs" />
     <Compile Include="LyrionCLI.fs" />
-    <Compile Include="LyrionIR.fs" />
-    <Compile Include="LyrionIRHandler.fs" />
     <Compile Include="LyrionFavorites.fs" />
     <Compile Include="SiriusXMClient.fs" />
     <Compile Include="ChunklistParser.fs" />
     <Compile Include="MediaProxy.fs" />
-    <Compile Include="Network.fs" />
     <Compile Include="FavoritesManager.fs" />
+    <Compile Include="LyrionIR.fs" />
+    <Compile Include="LyrionIRHandler.fs" />
   </ItemGroup>
 
   <ItemGroup>

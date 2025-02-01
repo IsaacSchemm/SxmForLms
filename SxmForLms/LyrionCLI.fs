@@ -24,6 +24,7 @@ module LyrionCLI =
 
     let sendAsync command =
         command
+        |> Seq.map (fun str -> if str = "" then " " else str)
         |> Seq.map Uri.EscapeDataString
         |> String.concat " "
         |> channel.Writer.WriteAsync
@@ -138,15 +139,15 @@ module LyrionCLI =
             | [x; "power"; "1"] when x = id -> Some true
             | _ -> None)
 
-        let setPowerAsync (Player id) = sendAsync [
-            id
-            "power"
-        ]
-
-        let togglePowerAsync (Player id) state = sendAsync [
+        let setPowerAsync (Player id) state = sendAsync [
             id
             "power"
             if state then "1" else "0"
+        ]
+
+        let togglePowerAsync (Player id) = sendAsync [
+            id
+            "power"
         ]
 
         let getVolumeAsync (Player id) = listenForAsync [id; "mixer"; "volume"; "?"] (fun command ->
@@ -244,6 +245,7 @@ module LyrionCLI =
 
         let playItemAsync (Player id) item title = sendAsync [
             id
+            "playlist"
             "play"
             item
             title

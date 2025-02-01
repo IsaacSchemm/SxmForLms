@@ -165,41 +165,6 @@ module LyrionCLI =
             "muting"
         ]
 
-        type Brightness =
-        | PowerOn
-        | PowerOff
-        | Idle
-        | Brightness of int
-
-        type ShowMessage = {
-            line1: string option
-            line2: string option
-            duration: TimeSpan option
-            brightness: Brightness option
-            huge: bool
-            centered: bool
-        }
-
-        let showAsync playerid message = sendAsync [
-            sprintf "%s" playerid
-
-            "show"
-
-            match message.line1 with Some x -> $"line1:{x}" | None -> ()
-            match message.line2 with Some x -> $"line2:{x}" | None -> ()
-            match message.duration with Some x -> $"duration:{x.TotalSeconds}" | None -> ()
-
-            match message.brightness with
-            | Some PowerOn -> "brightness:powerOn"
-            | Some PowerOff -> "brightness:powerOff"
-            | Some Idle -> "brightness:idle"
-            | Some (Brightness x) -> $"brightness:{x}"
-            | None -> ()
-
-            if message.huge then "font:huge"
-            if message.centered then "centered:1"
-        ]
-
         let getDisplayAsync playerid = listenForAsync [playerid; "display"; "?"; "?"] (fun command ->
             match command with
             | [id; "display"; line1; line2] when id = playerid -> Some (line1, line2)

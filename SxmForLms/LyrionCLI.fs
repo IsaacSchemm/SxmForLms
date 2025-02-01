@@ -1,6 +1,7 @@
 ﻿namespace SxmForLms
 
 open System
+open System.Globalization
 open System.IO
 open System.Net.Sockets
 open System.Text
@@ -44,6 +45,8 @@ module LyrionCLI =
                     writer <- sw
 
                     printfn $"Connected to port {port}"
+
+                    do! sendAsync ["subscribe"; "unknownir"]
 
                     let mutable finished = false
                     while client.Connected && not finished do
@@ -99,6 +102,11 @@ module LyrionCLI =
     }
 
     type Player = Player of string
+
+    let (|IRCode|_|) (str: string) =
+        match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
+        | true, value -> Some value
+        | false, _ -> None
 
     module General =
         let exitAsync () = sendAsync ["exit"]
@@ -181,6 +189,19 @@ module LyrionCLI =
             $"{duration.TotalSeconds}"
         ]
 
+        let simulateButtonAsync (Player id) buttoncode = sendAsync [
+            id
+            "button"
+            buttoncode
+        ]
+
+        let simulateIRAsync (Player id) (ircode: int) (time: decimal) = sendAsync [
+            id
+            "ir"
+            ircode.ToString("x8")
+            time.ToString()
+        ]
+
     module Playlist =
         let playAsync (Player id) = sendAsync [
             id
@@ -223,3 +244,15 @@ module LyrionCLI =
             match command with
             | [x; "path"; path] when x = id -> Some path
             | _ -> None)
+
+    let _ = reader |> Observable.subscribe (fun command ->
+        match command with
+        | [playerid; "unknownir"; IRCode ircode; Decimal time] ->
+            match LyrionIR.CustomMappings |> Map.tryFind ircode with
+            | Some (LyrionIR.Simulate newcode) ->
+                (Players.simulateIRAsync (Player playerid) newcode time).GetAwaiter().GetResult()
+            | Some (LyrionIR.Debug message) ->
+                printfn "%s" message
+            | None ->
+                printfn "Unknown: %08x" ircode
+        | _ -> ())

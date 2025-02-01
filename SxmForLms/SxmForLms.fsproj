@@ -8,6 +8,7 @@
     <Compile Include="Config.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="ActivePatterns.fs" />
+    <Compile Include="LyrionIR.fs" />
     <Compile Include="LyrionCLI.fs" />
     <Compile Include="LyrionFavorites.fs" />
     <Compile Include="SiriusXMClient.fs" />

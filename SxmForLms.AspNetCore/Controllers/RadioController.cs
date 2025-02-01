@@ -12,14 +12,14 @@ namespace SxmForLms.AspNetCore.Controllers
             int count = await LyrionCLI.Players.countAsync();
             for (int i = 0; i < count; i++)
             {
-                var id = await LyrionCLI.Players.getIdAsync(i);
+                var player = await LyrionCLI.Players.getIdAsync(i);
                 yield return new
                 {
-                    id = $"{id}",
-                    display = await LyrionCLI.Players.getDisplayAsync(id),
-                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(id),
-                    mode = $"{await LyrionCLI.Playlist.getModeAsync(id)}",
-                    path = await LyrionCLI.Playlist.getPathAsync(id)
+                    player = $"{player}",
+                    display = await LyrionCLI.Players.getDisplayAsync(player),
+                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(player),
+                    mode = $"{await LyrionCLI.Playlist.getModeAsync(player)}",
+                    path = await LyrionCLI.Playlist.getPathAsync(player)
                 };
             }
         }

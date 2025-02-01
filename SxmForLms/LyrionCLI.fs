@@ -1,10 +1,10 @@
 ﻿namespace SxmForLms
 
 open System
-open System.Globalization
 open System.IO
 open System.Net.Sockets
 open System.Text
+open System.Threading
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
@@ -20,7 +20,20 @@ module LyrionCLI =
     let reader = recieved.Publish
     let mutable writer = TextWriter.Null
 
-    let sendAsync (command: string seq) =
+    exception NotConnectedException
+
+    let waitUntilConnectedAsync () = task {
+        let stopAt = DateTime.UtcNow.AddSeconds(15)
+
+        while writer = TextWriter.Null && stopAt > DateTime.UtcNow do
+            printfn "Q"
+            do! Task.Delay(TimeSpan.FromSeconds(0.5))
+
+        if writer = TextWriter.Null then
+            raise NotConnectedException
+    }
+
+    let sendAsync command =
         command
         |> Seq.map Uri.EscapeDataString
         |> String.concat " "
@@ -46,7 +59,7 @@ module LyrionCLI =
 
                     printfn $"Connected to port {port}"
 
-                    do! sendAsync ["subscribe"; "unknownir"]
+                    do! sendAsync ["subscribe"; "client,power,unknownir"]
 
                     let mutable finished = false
                     while client.Connected && not finished do
@@ -56,7 +69,8 @@ module LyrionCLI =
                             finished <- true
                         else
                             let command =
-                                line.Split(' ')
+                                line
+                                |> Utility.split ' '
                                 |> Seq.map Uri.UnescapeDataString
                                 |> Seq.toList
                             recieved.Trigger(command)
@@ -69,7 +83,6 @@ module LyrionCLI =
                 writer <- TextWriter.Null
 
                 client.Close()
-                writer.Dispose()
 
                 printfn $"Disconnected from port {port}"
 
@@ -102,11 +115,6 @@ module LyrionCLI =
     }
 
     type Player = Player of string
-
-    let (|IRCode|_|) (str: string) =
-        match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
-        | true, value -> Some value
-        | false, _ -> None
 
     module General =
         let exitAsync () = sendAsync ["exit"]
@@ -244,15 +252,3 @@ module LyrionCLI =
             match command with
             | [x; "path"; path] when x = id -> Some path
             | _ -> None)
-
-    let _ = reader |> Observable.subscribe (fun command ->
-        match command with
-        | [playerid; "unknownir"; IRCode ircode; Decimal time] ->
-            match LyrionIR.CustomMappings |> Map.tryFind ircode with
-            | Some (LyrionIR.Simulate newcode) ->
-                (Players.simulateIRAsync (Player playerid) newcode time).GetAwaiter().GetResult()
-            | Some (LyrionIR.Debug message) ->
-                printfn "%s" message
-            | None ->
-                printfn "Unknown: %08x" ircode
-        | _ -> ())

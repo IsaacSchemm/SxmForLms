@@ -7,21 +7,9 @@ namespace SxmForLms.AspNetCore.Controllers
 {
     public class RadioController(IHttpClientFactory httpClientFactory) : Controller
     {
-        public async IAsyncEnumerable<object> Index()
+        public IActionResult Index()
         {
-            int count = await LyrionCLI.Players.countAsync();
-            for (int i = 0; i < count; i++)
-            {
-                var player = await LyrionCLI.Players.getIdAsync(i);
-                yield return new
-                {
-                    player = $"{player}",
-                    display = await LyrionCLI.Players.getDisplayAsync(player),
-                    displaynow = await LyrionCLI.Players.getDisplayNowAsync(player),
-                    mode = $"{await LyrionCLI.Playlist.getModeAsync(player)}",
-                    path = await LyrionCLI.Playlist.getPathAsync(player)
-                };
-            }
+            return View();
         }
 
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)

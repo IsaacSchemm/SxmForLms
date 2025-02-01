@@ -4,7 +4,7 @@ open System
 open System.IO
 open System.Net.Sockets
 open System.Text
-open System.Threading
+open System.Threading.Channels
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
@@ -18,26 +18,15 @@ module LyrionCLI =
     let recieved = new Event<string list>()
 
     let reader = recieved.Publish
-    let mutable writer = TextWriter.Null
+    let channel = Channel.CreateUnbounded<string>()
 
     exception NotConnectedException
-
-    let waitUntilConnectedAsync () = task {
-        let stopAt = DateTime.UtcNow.AddSeconds(15)
-
-        while writer = TextWriter.Null && stopAt > DateTime.UtcNow do
-            printfn "Q"
-            do! Task.Delay(TimeSpan.FromSeconds(0.5))
-
-        if writer = TextWriter.Null then
-            raise NotConnectedException
-    }
 
     let sendAsync command =
         command
         |> Seq.map Uri.EscapeDataString
         |> String.concat " "
-        |> writer.WriteLineAsync
+        |> channel.Writer.WriteAsync
 
     type Service() =
         inherit BackgroundService()
@@ -48,39 +37,51 @@ module LyrionCLI =
 
                 let client = new TcpClient()
 
-                try
-                    do! client.ConnectAsync(ip, port, cancellationToken)
-                    use stream = client.GetStream()
-            
-                    use sr = new StreamReader(stream, Encoding.UTF8)
-                    use sw = new StreamWriter(stream, encoding, AutoFlush = true)
+                do! client.ConnectAsync(ip, port, cancellationToken)
+                use stream = client.GetStream()
 
-                    writer <- sw
+                let readTask = task {
+                    try
+                        use sr = new StreamReader(stream, Encoding.UTF8)
 
-                    printfn $"Connected to port {port}"
+                        printfn $"Connected to port {port}"
 
-                    do! sendAsync ["subscribe"; "client,power,unknownir"]
+                        do! sendAsync ["subscribe"; "client,power,unknownir"]
 
-                    let mutable finished = false
-                    while client.Connected && not finished do
-                        let! line = sr.ReadLineAsync(cancellationToken)
-                        if isNull line then
-                            client.Close()
-                            finished <- true
-                        else
-                            let command =
-                                line
-                                |> Utility.split ' '
-                                |> Seq.map Uri.UnescapeDataString
-                                |> Seq.toList
-                            recieved.Trigger(command)
-                with
-                    | :? IOException when not client.Connected -> ()
-                    | :? TaskCanceledException -> ()
+                        let mutable finished = false
+                        while client.Connected && not finished do
+                            let! line = sr.ReadLineAsync(cancellationToken)
+                            if isNull line then
+                                client.Close()
+                                finished <- true
+                            else
+                                let command =
+                                    line
+                                    |> Utility.split ' '
+                                    |> Seq.map Uri.UnescapeDataString
+                                    |> Seq.toList
+                                recieved.Trigger(command)
+                    with
+                        | :? IOException when not client.Connected -> ()
+                        | :? TaskCanceledException -> ()
+                }
+
+                let writeTask = task {
+                    try
+                        use sw = new StreamWriter(stream, encoding, AutoFlush = true)
+
+                        while not cancellationToken.IsCancellationRequested do
+                            let! string = channel.Reader.ReadAsync(cancellationToken)
+                            let sb = new StringBuilder(string)
+                            do! sw.WriteLineAsync(sb, cancellationToken)
+                    with
+                        | :? IOException when not client.Connected -> ()
+                        | :? TaskCanceledException -> ()
+                }
+
+                let! _ = Task.WhenAll(readTask, writeTask)
 
                 printfn $"Disconnecting from port {port}"
-
-                writer <- TextWriter.Null
 
                 client.Close()
 

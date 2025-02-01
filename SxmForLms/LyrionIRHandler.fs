@@ -66,8 +66,6 @@ module LyrionIRHandler =
                     init (Player playerid)
                 | _ -> ())
 
-            do! waitUntilConnectedAsync ()
-
             let! count = Players.countAsync ()
             for i in [0 .. count - 1] do
                 let! player = Players.getIdAsync i

@@ -25,6 +25,23 @@ module LyrionIRHandler =
     | Normal
     | Override of string * string
 
+    module SXM =
+        let getChannelIdAsync player = task {
+            let! path = Playlist.getPathAsync player
+
+            match Uri.TryCreate(path, UriKind.Absolute) with
+            | true, uri ->
+                let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
+                let m = proxyPathPattern.Match(uri.AbsolutePath)
+
+                if m.Success then
+                    return Some m.Groups[1].Value
+                else
+                    return None
+            | false, _ ->
+                return None
+        }
+
     type Handler(player: Player) =
         let mutable power = Off
 
@@ -88,32 +105,60 @@ module LyrionIRHandler =
                 do! doOnceAsync ircode (fun () -> task {
                     let mutable handled = false
 
-                    let! path = Playlist.getPathAsync player
+                    let! id = SXM.getChannelIdAsync player
 
-                    match Uri.TryCreate(path, UriKind.Absolute) with
-                    | false, _ -> ()
-                    | true, uri ->
-                        let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
-                        let m = proxyPathPattern.Match(uri.AbsolutePath)
-
-                        if m.Success then
-                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                            for c in channels do
-                                if c.channelId = m.Groups[1].Value then
-                                    let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                                    let cut =
-                                        playlist.cuts
-                                        |> Seq.sortByDescending (fun cut -> cut.startTime)
-                                        |> Seq.tryHead
-                                    match cut with
-                                    | None -> ()
-                                    | Some c ->
-                                        let artist = String.concat " / " c.artists
-                                        do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
-                                        handled <- true
+                    match id with
+                    | None -> ()
+                    | Some i ->
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        for c in channels do
+                            if c.channelId = i then
+                                let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                                let cut =
+                                    playlist.cuts
+                                    |> Seq.sortByDescending (fun cut -> cut.startTime)
+                                    |> Seq.tryHead
+                                match cut with
+                                | None -> ()
+                                | Some c ->
+                                    let artist = String.concat " / " c.artists
+                                    do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+                                    handled <- true
 
                     if not handled then
                         do! Players.simulateButtonAsync player "now_playing"
+                })
+
+            | On, Normal, ChannelUp ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let! id = SXM.getChannelIdAsync player
+
+                    match id with
+                    | None -> ()
+                    | Some i ->
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                        for (a, b) in Seq.pairwise channels do
+                            if a.channelId = i then
+                                //let! address = Network.getAddressAsync CancellationToken.None
+                                let address = "192.168.4.36"
+                                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={b.channelNumber}" b.name
+                })
+
+            | On, Normal, ChannelDown ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let! channelNumber = SXM.getChannelIdAsync player
+
+                    match channelNumber with
+                    | None -> ()
+                    | Some i ->
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                        for (a, b) in Seq.pairwise channels do
+                            if b.channelId = i then
+                                //let! address = Network.getAddressAsync CancellationToken.None
+                                let address = "192.168.4.36"
+                                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={a.channelNumber}" a.name
                 })
 
             | On, Normal, Exit ->
@@ -148,8 +193,6 @@ module LyrionIRHandler =
                 do! doOnceAsync ircode (fun () -> task {
                     let num = text.Substring(2)
 
-                    //let! address = Network.getAddressAsync CancellationToken.None
-                    let address = "192.168.4.36"
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channel =
                         channels
@@ -158,6 +201,8 @@ module LyrionIRHandler =
 
                     match channel with
                     | Some c ->
+                        //let! address = Network.getAddressAsync CancellationToken.None
+                        let address = "192.168.4.36"
                         do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={c.channelNumber}" c.name
                     | None ->
                         do! setOverrideAsync "Play SiriusXM Channel" "> "

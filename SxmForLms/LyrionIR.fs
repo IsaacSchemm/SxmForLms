@@ -75,6 +75,8 @@ module LyrionIR =
     | Button of string
     | Exit
     | Info
+    | ChannelUp
+    | ChannelDown
     | NoAction
 
     let CustomMappings = Map.ofList [
@@ -113,8 +115,8 @@ module LyrionIR =
         0x61a0b04f, Simulate "voldown"
         0x61a0708f, Simulate "muting"
 
-        0x61a050af, NoAction // "Channel up"
-        0x61a0d02f, NoAction // "Channel down"
+        0x61a050af, ChannelUp
+        0x61a0d02f, ChannelDown
 
         0x61a0c837, Simulate "sleep"
         0x61a0d22d, Simulate "favorites"

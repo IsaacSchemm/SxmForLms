@@ -410,7 +410,7 @@ module SiriusXMClient =
 
         let channels =
             data.ModuleListResponse.moduleList.modules[0].moduleResponse.contentData.channelListing.channels
-            |> Seq.sortBy (fun channel ->
+            |> List.sortBy (fun channel ->
                 match Int32.TryParse(channel.channelNumber) with
                 | true, value -> value
                 | false, _ -> Int32.MaxValue)

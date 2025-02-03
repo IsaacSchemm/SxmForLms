@@ -17,46 +17,33 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
-    let proxyPathPattern = new Regex("""^http://[^/]+:[0-9]+/Proxy/playlist-(.+)\.m3u8""")
-
-    let (|ProxyPath|_|) (str: string) =
-        let m = proxyPathPattern.Match(str)
-        if m.Success then
-            Some m.Groups[1].Value
-        else
-            None
+    type Power =
+    | On
+    | Off
 
     type Behavior =
     | Normal
-    | PresetEntry of string
-    | SiriusXMEntry of string
+    | Override of string * string
 
     type Handler(player: Player) =
-        let mutable power = false
+        let mutable power = Off
 
         let mutable buttonsPressed = Map.empty
 
-        let mutable lastBehavior = Normal
-        let mutable lastHeader = ""
+        let mutable lastOverride = Normal
 
-        let setBehaviorAsync behavior = task {
-            match behavior with
-            | Normal -> ()
-            | PresetEntry text ->
-                lastHeader <- "Enter Preset"
-                do! Players.setDisplayAsync player lastHeader text (TimeSpan.FromSeconds(30))
-            | SiriusXMEntry text ->
-                lastHeader <- "Enter SiriusXM Channel"
-                do! Players.setDisplayAsync player lastHeader text (TimeSpan.FromSeconds(30))
-
-            lastBehavior <- behavior
+        let setOverrideAsync line1 line2 = task {
+            lastOverride <- Override (line1, line2)
+            do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(30))
         }
 
-        let checkBehaviorAsync () = task {
-            if lastBehavior <> Normal then
-                let! line1, _ = Players.getDisplayNowAsync player
-                if line1 <> lastHeader then
-                    lastBehavior <- Normal
+        let checkOverrideAsync () = task {
+            match lastOverride with
+            | Normal -> ()
+            | Override (line1, line2) ->
+                let! actual = Players.getDisplayNowAsync player
+                if (line1, line2) <> actual then
+                    lastOverride <- Normal
         }
 
         let doOnceAsync ircode action = task {
@@ -78,22 +65,26 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            do! checkBehaviorAsync ()
+            do! checkOverrideAsync ()
 
             let mapping =
                 CustomMappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue LyrionIR.NoAction
 
-            match power, lastBehavior, mapping with
+            match power, lastOverride, mapping with
             | _, _, Power ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.togglePowerAsync player
                 })
 
-            | false, _, _ -> ()
+            | Off, _, _ ->
+                printfn "Radio is off"
 
-            | _, _, Info ->
+            | On, _, NoAction ->
+                printfn "Button is not mapped"
+
+            | On, Normal, Info ->
                 do! doOnceAsync ircode (fun () -> task {
                     let mutable handled = false
 
@@ -125,64 +116,80 @@ module LyrionIRHandler =
                         do! Players.simulateButtonAsync player "now_playing"
                 })
 
-            | _, _, EnterPreset ->
+            | On, Normal, EnterPreset ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setBehaviorAsync (PresetEntry "")
+                    do! setOverrideAsync "Enter Preset" "> "
                 })
 
-            | _, (PresetEntry text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | On, Normal, EnterSiriusXMChannel ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setBehaviorAsync (PresetEntry $"{text}{n}")
+                    do! setOverrideAsync "Enter SiriusXM Channel" "> "
                 })
 
-            | _, (PresetEntry text), Button "knob_push" ->
+            | On, Normal, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player $"playPreset_{text}"
+                    do! Players.simulateButtonAsync player "exit_left"
                 })
 
-            | _, _, EnterSiriusXMChannel ->
+            | On, Normal, Simulate name ->
+                do! Players.simulateIRAsync player Slim[name] time
+
+            | On, Normal, Button button ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setBehaviorAsync (SiriusXMEntry "")
+                    do! Players.simulateButtonAsync player button
                 })
 
-            | _, (SiriusXMEntry text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+            | On, Override ("Enter Preset", text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setBehaviorAsync (SiriusXMEntry $"{text}{n}")
+                    do! setOverrideAsync "Enter Preset" $"{text}{n}"
                 })
 
-            | _, (SiriusXMEntry text), Button "knob_push" ->
+            | On, Override ("Enter Preset", text), Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
+                    let num = text.Substring(2)
+
+                    do! Players.simulateButtonAsync player $"playPreset_{num}"
+                })
+
+            | On, Override ("Enter SiriusXM Channel", text), Simulate n when n.Length = 1 && "0123456789".Contains(n) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setOverrideAsync "Enter SiriusXM Channel" $"{text}{n}"
+                })
+
+            | On, Override ("Enter SiriusXM Channel", text), Button "knob_push" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let num = text.Substring(2)
+
                     //let! address = Network.getAddressAsync CancellationToken.None
                     let address = "192.168.4.36"
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channelName =
                         channels
-                        |> Seq.where (fun c -> c.channelNumber = text)
+                        |> Seq.where (fun c -> c.channelNumber = num)
                         |> Seq.map (fun c -> c.name)
                         |> Seq.tryHead
-                        |> Option.defaultValue text
+                        |> Option.defaultValue num
 
-                    do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={text}" channelName
+                    do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={num}" channelName
                 })
 
-            | _, _, Simulate name ->
-                do! Players.simulateIRAsync player Slim[name] time
-
-            | _, _, Button button ->
+            | On, Override _, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player button
+                    lastOverride <- Normal
+                    do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
                 })
 
-            | _ -> ()
+            | On, Override _, _ ->
+                printfn "Button is ignored"
         }
 
         let processCommandAsync command = task {
             try
                 match command with
                 | [x; "power"; "0"] when Player x = player ->
-                    power <- false
+                    power <- Off
                 | [x; "power"; "1"] when Player x = player ->
-                    power <- true
+                    power <- On
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()

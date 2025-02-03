@@ -24,7 +24,6 @@ module LyrionCLI =
 
     let sendAsync command =
         command
-        |> Seq.map (fun str -> if str = "" then " " else str)
         |> Seq.map Uri.EscapeDataString
         |> String.concat " "
         |> channel.Writer.WriteAsync

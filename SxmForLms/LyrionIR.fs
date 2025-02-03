@@ -72,14 +72,16 @@ module LyrionIR =
     | Power
     | Simulate of string
     | Button of string
+    | Exit
     | Info
     | EnterPreset
     | EnterSiriusXMChannel
     | NoAction
 
     let CustomMappings = Map.ofList [
-        0x61a0f00f, Power
-        0x61a0b847, NoAction // "Input"
+        //0x61a0f00f, Power
+
+        0x61a0b847, EnterSiriusXMChannel // "Input"
 
         0x61a000ff, Simulate "1"
         0x61a0807f, Simulate "2"
@@ -96,7 +98,7 @@ module LyrionIR =
 
         0x61a028d7, Simulate "home" // Menu
         0x61a09d62, Simulate "home"
-        0x61a0d827, Button "exit_left"
+        0x61a0d827, Exit
         0x61a0e817, Info
 
         0x61a042bd, Simulate "arrow_up"
@@ -105,8 +107,8 @@ module LyrionIR =
         0x61a0a857, Simulate "arrow_right"
         0x61a018e7, Button "knob_push"
 
-        0x61a022dd, EnterPreset // Aspect
-        0x61a038c7, EnterSiriusXMChannel // CCD
+        0x61a022dd, NoAction // Aspect
+        0x61a038c7, NoAction // CCD
 
         0x61a030cf, Simulate "volup"
         0x61a0b04f, Simulate "voldown"

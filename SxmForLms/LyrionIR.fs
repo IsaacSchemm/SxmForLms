@@ -70,18 +70,17 @@ module LyrionIR =
 
     type Action =
     | Power
+    | Input
     | Simulate of string
     | Button of string
     | Exit
     | Info
-    | EnterPreset
-    | EnterSiriusXMChannel
     | NoAction
 
     let CustomMappings = Map.ofList [
         //0x61a0f00f, Power
 
-        0x61a0b847, EnterSiriusXMChannel // "Input"
+        0x61a0b847, Input
 
         0x61a000ff, Simulate "1"
         0x61a0807f, Simulate "2"

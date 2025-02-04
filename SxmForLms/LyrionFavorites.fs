@@ -31,7 +31,7 @@ module LyrionFavorites =
                         | _ -> ()
     ]
 
-    let updateFavorites categoryName desiredFavorites =
+    let updateFavoritesAsync categoryName desiredFavorites = task {
         if File.Exists(path) && getFavorites categoryName <> desiredFavorites then
             let doc = new XmlDocument()
             doc.Load(path)
@@ -61,4 +61,5 @@ module LyrionFavorites =
 
             doc.Save(path)
 
-            Process.Start("service", "lyrionmusicserver restart") |> ignore
+            do! LyrionCLI.General.restartServer()
+    }

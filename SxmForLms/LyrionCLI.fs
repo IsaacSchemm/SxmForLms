@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Net.Sockets
 open System.Text
+open System.Threading
 open System.Threading.Channels
 open System.Threading.Tasks
 
@@ -63,29 +64,35 @@ module LyrionCLI =
                                 recieved.Trigger(command)
                     with
                         | :? IOException when not client.Connected -> ()
-                        | :? TaskCanceledException -> ()
+                        | :? OperationCanceledException -> ()
                 }
 
-                let writeTask = task {
+                let writeToken, cancelWrite =
+                    let cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                    cts.Token, fun () -> cts.Cancel()
+
+                ignore (task {
                     try
                         use sw = new StreamWriter(stream, encoding, AutoFlush = true)
 
-                        while not cancellationToken.IsCancellationRequested do
-                            let! string = channel.Reader.ReadAsync(cancellationToken)
+                        while not writeToken.IsCancellationRequested do
+                            let! string = channel.Reader.ReadAsync(writeToken)
                             let sb = new StringBuilder(string)
-                            do! sw.WriteLineAsync(sb, cancellationToken)
+                            do! sw.WriteLineAsync(sb, writeToken)
                     with
                         | :? IOException when not client.Connected -> ()
-                        | :? TaskCanceledException -> ()
-                }
+                        | :? OperationCanceledException -> ()
+                })
 
-                let! _ = Task.WhenAll(readTask, writeTask)
+                do! readTask
 
                 printfn $"Disconnecting from port {port}"
 
                 client.Close()
 
                 printfn $"Disconnected from port {port}"
+                
+                cancelWrite ()
 
                 do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
         }

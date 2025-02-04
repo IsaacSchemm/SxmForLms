@@ -180,6 +180,8 @@ module LyrionIRHandler =
                     do! Players.simulateButtonAsync player button
                 })
 
+            | On, Normal, Dot -> ()
+
             | On, Normal, Input ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! setDisplayAsync "Play SiriusXM Channel" "> "
@@ -257,6 +259,43 @@ module LyrionIRHandler =
                 })
 
             | On, Override ("Save Preset", _), Input ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Play CD" "> "
+                })
+
+            | On, Override ("Play CD", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Play CD" $"{text}{str}"
+                })
+
+            | On, Override ("Play CD", text), Dot ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Play CD" $"{text}:"
+                })
+
+            | On, Override ("Play CD", text), Simulate "arrow_left" when text <> "> " ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Play CD" $"{text.Substring(0, text.Length - 1)}"
+                })
+
+            | On, Override ("Play CD", text), Button "knob_push" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    match text.Substring(2) with
+                    | "" ->
+                        let! address = Network.getAddressAsync CancellationToken.None
+                        let url = $"http://{address}:{Config.port}/CD/Play?track=0"
+                        let name = "CD"
+                        do! Playlist.playItemAsync player url name
+                    | Int32 track ->
+                        let! address = Network.getAddressAsync CancellationToken.None
+                        let url = $"http://{address}:{Config.port}/CD/Play?track={track}"
+                        let name = $"Track {track}"
+                        do! Playlist.playItemAsync player url name
+                    | _ ->
+                        do! setDisplayAsync "Play CD" "> "
+                })
+
+            | On, Override ("Play CD", _), Input ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! setDisplayAsync "Seek To" "> "
                 })

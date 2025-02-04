@@ -46,7 +46,7 @@ module LyrionCLI =
 
                         printfn $"Connected to port {port}"
 
-                        do! sendAsync ["subscribe"; "client,power,unknownir"]
+                        do! sendAsync ["subscribe"; "client,playlist,power,unknownir"]
 
                         let mutable finished = false
                         while client.Connected && not finished do

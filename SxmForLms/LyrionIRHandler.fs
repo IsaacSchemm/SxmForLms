@@ -46,21 +46,21 @@ module LyrionIRHandler =
         let mutable power = Off
 
         let mutable buttonsPressed = Map.empty
+        let mutable channelChanging = false
+        let mutable lastDisplay = Normal
 
-        let mutable lastOverride = Normal
-
-        let setOverrideAsync line1 line2 = task {
-            lastOverride <- Override (line1, line2)
+        let setDisplayAsync line1 line2 = task {
+            lastDisplay <- Override (line1, line2)
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(30))
         }
 
-        let checkOverrideAsync () = task {
-            match lastOverride with
+        let checkDisplayAsync () = task {
+            match lastDisplay with
             | Normal -> ()
             | Override (line1, line2) ->
                 let! actual = Players.getDisplayNowAsync player
                 if (line1, line2) <> actual then
-                    lastOverride <- Normal
+                    lastDisplay <- Normal
         }
 
         let doOnceAsync ircode action = task {
@@ -81,15 +81,23 @@ module LyrionIRHandler =
                 do! action ()
         }
 
+        let playSiriusXMChannelAsync channelNumber name = task {
+            let! address = Network.getAddressAsync CancellationToken.None
+            let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
+            let name = $"[{channelNumber}] {name}"
+            do! Playlist.playItemAsync player url name
+            channelChanging <- true
+        }
+
         let processIRAsync ircode time = task {
-            do! checkOverrideAsync ()
+            do! checkDisplayAsync ()
 
             let mapping =
                 CustomMappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
 
-            match power, lastOverride, mapping with
+            match power, lastDisplay, mapping with
             | _, _, Power ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.togglePowerAsync player
@@ -130,36 +138,34 @@ module LyrionIRHandler =
                 })
 
             | On, Normal, ChannelUp ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! id = SXM.getChannelIdAsync player
+                if not channelChanging then
+                    do! doOnceAsync ircode (fun () -> task {
+                        let! id = SXM.getChannelIdAsync player
 
-                    match id with
-                    | None -> ()
-                    | Some i ->
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        match id with
+                        | None -> ()
+                        | Some i ->
+                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
 
-                        for (a, b) in Seq.pairwise channels do
-                            if a.channelId = i then
-                                //let! address = Network.getAddressAsync CancellationToken.None
-                                let address = "192.168.4.36"
-                                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={b.channelNumber}" b.name
-                })
+                            for (a, b) in Seq.pairwise channels do
+                                if a.channelId = i then
+                                    do! playSiriusXMChannelAsync b.channelNumber b.name
+                    })
 
             | On, Normal, ChannelDown ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! channelNumber = SXM.getChannelIdAsync player
+                if not channelChanging then
+                    do! doOnceAsync ircode (fun () -> task {
+                        let! channelNumber = SXM.getChannelIdAsync player
 
-                    match channelNumber with
-                    | None -> ()
-                    | Some i ->
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        match channelNumber with
+                        | None -> ()
+                        | Some i ->
+                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
 
-                        for (a, b) in Seq.pairwise channels do
-                            if b.channelId = i then
-                                //let! address = Network.getAddressAsync CancellationToken.None
-                                let address = "192.168.4.36"
-                                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={a.channelNumber}" a.name
-                })
+                            for (a, b) in Seq.pairwise channels do
+                                if b.channelId = i then
+                                    do! playSiriusXMChannelAsync a.channelNumber a.name
+                    })
 
             | On, Normal, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
@@ -176,17 +182,17 @@ module LyrionIRHandler =
 
             | On, Normal, Input ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Play SiriusXM Channel" "> "
+                    do! setDisplayAsync "Play SiriusXM Channel" "> "
                 })
 
             | On, Override ("Play SiriusXM Channel", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Play SiriusXM Channel" $"{text}{str}"
+                    do! setDisplayAsync "Play SiriusXM Channel" $"{text}{str}"
                 })
 
             | On, Override ("Play SiriusXM Channel", text), Simulate "arrow_left" when text <> "> " ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Play SiriusXM Channel" $"{text.Substring(0, text.Length - 1)}"
+                    do! setDisplayAsync "Play SiriusXM Channel" $"{text.Substring(0, text.Length - 1)}"
                 })
 
             | On, Override ("Play SiriusXM Channel", text), Button "knob_push" ->
@@ -201,26 +207,24 @@ module LyrionIRHandler =
 
                     match channel with
                     | Some c ->
-                        //let! address = Network.getAddressAsync CancellationToken.None
-                        let address = "192.168.4.36"
-                        do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={c.channelNumber}" c.name
+                        do! playSiriusXMChannelAsync c.channelNumber c.name
                     | None ->
-                        do! setOverrideAsync "Play SiriusXM Channel" "> "
+                        do! setDisplayAsync "Play SiriusXM Channel" "> "
                 })
 
             | On, Override ("Play SiriusXM Channel", _), Input ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Load Preset" "> "
+                    do! setDisplayAsync "Load Preset" "> "
                 })
 
             | On, Override ("Load Preset", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Load Preset" $"{text}{str}"
+                    do! setDisplayAsync "Load Preset" $"{text}{str}"
                 })
 
             | On, Override ("Load Preset", text), Simulate "arrow_left" when text <> "> " ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Load Preset" $"{text.Substring(0, text.Length - 1)}"
+                    do! setDisplayAsync "Load Preset" $"{text.Substring(0, text.Length - 1)}"
                 })
 
             | On, Override ("Load Preset", text), Button "knob_push" ->
@@ -232,17 +236,17 @@ module LyrionIRHandler =
 
             | On, Override ("Load Preset", _), Input ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Save Preset" "> "
+                    do! setDisplayAsync "Save Preset" "> "
                 })
 
             | On, Override ("Save Preset", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Save Preset" $"{text}{str}"
+                    do! setDisplayAsync "Save Preset" $"{text}{str}"
                 })
 
             | On, Override ("Save Preset", text), Simulate "arrow_left" when text <> "> " ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setOverrideAsync "Save Preset" $"{text.Substring(0, text.Length - 1)}"
+                    do! setDisplayAsync "Save Preset" $"{text.Substring(0, text.Length - 1)}"
                 })
 
             | On, Override ("Save Preset", text), Button "knob_push" ->
@@ -255,13 +259,13 @@ module LyrionIRHandler =
             | On, Override ("Save Preset", _), Input ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                    lastOverride <- Normal
+                    lastDisplay <- Normal
                 })
 
             | On, Override _, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                    lastOverride <- Normal
+                    lastDisplay <- Normal
                 })
 
             | On, Override _, _ ->
@@ -271,6 +275,8 @@ module LyrionIRHandler =
         let processCommandAsync command = task {
             try
                 match command with
+                | [x; "playlist"; "newsong"; _; _] when Player x = player ->
+                    channelChanging <- false
                 | [x; "power"; "0"] when Player x = player ->
                     power <- Off
                 | [x; "power"; "1"] when Player x = player ->

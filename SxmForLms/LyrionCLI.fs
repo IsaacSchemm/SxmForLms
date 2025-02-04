@@ -38,7 +38,15 @@ module LyrionCLI =
 
                 let client = new TcpClient()
 
-                do! client.ConnectAsync(ip, port, cancellationToken)
+                let mutable connected = false
+                while not connected do
+                    try
+                        do! client.ConnectAsync(ip, port, cancellationToken)
+                        connected <- true
+                    with :? SocketException as ex ->
+                        printfn "%O" ex
+                        do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
+
                 use stream = client.GetStream()
 
                 let readTask = task {

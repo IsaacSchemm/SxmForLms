@@ -258,6 +258,53 @@ module LyrionIRHandler =
 
             | On, Override ("Save Preset", _), Input ->
                 do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Seek To" "> "
+                })
+
+            | On, Override ("Seek To", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Seek To" $"{text}{str}"
+                })
+
+            | On, Override ("Seek To", text), Dot ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Seek To" $"{text}:"
+                })
+
+            | On, Override ("Seek To", text), Simulate "arrow_left" when text <> "> " ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync "Seek To" $"{text.Substring(0, text.Length - 1)}"
+                })
+
+            | On, Override ("Seek To", text), Button "knob_push" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let array =
+                        text.Substring(2)
+                        |> Utility.split ':'
+                        |> Array.map Int32.TryParse
+
+                    let time =
+                        match array with
+                        | [| (true, s) |] ->
+                            Some s
+                        | [| (true, m); (true, s) |] ->
+                            Some (60 * m + s)
+                        | [| (true, h); (true, m); (true, s) |] ->
+                            Some (3600 * h + 60 * m + s)
+                        | _ ->
+                            None
+
+                    match time with
+                    | Some t ->
+                        do! Playlist.setTimeAsync player t
+                        do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
+                        lastDisplay <- Normal
+                    | _ ->
+                        do! setDisplayAsync "Seek To" "> "
+                })
+
+            | On, Override ("Seek To", _), Input ->
+                do! doOnceAsync ircode (fun () -> task {
                     do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
                     lastDisplay <- Normal
                 })

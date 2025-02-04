@@ -228,6 +228,12 @@ module LyrionCLI =
             if state then "1" else "0"
         ]
 
+        let setTimeAsync (Player id) time = sendAsync [
+            id
+            "time"
+            sprintf "%d" time
+        ]
+
         let togglePauseAsync (Player id) = sendAsync [
             id
             "pause"

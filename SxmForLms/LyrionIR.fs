@@ -73,6 +73,7 @@ module LyrionIR =
     | Input
     | Simulate of string
     | Button of string
+    | Dot
     | Exit
     | Info
     | ChannelUp
@@ -93,7 +94,7 @@ module LyrionIR =
         0x61a0609f, Simulate "7"
         0x61a0e01f, Simulate "8"
         0x61a010ef, Simulate "9"
-        0x61a0827d, NoAction // .
+        0x61a0827d, Dot
         0x61a0906f, Simulate "0"
         0x61a008f7, Simulate "repeat"
 

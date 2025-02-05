@@ -283,7 +283,12 @@ module LyrionIRHandler =
                     match text.Substring(2) with
                     | "" ->
                         let! address = Network.getAddressAsync CancellationToken.None
-                        do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track=0" "Audio CD"
+                        do! Playlist.clearAsync player
+                        let! disc = Icedax.getInfoAsync CancellationToken.None
+                        for track in disc.tracks do
+                            let title = track.title |> Option.defaultValue $"Track {track.number}"
+                            do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track.number}" title
+                        do! Playlist.playAsync player
                     | Int32 track ->
                         let! address = Network.getAddressAsync CancellationToken.None
                         do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track}" $"Track {track}"

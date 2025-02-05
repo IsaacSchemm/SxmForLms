@@ -271,7 +271,21 @@ module LyrionCLI =
             title
         ]
 
+        let addItemAsync (Player id) item title = sendAsync [
+            id
+            "playlist"
+            "add"
+            item
+            title
+        ]
+
+        let clearAsync (Player id) = sendAsync [
+            id
+            "playlist"
+            "clear"
+        ]
+
         let getPathAsync (Player id) = listenForAsync [id; "path"; "?"] (fun command ->
             match command with
             | [x; "path"; path] when x = id -> Some path
-            | b -> None)
+            | _ -> None)

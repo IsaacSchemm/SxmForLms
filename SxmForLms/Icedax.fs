@@ -5,8 +5,6 @@ open System.Diagnostics
 module Icedax =
     type Span = Track of int | WholeDisc
 
-    let streams = Map.empty
-
     let extractWave span =
         let spanString =
             match span with

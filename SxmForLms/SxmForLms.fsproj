@@ -16,8 +16,8 @@
     <Compile Include="MediaProxy.fs" />
     <Compile Include="FavoritesManager.fs" />
     <Compile Include="LyrionIR.fs" />
-    <Compile Include="LyrionIRHandler.fs" />
     <Compile Include="Icedax.fs" />
+    <Compile Include="LyrionIRHandler.fs" />
   </ItemGroup>
 
   <ItemGroup>

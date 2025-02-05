@@ -4,21 +4,20 @@ namespace SxmForLms.AspNetCore.Controllers
 {
     public class CDController() : Controller
     {
-        public IActionResult Play(int track)
+        public async Task<IActionResult> Play(int track)
         {
-            Console.WriteLine(track);
-
-            var stream = Icedax.extractWave(
+            var obj = await Icedax.extractWaveAsync(
                 track == 0
                 ? Icedax.Span.WholeDisc
                 : Icedax.Span.NewTrack(track));
 
+            Response.StatusCode = 200;
+            Response.ContentType = "audio/wav";
+            Response.ContentLength = obj.length;
+
             return new FileStreamResult(
-                stream,
-                "audio/wav")
-            {
-                EnableRangeProcessing = true
-            };
+                obj.stream,
+                "audio/wav");
         }
     }
 }

@@ -283,14 +283,10 @@ module LyrionIRHandler =
                     match text.Substring(2) with
                     | "" ->
                         let! address = Network.getAddressAsync CancellationToken.None
-                        let url = $"http://{address}:{Config.port}/CD/Play?track=0"
-                        let name = "CD"
-                        do! Playlist.playItemAsync player url name
+                        do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track=0" "Audio CD"
                     | Int32 track ->
                         let! address = Network.getAddressAsync CancellationToken.None
-                        let url = $"http://{address}:{Config.port}/CD/Play?track={track}"
-                        let name = $"Track {track}"
-                        do! Playlist.playItemAsync player url name
+                        do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track}" $"Track {track}"
                     | _ ->
                         do! setDisplayAsync "Play CD" "> "
                 })

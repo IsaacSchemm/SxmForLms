@@ -17,7 +17,6 @@
     <Compile Include="FavoritesManager.fs" />
     <Compile Include="LyrionIR.fs" />
     <Compile Include="LyrionIRHandler.fs" />
-    <Compile Include="Cdparanoia.fs" />
     <Compile Include="Icedax.fs" />
   </ItemGroup>
 

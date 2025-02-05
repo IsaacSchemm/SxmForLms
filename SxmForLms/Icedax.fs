@@ -1,8 +1,71 @@
 ﻿namespace SxmForLms
 
+open System
 open System.Diagnostics
+open System.Text.RegularExpressions
 
 module Icedax =
+    let albumTitlePattern = new Regex("^Album title: '([^']+)'")
+    let trackPattern = new Regex("^T([0-9]+): .* title '([^']+)'")
+    let isrcPattern = new Regex("^T: +([0-9]+) ISRC: ([^ ]+)")
+
+    let (|AlbumTitle|_|) (str: string) =
+        let m = albumTitlePattern.Match(str)
+        if m.Success then Some (m.Groups[1].Value) else None
+
+    let (|Track|_|) (str: string) =
+        let m = trackPattern.Match(str)
+        if m.Success then Some (m.Groups[1].Value, m.Groups[2].Value) else None
+
+    let (|ISRC|_|) (str: string) =
+        let m = isrcPattern.Match(str)
+        if m.Success then Some (m.Groups[1].Value, m.Groups[2].Value) else None
+
+    let getInfoAsync cancellationToken = task {
+        let proc =
+            new ProcessStartInfo("icedax", $"-J -g -D /dev/cdrom", RedirectStandardError = true)
+            |> Process.Start
+
+        use sr = proc.StandardError
+        let readTask = task {
+            try
+                return! sr.ReadToEndAsync(cancellationToken)
+            with :? OperationCanceledException as ex ->
+                proc.Kill()
+                return raise ex
+        }
+
+        do! proc.WaitForExitAsync(cancellationToken)
+        let! body = readTask
+
+        let mutable title = None
+        let mutable trackTitles = Map.empty
+        let mutable trackISRCs = Map.empty
+
+        for line in Utility.split '\n' body do
+            match line with
+            | AlbumTitle t ->
+                title <- Some t
+            | Track (n, t) ->
+                trackTitles <- trackTitles |> Map.add n t
+            | ISRC (n, c) ->
+                trackISRCs <- trackISRCs |> Map.add n c
+            | _ -> ()
+
+        let trackNumbers = set [yield! Map.keys trackTitles; yield! Map.keys trackISRCs]
+
+        return {|
+            title = title
+            tracks = [
+                for n in trackNumbers do {|
+                    number = n
+                    title = trackTitles |> Map.tryFind n
+                    isrc = trackISRCs |> Map.tryFind n
+                |}
+            ]
+        |}
+    }
+
     type Span = Track of int | WholeDisc
 
     let extractWave span =

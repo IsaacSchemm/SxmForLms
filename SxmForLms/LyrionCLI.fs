@@ -21,6 +21,8 @@ module LyrionCLI =
     let reader = recieved.Publish
     let channel = Channel.CreateUnbounded<string>()
 
+    let mutable initialConnectionEstablished = false
+
     exception NotConnectedException
 
     let sendAsync command =
@@ -46,6 +48,8 @@ module LyrionCLI =
                     with :? SocketException as ex ->
                         printfn "%O" ex
                         do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
+
+                initialConnectionEstablished <- true
 
                 use stream = client.GetStream()
 
@@ -114,6 +118,9 @@ module LyrionCLI =
             recieved.Publish
             |> Observable.choose chooser
             |> Observable.subscribe tcs.SetResult
+
+        while not initialConnectionEstablished do
+            do! Task.Delay(TimeSpan.FromSeconds(1))
 
         do! sendAsync command
 

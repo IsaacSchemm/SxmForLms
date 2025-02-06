@@ -2,6 +2,7 @@
 
 open System
 open System.Globalization
+open System.Runtime.Caching
 open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
@@ -17,9 +18,7 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
-    type Power =
-    | On
-    | Off
+    type Power = On | Off
 
     type Behavior =
     | Normal
@@ -43,7 +42,23 @@ module LyrionIRHandler =
         }
 
     type Handler(player: Player) =
-        let mutable power = Off
+        let cache = MemoryCache.Default
+        let cacheKey = $"{Guid.NewGuid()}"
+
+        let setPowerState p =
+            cache.Set(cacheKey, p, DateTimeOffset.UtcNow.AddMinutes(1))
+
+        let getPowerStateAsync () = task {
+            match cache.Get(cacheKey) with
+            | :? Power as p ->
+                return p
+            | _ ->
+                printfn "Checking player power state"
+                let! state = Players.getPowerAsync player
+                let p = if state then On else Off
+                setPowerState p
+                return p
+        }
 
         let mutable buttonsPressed = Map.empty
         let mutable channelChanging = false
@@ -96,6 +111,8 @@ module LyrionIRHandler =
                 CustomMappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
+
+            let! power = getPowerStateAsync ()
 
             match power, lastDisplay, mapping with
             | _, _, Power ->
@@ -325,9 +342,9 @@ module LyrionIRHandler =
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
                 | [x; "power"; "0"] when Player x = player ->
-                    power <- Off
+                    setPowerState Off
                 | [x; "power"; "1"] when Player x = player ->
-                    power <- On
+                    setPowerState On
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()
@@ -349,8 +366,6 @@ module LyrionIRHandler =
             if not (handlers |> Map.containsKey player) then
                 let handler = new Handler(player)
                 handlers <- handlers |> Map.add player handler
-
-                ignore (Players.getPowerAsync(player))
 
         override _.ExecuteAsync(cancellationToken) = task {
             use _ = reader |> Observable.subscribe (fun command ->

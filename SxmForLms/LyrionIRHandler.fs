@@ -45,7 +45,7 @@ module LyrionIRHandler =
         let cache = MemoryCache.Default
         let cacheKey = $"{Guid.NewGuid()}"
 
-        let setPowerState p =
+        let savePowerState p =
             cache.Set(cacheKey, p, DateTimeOffset.UtcNow.AddMinutes(1))
 
         let getPowerStateAsync () = task {
@@ -53,10 +53,9 @@ module LyrionIRHandler =
             | :? Power as p ->
                 return p
             | _ ->
-                printfn "Checking player power state"
                 let! state = Players.getPowerAsync player
                 let p = if state then On else Off
-                setPowerState p
+                savePowerState p
                 return p
         }
 
@@ -196,6 +195,8 @@ module LyrionIRHandler =
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player button
                 })
+
+            | On, Normal, Dot -> ()
 
             | On, Normal, Input ->
                 do! doOnceAsync ircode (fun () -> task {
@@ -342,9 +343,9 @@ module LyrionIRHandler =
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
                 | [x; "power"; "0"] when Player x = player ->
-                    setPowerState Off
+                    savePowerState Off
                 | [x; "power"; "1"] when Player x = player ->
-                    setPowerState On
+                    savePowerState On
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()
@@ -371,14 +372,19 @@ module LyrionIRHandler =
             use _ = reader |> Observable.subscribe (fun command ->
                 match command with
                 | [playerid; "client"; "new"]
-                | [playerid; "client"; "reconnect"] ->
+                | [playerid; "client"; "reconnect"]
+                | [playerid; "ir"; _; _]
+                | [playerid; "unknownir"; _; _] ->
                     init (Player playerid)
                 | _ -> ())
 
-            let! count = Players.countAsync ()
-            for i in [0 .. count - 1] do
-                let! player = Players.getIdAsync i
-                init player
+            try
+                let! count = Players.countAsync ()
+                for i in [0 .. count - 1] do
+                    let! player = Players.getIdAsync i
+                    init player
+            with ex ->
+                Console.Error.WriteLine(ex)
 
             do! Task.Delay(-1, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
         }

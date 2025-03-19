@@ -29,5 +29,5 @@ module Network =
             return ip
         with ex ->
             Console.Error.WriteLine(ex)
-            return "192.168.5.185"//"localhost"
+            return "localhost"
     }

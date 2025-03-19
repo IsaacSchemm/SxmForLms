@@ -68,7 +68,7 @@ module LyrionIRHandler =
         let mutable buttonsPressed = Map.empty
         let mutable channelChanging = false
         let mutable lastDisplayState = None
-        let mutable lastBehavior = SiriusXM
+        let mutable lastBehavior = LoadPreset
 
         let setDisplayAsync behavior line2 = task {
             let line1 =
@@ -81,15 +81,6 @@ module LyrionIRHandler =
             lastBehavior <- behavior
             lastDisplayState <- Some (line1, line2)
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(30))
-        }
-
-        let checkDisplayAsync () = task {
-            match lastDisplayState with
-            | None -> ()
-            | Some (line1, line2) ->
-                let! actual = Players.getDisplayNowAsync player
-                if (line1, line2) <> actual then
-                    lastDisplayState <- None
         }
 
         let doOnceAsync ircode action = task {
@@ -119,7 +110,12 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            do! checkDisplayAsync ()
+            match lastDisplayState with
+            | None -> ()
+            | Some (line1, line2) ->
+                let! actual = Players.getDisplayNowAsync player
+                if (line1, line2) <> actual then
+                    lastDisplayState <- None
 
             let mapping =
                 CustomMappings
@@ -209,7 +205,12 @@ module LyrionIRHandler =
 
             | On, None, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync lastBehavior $"> {str}"
+                    let! (header, _) = Players.getDisplayNowAsync player
+
+                    if header = "Now Playing" then
+                        do! setDisplayAsync lastBehavior $"> {str}"
+                    else
+                        do! Players.simulateIRAsync player Slim[str] time
                 })
 
             | On, None, Simulate name ->

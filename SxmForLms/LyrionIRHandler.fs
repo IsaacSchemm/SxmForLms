@@ -20,7 +20,13 @@ module LyrionIRHandler =
 
     type Power = On | Off
 
-    type Behavior =
+    type EntryBehavior =
+    | SiriusXM
+    | LoadPreset
+    | SavePreset
+    | SeekTo
+
+    type DisplayState =
     | Normal
     | Override of string * string
 
@@ -61,20 +67,29 @@ module LyrionIRHandler =
 
         let mutable buttonsPressed = Map.empty
         let mutable channelChanging = false
-        let mutable lastDisplay = Normal
+        let mutable lastDisplayState = None
+        let mutable lastBehavior = SiriusXM
 
-        let setDisplayAsync line1 line2 = task {
-            lastDisplay <- Override (line1, line2)
+        let setDisplayAsync behavior line2 = task {
+            let line1 =
+                match behavior with
+                | SiriusXM -> "Play SiriusXM Channel"
+                | LoadPreset -> "Load Preset"
+                | SavePreset -> "Save Preset"
+                | SeekTo -> "Seek To"
+
+            lastBehavior <- behavior
+            lastDisplayState <- Some (line1, line2)
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(30))
         }
 
         let checkDisplayAsync () = task {
-            match lastDisplay with
-            | Normal -> ()
-            | Override (line1, line2) ->
+            match lastDisplayState with
+            | None -> ()
+            | Some (line1, line2) ->
                 let! actual = Players.getDisplayNowAsync player
                 if (line1, line2) <> actual then
-                    lastDisplay <- Normal
+                    lastDisplayState <- None
         }
 
         let doOnceAsync ircode action = task {
@@ -113,7 +128,11 @@ module LyrionIRHandler =
 
             let! power = getPowerStateAsync ()
 
-            match power, lastDisplay, mapping with
+            let currentEntryText =
+                lastDisplayState
+                |> Option.map snd
+
+            match power, currentEntryText, mapping with
             | _, _, Power ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.togglePowerAsync player
@@ -125,7 +144,7 @@ module LyrionIRHandler =
             | On, _, NoAction ->
                 printfn "Button is not mapped"
 
-            | On, Normal, Info ->
+            | On, None, Info ->
                 do! doOnceAsync ircode (fun () -> task {
                     let mutable handled = false
 
@@ -153,7 +172,7 @@ module LyrionIRHandler =
                         do! Players.simulateButtonAsync player "now_playing"
                 })
 
-            | On, Normal, ChannelUp ->
+            | On, None, ChannelUp ->
                 if not channelChanging then
                     do! doOnceAsync ircode (fun () -> task {
                         let! id = SXM.getChannelIdAsync player
@@ -168,7 +187,7 @@ module LyrionIRHandler =
                                     do! playSiriusXMChannelAsync b.channelNumber b.name
                     })
 
-            | On, Normal, ChannelDown ->
+            | On, None, ChannelDown ->
                 if not channelChanging then
                     do! doOnceAsync ircode (fun () -> task {
                         let! channelNumber = SXM.getChannelIdAsync player
@@ -183,158 +202,116 @@ module LyrionIRHandler =
                                     do! playSiriusXMChannelAsync a.channelNumber a.name
                     })
 
-            | On, Normal, Exit ->
+            | On, None, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player "exit_left"
                 })
 
-            | On, Normal, Simulate name ->
+            | On, None, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! setDisplayAsync lastBehavior $"> {str}"
+                })
+
+            | On, None, Simulate name ->
                 do! Players.simulateIRAsync player Slim[name] time
 
-            | On, Normal, Button button ->
+            | On, None, Button button ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player button
                 })
 
-            | On, Normal, Dot -> ()
+            | On, None, Dot -> ()
 
-            | On, Normal, Input ->
+            | On, None, Input ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Play SiriusXM Channel" "> "
+                    do! setDisplayAsync lastBehavior "> "
                 })
 
-            | On, Override ("Play SiriusXM Channel", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+            | On, Some _, Input ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Play SiriusXM Channel" $"{text}{str}"
+                    let next =
+                        match lastBehavior with
+                        | SiriusXM -> LoadPreset
+                        | LoadPreset -> SavePreset
+                        | SavePreset -> SeekTo
+                        | SeekTo -> SiriusXM
+
+                    do! setDisplayAsync next "> "
                 })
 
-            | On, Override ("Play SiriusXM Channel", text), Simulate "arrow_left" when text <> "> " ->
+            | On, Some text, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Play SiriusXM Channel" $"{text.Substring(0, text.Length - 1)}"
+                    do! setDisplayAsync lastBehavior $"{text}{str}"
                 })
 
-            | On, Override ("Play SiriusXM Channel", text), Button "knob_push" ->
+            | On, Some text, Dot when lastBehavior = SeekTo ->
                 do! doOnceAsync ircode (fun () -> task {
-                    let num = text.Substring(2)
-
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelNumber = num)
-                        |> Seq.tryHead
-
-                    match channel with
-                    | Some c ->
-                        do! playSiriusXMChannelAsync c.channelNumber c.name
-                    | None ->
-                        do! setDisplayAsync "Play SiriusXM Channel" "> "
+                    do! setDisplayAsync lastBehavior $"{text}:"
                 })
 
-            | On, Override ("Play SiriusXM Channel", _), Input ->
+            | On, Some text, Simulate "arrow_left" when text <> "> " ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Load Preset" "> "
+                    do! setDisplayAsync lastBehavior $"{text.Substring(0, text.Length - 1)}"
                 })
 
-            | On, Override ("Load Preset", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+            | On, Some text, Button "knob_push" ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Load Preset" $"{text}{str}"
-                })
+                    match lastBehavior with
+                    | SiriusXM ->
+                        let num = text.Substring(2)
 
-            | On, Override ("Load Preset", text), Simulate "arrow_left" when text <> "> " ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Load Preset" $"{text.Substring(0, text.Length - 1)}"
-                })
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        let channel =
+                            channels
+                            |> Seq.where (fun c -> c.channelNumber = num)
+                            |> Seq.tryHead
 
-            | On, Override ("Load Preset", text), Button "knob_push" ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let num = text.Substring(2)
+                        match channel with
+                        | Some c ->
+                            do! playSiriusXMChannelAsync c.channelNumber c.name
+                        | None ->
+                            do! setDisplayAsync SiriusXM "> "
+                    | LoadPreset ->
+                        let num = text.Substring(2)
 
-                    do! Players.simulateButtonAsync player $"playPreset_{num}"
-                })
+                        do! Players.simulateButtonAsync player $"playPreset_{num}"
+                    | SavePreset ->
+                        let num = text.Substring(2)
 
-            | On, Override ("Load Preset", _), Input ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Save Preset" "> "
-                })
+                        do! Players.simulateButtonAsync player $"favorites_add{num}"
+                    | SeekTo ->
+                        let array =
+                            text.Substring(2)
+                            |> Utility.split ':'
+                            |> Array.map Int32.TryParse
 
-            | On, Override ("Save Preset", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Save Preset" $"{text}{str}"
-                })
+                        let time =
+                            match array with
+                            | [| (true, s) |] ->
+                                Some s
+                            | [| (true, m); (true, s) |] ->
+                                Some (60 * m + s)
+                            | [| (true, h); (true, m); (true, s) |] ->
+                                Some (3600 * h + 60 * m + s)
+                            | _ ->
+                                None
 
-            | On, Override ("Save Preset", text), Simulate "arrow_left" when text <> "> " ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Save Preset" $"{text.Substring(0, text.Length - 1)}"
-                })
-
-            | On, Override ("Save Preset", text), Button "knob_push" ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let num = text.Substring(2)
-
-                    do! Players.simulateButtonAsync player $"favorites_add{num}"
-                })
-
-            | On, Override ("Save Preset", _), Input ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Seek To" "> "
-                })
-
-            | On, Override ("Seek To", text), Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Seek To" $"{text}{str}"
-                })
-
-            | On, Override ("Seek To", text), Dot ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Seek To" $"{text}:"
-                })
-
-            | On, Override ("Seek To", text), Simulate "arrow_left" when text <> "> " ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync "Seek To" $"{text.Substring(0, text.Length - 1)}"
-                })
-
-            | On, Override ("Seek To", text), Button "knob_push" ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let array =
-                        text.Substring(2)
-                        |> Utility.split ':'
-                        |> Array.map Int32.TryParse
-
-                    let time =
-                        match array with
-                        | [| (true, s) |] ->
-                            Some s
-                        | [| (true, m); (true, s) |] ->
-                            Some (60 * m + s)
-                        | [| (true, h); (true, m); (true, s) |] ->
-                            Some (3600 * h + 60 * m + s)
+                        match time with
+                        | Some t ->
+                            do! Playlist.setTimeAsync player t
+                            do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
+                            lastDisplayState <- None
                         | _ ->
-                            None
-
-                    match time with
-                    | Some t ->
-                        do! Playlist.setTimeAsync player t
-                        do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                        lastDisplay <- Normal
-                    | _ ->
-                        do! setDisplayAsync "Seek To" "> "
+                            do! setDisplayAsync SeekTo "> "
                 })
 
-            | On, Override ("Seek To", _), Input ->
+            | On, Some _, Exit ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                    lastDisplay <- Normal
+                    lastDisplayState <- None
                 })
 
-            | On, Override _, Exit ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                    lastDisplay <- Normal
-                })
-
-            | On, Override _, _ ->
-                printfn "Button is ignored"
+            | On, Some _, _ -> ()
         }
 
         let processCommandAsync command = task {

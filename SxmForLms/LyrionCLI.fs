@@ -11,7 +11,6 @@ open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 
 module LyrionCLI =
-    let ip = "192.168.4.36"
     let port = 9090
 
     let encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier = false)
@@ -36,7 +35,9 @@ module LyrionCLI =
 
         override _.ExecuteAsync(cancellationToken) = task {
             while not cancellationToken.IsCancellationRequested do
-                printfn $"Connecting to port {port}"
+                let! ip = Network.getAddressAsync cancellationToken
+
+                printfn $"Connecting to {ip}:{port}"
 
                 let client = new TcpClient()
 

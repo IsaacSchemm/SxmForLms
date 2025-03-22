@@ -32,8 +32,6 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
-    type Power = On | Off
-
     module SXM =
         let getChannelIdAsync player = task {
             let! path = Playlist.getPathAsync player
@@ -65,31 +63,8 @@ module LyrionIRHandler =
                 return []
         }
 
-    type Prompter(player: Player) =
-        let mutable written = None
-        let mutable currentTask = Task.CompletedTask
-
-        member val Behavior = Digit with get, set
-
-        member _.CurrentText = written
-
-        member this.WriteAsync(text) = task {
-            let header = getTitle this.Behavior
-
-            written <- Some text
-            do! Players.setDisplayAsync player header text (TimeSpan.FromSeconds(10))
-
-            if currentTask.IsCompleted then currentTask <- task {
-                printf "Monitoring remote screen..."
-                while written <> None do
-                    printf "."
-                    do! Task.Delay(200)
-                    let! (current, _) = Players.getDisplayNowAsync player
-                    if current <> getTitle this.Behavior then
-                        printfn " screen reset."
-                        written <- None
-            }
-        }
+    let requestPowerState player =
+        ignore (Players.getPowerAsync player)
 
     type Handler(player: Player) =
         let mutable buttonsPressed = Map.empty
@@ -112,20 +87,6 @@ module LyrionIRHandler =
                 do! action ()
         }
 
-        let mutable channelChanging = false
-
-        let playSiriusXMChannelAsync channelNumber name = task {
-            let! address = Network.getAddressAsync CancellationToken.None
-            let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
-            let name = $"[{channelNumber}] {name}"
-            do! Playlist.playItemAsync player url name
-            channelChanging <- true
-        }
-
-        let mutable powerState = Off
-
-        let mutable holdTime = ref DateTime.UtcNow
-
         let showStreamInfo () = task {
             let! channelId = SXM.getChannelIdAsync player
             match channelId with
@@ -143,11 +104,49 @@ module LyrionIRHandler =
                     do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
         }
 
-        let prompter = new Prompter(player)
+        let mutable channelChanging = false
+
+        let playSiriusXMChannelAsync channelNumber name = task {
+            let! address = Network.getAddressAsync CancellationToken.None
+            let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
+            let name = $"[{channelNumber}] {name}"
+            do! Playlist.playItemAsync player url name
+            channelChanging <- true
+        }
+
+        let mutable behavior = Digit
+        let mutable promptText = None
+        let mutable promptMonitor = Task.CompletedTask
+
+        let writePromptAsync text = task {
+            promptText <- Some text
+
+            let header = getTitle behavior
+            do! Players.setDisplayAsync player header text (TimeSpan.FromSeconds(10))
+
+            if promptMonitor.IsCompleted then promptMonitor <- task {
+                try
+                    printf "Monitoring remote screen..."
+                    let mutable finished = false
+                    while not finished do
+                        printf "."
+                        do! Task.Delay(200)
+                        let! (current, _) = Players.getDisplayNowAsync player
+                        if current <> header then
+                            printfn " screen reset."
+                            promptText <- None
+                            finished <- true
+                with ex -> Console.Error.WriteLine(ex)
+            }
+        }
 
         let clearAsync () = task {
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
+
+        let mutable powerState = false
+
+        let mutable holdTime = ref DateTime.UtcNow
 
         let pressAsync pressAction = task {
             match pressAction with
@@ -189,18 +188,18 @@ module LyrionIRHandler =
 
                 let! (header, _) = Players.getDisplayNowAsync player
                 if header = "Input Mode" then
-                    prompter.Behavior <-
+                    behavior <-
                         Seq.pairwise all
-                        |> Seq.where (fun (a, _) -> a = prompter.Behavior)
+                        |> Seq.where (fun (a, _) -> a = behavior)
                         |> Seq.map (fun (_, b) -> b)
                         |> Seq.head
 
-                do! Players.setDisplayAsync player "Input Mode" (getTitle prompter.Behavior) (TimeSpan.FromSeconds(3))
+                do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
         }
 
         let processPromptEntryAsync ircode (prompt: string) = task {
             let mappings =
-                if powerState = On
+                if powerState
                 then MappingsOn
                 else MappingsOff
 
@@ -212,15 +211,15 @@ module LyrionIRHandler =
             do! doOnceAsync ircode (fun () -> task {
                 match mapping with
                 | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                    do! prompter.WriteAsync($"{prompt}{str}")
+                    do! writePromptAsync $"{prompt}{str}"
 
-                | Dot when prompter.Behavior = SeekTo ->
-                    do! prompter.WriteAsync($"{prompt}:")
+                | Dot when behavior = SeekTo ->
+                    do! writePromptAsync $"{prompt}:"
 
                 | Simulate "arrow_left" ->
-                    do! prompter.WriteAsync(prompt.Substring(0, prompt.Length - 1))
+                    do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
-                | Press (Button "knob_push") when prompter.Behavior = SiriusXM ->
+                | Press (Button "knob_push") when behavior = SiriusXM ->
                     let num = prompt.Substring(2)
 
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
@@ -234,15 +233,15 @@ module LyrionIRHandler =
                         do! clearAsync ()
                         do! playSiriusXMChannelAsync c.channelNumber c.name
                     | None ->
-                        do! prompter.WriteAsync("> ")
+                        do! writePromptAsync "> "
 
-                | Press (Button "knob_push") when prompter.Behavior = LoadPresetMulti ->
+                | Press (Button "knob_push") when behavior = LoadPresetMulti ->
                     let num = prompt.Substring(2)
                         
                     do! clearAsync ()
                     do! Players.simulateButtonAsync player $"playPreset_{num}"
 
-                | Press (Button "knob_push") when prompter.Behavior = SeekTo ->
+                | Press (Button "knob_push") when behavior = SeekTo ->
                     let array =
                         prompt.Substring(2)
                         |> Utility.split ':'
@@ -264,7 +263,7 @@ module LyrionIRHandler =
                         do! clearAsync ()
                         do! Playlist.setTimeAsync player t
                     | _ ->
-                        do! prompter.WriteAsync("> ")
+                        do! writePromptAsync "> "
 
                 | Press (Button "exit_left") ->
                     do! clearAsync ()
@@ -275,7 +274,7 @@ module LyrionIRHandler =
 
         let processNormalEntryAsync ircode time = task {
             let mappings =
-                if powerState = On
+                if powerState
                 then MappingsOn
                 else MappingsOff
 
@@ -317,12 +316,12 @@ module LyrionIRHandler =
                         | _ -> ()
                 })
 
-            | Simulate str when str.Length = 1 && "0123456789".Contains(str) && prompter.Behavior <> Digit ->
+            | Simulate str when str.Length = 1 && "0123456789".Contains(str) && behavior <> Digit ->
                 do! doOnceAsync ircode (fun () -> task {
-                    if prompter.Behavior = LoadPresetSingle then
+                    if behavior = LoadPresetSingle then
                         do! Players.simulateButtonAsync player $"playPreset_{str}"
                     else
-                        do! prompter.WriteAsync($"> {str}")
+                        do! writePromptAsync $"> {str}"
                 })
 
             | Simulate name ->
@@ -339,7 +338,7 @@ module LyrionIRHandler =
         let processIRAsync ircode time = task {
             holdTime.Value <- DateTime.UtcNow
 
-            match prompter.CurrentText with
+            match promptText with
             | Some prompt -> do! processPromptEntryAsync ircode prompt
             | None -> do! processNormalEntryAsync ircode time
         }
@@ -350,11 +349,11 @@ module LyrionIRHandler =
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
                 | [x; "power"] when Player x = player ->
-                    do! Players.getPowerAsync player :> Task
+                    requestPowerState player
                 | [x; "power"; "0"] when Player x = player ->
-                    powerState <- Off
+                    powerState <- false
                 | [x; "power"; "1"] when Player x = player ->
-                    powerState <- On
+                    powerState <- true
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()
@@ -376,7 +375,8 @@ module LyrionIRHandler =
             if not (handlers |> Map.containsKey player) then
                 let handler = new Handler(player)
                 handlers <- handlers |> Map.add player handler
-                ignore (Players.getPowerAsync player)
+
+                requestPowerState player
 
         override _.ExecuteAsync(cancellationToken) = task {
             use _ = reader |> Observable.subscribe (fun command ->

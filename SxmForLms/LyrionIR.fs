@@ -208,5 +208,6 @@ module LyrionIR =
             | Press (Button "power")
             | Press (Button "muting") ->
                 ircode, Hold [Message "Hold to turn on radio..."; OnHold (Button "power")]
-            | _ -> ()
+            | _ ->
+                ircode, NoAction
     ]

@@ -2,7 +2,6 @@
 
 open System
 open System.Globalization
-open System.Runtime.Caching
 open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
@@ -13,22 +12,27 @@ open LyrionCLI
 open LyrionIR
 
 module LyrionIRHandler =
+    type DigitBehavior =
+    | Digit
+    | LoadPresetSingle
+    | LoadPresetMulti
+    | SeekTo
+    | SiriusXM
+
+    let getTitle behavior =
+        match behavior with
+        | Digit -> "Direct digit entry"
+        | LoadPresetSingle -> "Load preset (single-digit)"
+        | LoadPresetMulti -> "Load preset (multi-digit)"
+        | SeekTo -> "Seek (ss/mm:ss/hh:mm:ss)"
+        | SiriusXM -> "Play SiriusXM channel"
+
     let (|IRCode|_|) (str: string) =
         match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
         | true, value -> Some value
         | false, _ -> None
 
     type Power = On | Off
-
-    type EntryBehavior =
-    | SiriusXM
-    | LoadPreset
-    | SavePreset
-    | SeekTo
-
-    type DisplayState =
-    | Normal
-    | Override of string * string
 
     module SXM =
         let getChannelIdAsync player = task {
@@ -47,41 +51,48 @@ module LyrionIRHandler =
                 return None
         }
 
+        let getSongsAsync channelId = task {
+            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+            let channel =
+                channels
+                |> Seq.where (fun c -> c.channelId = channelId)
+                |> Seq.tryHead
+            match channel with
+            | Some c ->
+                let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                return playlist.cuts
+            | None ->
+                return []
+        }
+
+    type CustomPrompt(player: Player) =
+        let mutable written = None
+        let mutable currentTask = Task.CompletedTask
+
+        member val Behavior = Digit with get, set
+
+        member _.CurrentText = written
+
+        member this.WriteAsync(text) = task {
+            let header = getTitle this.Behavior
+
+            written <- Some text
+            do! Players.setDisplayAsync player header text (TimeSpan.FromSeconds(10))
+
+            if currentTask.IsCompleted then currentTask <- task {
+                printf "Monitoring remote screen..."
+                while written <> None do
+                    printf "."
+                    do! Task.Delay(200)
+                    let! (current, _) = Players.getDisplayNowAsync player
+                    if current <> getTitle this.Behavior then
+                        printfn " screen reset."
+                        written <- None
+            }
+        }
+
     type Handler(player: Player) =
-        let cache = MemoryCache.Default
-        let cacheKey = $"{Guid.NewGuid()}"
-
-        let savePowerState p =
-            cache.Set(cacheKey, p, DateTimeOffset.UtcNow.AddMinutes(1))
-
-        let getPowerStateAsync () = task {
-            match cache.Get(cacheKey) with
-            | :? Power as p ->
-                return p
-            | _ ->
-                let! state = Players.getPowerAsync player
-                let p = if state then On else Off
-                savePowerState p
-                return p
-        }
-
         let mutable buttonsPressed = Map.empty
-        let mutable channelChanging = false
-        let mutable lastDisplayState = None
-        let mutable lastBehavior = LoadPreset
-
-        let setDisplayAsync behavior line2 = task {
-            let line1 =
-                match behavior with
-                | SiriusXM -> "Play SiriusXM Channel"
-                | LoadPreset -> "Load Preset"
-                | SavePreset -> "Save Preset"
-                | SeekTo -> "Seek To"
-
-            lastBehavior <- behavior
-            lastDisplayState <- Some (line1, line2)
-            do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(30))
-        }
 
         let doOnceAsync ircode action = task {
             let now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
@@ -91,7 +102,7 @@ module LyrionIRHandler =
                 |> Map.tryFind ircode
                 |> Option.defaultValue 0L
 
-            let wasPressed = lastPressedAt > now - 150L
+            let wasPressed = lastPressedAt > now - 250L
 
             buttonsPressed <-
                 buttonsPressed
@@ -101,6 +112,8 @@ module LyrionIRHandler =
                 do! action ()
         }
 
+        let mutable channelChanging = false
+
         let playSiriusXMChannelAsync channelNumber name = task {
             let! address = Network.getAddressAsync CancellationToken.None
             let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
@@ -109,221 +122,232 @@ module LyrionIRHandler =
             channelChanging <- true
         }
 
+        let mutable powerState = Off
+
+        let mutable holdTime = ref DateTime.UtcNow
+
+        let customPrompt = new CustomPrompt(player)
+
+        let clearAsync () = task {
+            do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
+        }
+
         let processIRAsync ircode time = task {
-            match lastDisplayState with
-            | None -> ()
-            | Some (line1, line2) ->
-                let! actual = Players.getDisplayNowAsync player
-                if (line1, line2) <> actual then
-                    lastDisplayState <- None
+            holdTime.Value <- DateTime.UtcNow
+
+            let mappings =
+                if powerState = On
+                then MappingsOn
+                else MappingsOff
 
             let mapping =
-                CustomMappings
+                mappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
 
-            let! power = getPowerStateAsync ()
-
-            let currentEntryText =
-                lastDisplayState
-                |> Option.map snd
-
-            match power, currentEntryText, mapping with
-            | _, _, Power ->
+            match customPrompt.CurrentText, mapping with
+            | Some text, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.togglePowerAsync player
+                    do! customPrompt.WriteAsync($"{text}{str}")
                 })
 
-            | Off, _, _ ->
-                printfn "Radio is off"
-
-            | On, _, NoAction ->
-                printfn "Button is not mapped"
-
-            | On, None, Info ->
+            | Some text, Dot when customPrompt.Behavior = SeekTo ->
                 do! doOnceAsync ircode (fun () -> task {
-                    let mutable handled = false
+                    do! customPrompt.WriteAsync($"{text}:")
+                })
 
+            | Some text, Simulate "arrow_left" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    if text.Length > 2 then
+                        do! customPrompt.WriteAsync(text.Substring(0, text.Length - 1))
+                })
+
+            | Some text, Button "knob_push" when customPrompt.Behavior = SiriusXM ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let num = text.Substring(2)
+
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channel =
+                        channels
+                        |> Seq.where (fun c -> c.channelNumber = num)
+                        |> Seq.tryHead
+
+                    match channel with
+                    | Some c ->
+                        do! clearAsync ()
+                        do! playSiriusXMChannelAsync c.channelNumber c.name
+                    | None ->
+                        do! customPrompt.WriteAsync("> ")
+                })
+
+            | Some text, Button "knob_push" when customPrompt.Behavior = LoadPresetMulti ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let num = text.Substring(2)
+                        
+                    do! clearAsync ()
+                    do! Players.simulateButtonAsync player $"playPreset_{num}"
+                })
+
+            | Some text, Button "knob_push" when customPrompt.Behavior = SeekTo ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let array =
+                        text.Substring(2)
+                        |> Utility.split ':'
+                        |> Array.map Int32.TryParse
+
+                    let time =
+                        match array with
+                        | [| (true, s) |] ->
+                            Some s
+                        | [| (true, m); (true, s) |] ->
+                            Some (60 * m + s)
+                        | [| (true, h); (true, m); (true, s) |] ->
+                            Some (3600 * h + 60 * m + s)
+                        | _ ->
+                            None
+
+                    match time with
+                    | Some t ->
+                        do! clearAsync ()
+                        do! Playlist.setTimeAsync player t
+                    | _ ->
+                        do! customPrompt.WriteAsync("> ")
+                })
+
+            | Some _, Button "exit_left" ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! clearAsync ()
+                })
+
+            | Some _, _ -> ()
+
+            | _, PowerHold defaultButton ->
+                do! doOnceAsync ircode (fun () -> task {
+                    if Option.isNone defaultButton then
+                        let message = "Hold to turn on radio..."
+                        do! Players.setDisplayAsync player message message (TimeSpan.FromSeconds(3))
+
+                    let start = DateTime.UtcNow
+
+                    let mutable poweredOn = false
+
+                    while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(150) do
+                        do! Task.Delay(100)
+
+                        if not poweredOn then
+                            if DateTime.UtcNow - start >= TimeSpan.FromSeconds(3) then
+                                do! Players.togglePowerAsync player
+                                poweredOn <- true
+
+                    if not poweredOn then
+                        match defaultButton with
+                        | Some button -> do! Players.simulateButtonAsync player button
+                        | None -> do! clearAsync ()
+                })
+
+            | _, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                do! doOnceAsync ircode (fun () -> task {
+                    match customPrompt.Behavior with
+                    | Digit ->
+                        do! Players.simulateButtonAsync player str
+                    | LoadPresetSingle ->
+                        do! Players.simulateButtonAsync player $"playPreset_{str}"
+                    | _ ->
+                        do! customPrompt.WriteAsync($"> {str}")
+                })
+
+            | _, Input ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let all = seq {
+                        Digit
+                        LoadPresetSingle
+                        LoadPresetMulti
+                        SeekTo
+                        SiriusXM
+                        Digit
+                    }
+
+                    let! (header, _) = Players.getDisplayNowAsync player
+                    if header = "Input Mode" then
+                        customPrompt.Behavior <-
+                            Seq.pairwise all
+                            |> Seq.where (fun (a, _) -> a = customPrompt.Behavior)
+                            |> Seq.map (fun (_, b) -> b)
+                            |> Seq.head
+
+                    do! Players.setDisplayAsync player "Input Mode" (getTitle customPrompt.Behavior) (TimeSpan.FromSeconds(3))
+                })
+
+            | _, Info ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let! (previousHeader, _) = Players.getDisplayNowAsync player
+
+                    do! Players.simulateButtonAsync player "now_playing"
+
+                    if previousHeader = "Now Playing" then
+                        let! channelId = SXM.getChannelIdAsync player
+                        match channelId with
+                        | None -> ()
+                        | Some id ->
+                            let! songs = SXM.getSongsAsync id
+                            let song =
+                                songs
+                                |> Seq.sortByDescending (fun cut -> cut.startTime)
+                                |> Seq.tryHead
+                            match song with
+                            | None -> ()
+                            | Some c ->
+                                let artist = String.concat " / " c.artists
+                                do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+                })
+
+            | _, ChannelUp when not channelChanging ->
+                do! doOnceAsync ircode (fun () -> task {
                     let! id = SXM.getChannelIdAsync player
 
-                    match id with
-                    | None -> ()
-                    | Some i ->
+                    if Option.isSome id then
                         let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                        for c in channels do
-                            if c.channelId = i then
-                                let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                                let cut =
-                                    playlist.cuts
-                                    |> Seq.sortByDescending (fun cut -> cut.startTime)
-                                    |> Seq.tryHead
-                                match cut with
-                                | None -> ()
-                                | Some c ->
-                                    let artist = String.concat " / " c.artists
-                                    do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
-                                    handled <- true
 
-                    if not handled then
-                        do! Players.simulateButtonAsync player "now_playing"
+                        for (a, b) in Seq.pairwise channels do
+                            if Some a.channelId = id then
+                                do! playSiriusXMChannelAsync b.channelNumber b.name
                 })
 
-            | On, None, ChannelUp ->
-                if not channelChanging then
-                    do! doOnceAsync ircode (fun () -> task {
-                        let! id = SXM.getChannelIdAsync player
-
-                        match id with
-                        | None -> ()
-                        | Some i ->
-                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                            for (a, b) in Seq.pairwise channels do
-                                if a.channelId = i then
-                                    do! playSiriusXMChannelAsync b.channelNumber b.name
-                    })
-
-            | On, None, ChannelDown ->
-                if not channelChanging then
-                    do! doOnceAsync ircode (fun () -> task {
-                        let! channelNumber = SXM.getChannelIdAsync player
-
-                        match channelNumber with
-                        | None -> ()
-                        | Some i ->
-                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                            for (a, b) in Seq.pairwise channels do
-                                if b.channelId = i then
-                                    do! playSiriusXMChannelAsync a.channelNumber a.name
-                    })
-
-            | On, None, Exit ->
+            | _, ChannelDown when not channelChanging ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player "exit_left"
+                    let! id = SXM.getChannelIdAsync player
+
+                    if Option.isSome id then
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                        for (a, b) in Seq.pairwise channels do
+                            if Some b.channelId = id then
+                                do! playSiriusXMChannelAsync a.channelNumber a.name
                 })
 
-            | On, None, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! (header, _) = Players.getDisplayNowAsync player
-
-                    if header = "Now Playing" then
-                        do! setDisplayAsync lastBehavior $"> {str}"
-                    else
-                        do! Players.simulateIRAsync player Slim[str] time
-                })
-
-            | On, None, Simulate name ->
+            | _, Simulate name ->
                 do! Players.simulateIRAsync player Slim[name] time
 
-            | On, None, Button button ->
+            | _, Button button ->
                 do! doOnceAsync ircode (fun () -> task {
                     do! Players.simulateButtonAsync player button
                 })
 
-            | On, None, Dot -> ()
-
-            | On, None, Input ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync lastBehavior "> "
-                })
-
-            | On, Some _, Input ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let next =
-                        match lastBehavior with
-                        | SiriusXM -> LoadPreset
-                        | LoadPreset -> SavePreset
-                        | SavePreset -> SeekTo
-                        | SeekTo -> SiriusXM
-
-                    do! setDisplayAsync next "> "
-                })
-
-            | On, Some text, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync lastBehavior $"{text}{str}"
-                })
-
-            | On, Some text, Dot when lastBehavior = SeekTo ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync lastBehavior $"{text}:"
-                })
-
-            | On, Some text, Simulate "arrow_left" when text <> "> " ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! setDisplayAsync lastBehavior $"{text.Substring(0, text.Length - 1)}"
-                })
-
-            | On, Some text, Button "knob_push" ->
-                do! doOnceAsync ircode (fun () -> task {
-                    match lastBehavior with
-                    | SiriusXM ->
-                        let num = text.Substring(2)
-
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                        let channel =
-                            channels
-                            |> Seq.where (fun c -> c.channelNumber = num)
-                            |> Seq.tryHead
-
-                        match channel with
-                        | Some c ->
-                            do! playSiriusXMChannelAsync c.channelNumber c.name
-                        | None ->
-                            do! setDisplayAsync SiriusXM "> "
-                    | LoadPreset ->
-                        let num = text.Substring(2)
-
-                        do! Players.simulateButtonAsync player $"playPreset_{num}"
-                    | SavePreset ->
-                        let num = text.Substring(2)
-
-                        do! Players.simulateButtonAsync player $"favorites_add{num}"
-                    | SeekTo ->
-                        let array =
-                            text.Substring(2)
-                            |> Utility.split ':'
-                            |> Array.map Int32.TryParse
-
-                        let time =
-                            match array with
-                            | [| (true, s) |] ->
-                                Some s
-                            | [| (true, m); (true, s) |] ->
-                                Some (60 * m + s)
-                            | [| (true, h); (true, m); (true, s) |] ->
-                                Some (3600 * h + 60 * m + s)
-                            | _ ->
-                                None
-
-                        match time with
-                        | Some t ->
-                            do! Playlist.setTimeAsync player t
-                            do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                            lastDisplayState <- None
-                        | _ ->
-                            do! setDisplayAsync SeekTo "> "
-                })
-
-            | On, Some _, Exit ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! Players.setDisplayAsync player " " " " (TimeSpan.FromSeconds(0.001))
-                    lastDisplayState <- None
-                })
-
-            | On, Some _, _ -> ()
+            | _ -> ()
         }
+
 
         let processCommandAsync command = task {
             try
                 match command with
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
+                | [x; "power"] when Player x = player ->
+                    do! Players.getPowerAsync player :> Task
                 | [x; "power"; "0"] when Player x = player ->
-                    savePowerState Off
+                    powerState <- Off
                 | [x; "power"; "1"] when Player x = player ->
-                    savePowerState On
+                    powerState <- On
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()
@@ -361,6 +385,7 @@ module LyrionIRHandler =
                 for i in [0 .. count - 1] do
                     let! player = Players.getIdAsync i
                     init player
+                    do! Players.getPowerAsync player :> Task
             with ex ->
                 Console.Error.WriteLine(ex)
 

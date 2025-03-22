@@ -69,19 +69,23 @@ module LyrionIR =
     ]
 
     type Action =
-    | Power
     | Input
     | Simulate of string
+    | PowerHold of button: string option
     | Button of string
     | Dot
-    | Exit
     | Info
     | ChannelUp
     | ChannelDown
     | NoAction
 
-    let CustomMappings = Map.ofList [
-        //0x61a0f00f, Power
+    let MappingsOff = Map.ofList [
+        0x61a0f00f, PowerHold None
+        0x61a0708f, PowerHold None
+    ]
+
+    let MappingsOn = Map.ofList [
+        0x61a0f00f, Button "power"
 
         0x61a0b847, Input
 
@@ -100,7 +104,7 @@ module LyrionIR =
 
         0x61a028d7, Simulate "home" // Menu
         0x61a09d62, Simulate "home"
-        0x61a0d827, Exit
+        0x61a0d827, Button "exit_left"
         0x61a0e817, Info
 
         0x61a042bd, Simulate "arrow_up"
@@ -114,7 +118,7 @@ module LyrionIR =
 
         0x61a030cf, Simulate "volup"
         0x61a0b04f, Simulate "voldown"
-        0x61a0708f, Simulate "muting"
+        0x61a0708f, PowerHold (Some "muting")
 
         0x61a050af, ChannelUp
         0x61a0d02f, ChannelDown

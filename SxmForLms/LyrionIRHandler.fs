@@ -18,6 +18,7 @@ module LyrionIRHandler =
     | LoadPresetMulti
     | SeekTo
     | SiriusXM
+    | Calculator
 
     let getTitle behavior =
         match behavior with
@@ -26,6 +27,7 @@ module LyrionIRHandler =
         | LoadPresetMulti -> "Load preset (multi-digit)"
         | SeekTo -> "Seek (ss/mm:ss/hh:mm:ss)"
         | SiriusXM -> "Play SiriusXM channel"
+        | Calculator -> "Calculator"
 
     let (|IRCode|_|) (str: string) =
         match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
@@ -140,6 +142,11 @@ module LyrionIRHandler =
             }
         }
 
+        let appendToPromptAsync text =
+            match promptText with
+            | Some prefix -> writePromptAsync $"{prefix}{text}"
+            | None -> writePromptAsync $"> {text}"
+
         let clearAsync () = task {
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
@@ -183,6 +190,7 @@ module LyrionIRHandler =
                     LoadPresetMulti
                     SeekTo
                     SiriusXM
+                    Calculator
                     Digit
                 }
 
@@ -211,29 +219,43 @@ module LyrionIRHandler =
             do! doOnceAsync ircode (fun () -> task {
                 match mapping with
                 | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                    do! writePromptAsync $"{prompt}{str}"
+                    do! appendToPromptAsync str
 
                 | Dot when behavior = SeekTo ->
-                    do! writePromptAsync $"{prompt}:"
+                    do! appendToPromptAsync ":"
+
+                | Dot when behavior = Calculator ->
+                    do! appendToPromptAsync "."
+
+                | Simulate "arrow_up" when behavior = Calculator ->
+                    do! appendToPromptAsync "("
+
+                | Simulate "arrow_down" when behavior = Calculator ->
+                    do! appendToPromptAsync ")"
+
+                | Simulate "repeat" when behavior = Calculator ->
+                    do! appendToPromptAsync "^"
+
+                | Simulate "volup" when behavior = Calculator ->
+                    do! appendToPromptAsync "+"
+
+                | Simulate "voldown" when behavior = Calculator ->
+                    do! appendToPromptAsync "-"
+
+                | Press ChannelUp when behavior = Calculator ->
+                    do! appendToPromptAsync "*"
+
+                | Press ChannelDown when behavior = Calculator ->
+                    do! appendToPromptAsync "/"
+
+                | Simulate "rew" when behavior = Calculator ->
+                    do! appendToPromptAsync "<<"
+
+                | Simulate "fwd" when behavior = Calculator ->
+                    do! appendToPromptAsync "<<"
 
                 | Simulate "arrow_left" ->
                     do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
-
-                | Press (Button "knob_push") when behavior = SiriusXM ->
-                    let num = prompt.Substring(2)
-
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelNumber = num)
-                        |> Seq.tryHead
-
-                    match channel with
-                    | Some c ->
-                        do! clearAsync ()
-                        do! playSiriusXMChannelAsync c.channelNumber c.name
-                    | None ->
-                        do! writePromptAsync "> "
 
                 | Press (Button "knob_push") when behavior = LoadPresetMulti ->
                     let num = prompt.Substring(2)
@@ -264,6 +286,30 @@ module LyrionIRHandler =
                         do! Playlist.setTimeAsync player t
                     | _ ->
                         do! writePromptAsync "> "
+
+                | Press (Button "knob_push") when behavior = SiriusXM ->
+                    let num = prompt.Substring(2)
+
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channel =
+                        channels
+                        |> Seq.where (fun c -> c.channelNumber = num)
+                        |> Seq.tryHead
+
+                    match channel with
+                    | Some c ->
+                        do! clearAsync ()
+                        do! playSiriusXMChannelAsync c.channelNumber c.name
+                    | None ->
+                        do! writePromptAsync "> "
+
+                | Press (Button "knob_push") when behavior = Calculator ->
+                    let expression = prompt.Substring(2)
+
+                    let parser = new Calcex.Parser()
+                    let tree = parser.Parse(expression)
+                    let result = tree.EvaluateDecimal()
+                    do! Players.setDisplayAsync player "Result" $"{result}" (TimeSpan.FromSeconds(5))
 
                 | Press (Button "exit_left") ->
                     do! clearAsync ()
@@ -312,6 +358,7 @@ module LyrionIRHandler =
                     if not actionTriggered then
                         for a in actionList do
                         match a with
+                        | Message m -> do! clearAsync ()
                         | OnRelease pressAction -> do! pressAsync pressAction
                         | _ -> ()
                 })

@@ -65,7 +65,7 @@ module LyrionIRHandler =
                 return []
         }
 
-    type CustomPrompt(player: Player) =
+    type Prompter(player: Player) =
         let mutable written = None
         let mutable currentTask = Task.CompletedTask
 
@@ -126,15 +126,36 @@ module LyrionIRHandler =
 
         let mutable holdTime = ref DateTime.UtcNow
 
-        let customPrompt = new CustomPrompt(player)
+        let showStreamInfo () = task {
+            let! channelId = SXM.getChannelIdAsync player
+            match channelId with
+            | None -> ()
+            | Some id ->
+                let! songs = SXM.getSongsAsync id
+                let song =
+                    songs
+                    |> Seq.sortByDescending (fun cut -> cut.startTime)
+                    |> Seq.tryHead
+                match song with
+                | None -> ()
+                | Some c ->
+                    let artist = String.concat " / " c.artists
+                    do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+        }
+
+        let prompter = new Prompter(player)
 
         let clearAsync () = task {
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
 
-        let processIRAsync ircode time = task {
-            holdTime.Value <- DateTime.UtcNow
+        let pressAsync pressAction = task {
+            match pressAction with
+            | Button button -> do! Players.simulateButtonAsync player button
+            | StreamInfo -> do! showStreamInfo ()
+        }
 
+        let processPromptEntryAsync ircode (prompt: string) = task {
             let mappings =
                 if powerState = On
                 then MappingsOn
@@ -145,118 +166,139 @@ module LyrionIRHandler =
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
 
-            match customPrompt.CurrentText, mapping with
-            | Some text, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! customPrompt.WriteAsync($"{text}{str}")
-                })
+            match mapping with
+                | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        do! prompter.WriteAsync($"{prompt}{str}")
+                    })
 
-            | Some text, Dot when customPrompt.Behavior = SeekTo ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! customPrompt.WriteAsync($"{text}:")
-                })
+                | Dot when prompter.Behavior = SeekTo ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        do! prompter.WriteAsync($"{prompt}:")
+                    })
 
-            | Some text, Simulate "arrow_left" ->
-                do! doOnceAsync ircode (fun () -> task {
-                    if text.Length > 2 then
-                        do! customPrompt.WriteAsync(text.Substring(0, text.Length - 1))
-                })
+                | Simulate "arrow_left" ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        if prompt.Length > 2 then
+                            do! prompter.WriteAsync(prompt.Substring(0, prompt.Length - 1))
+                    })
 
-            | Some text, Button "knob_push" when customPrompt.Behavior = SiriusXM ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let num = text.Substring(2)
+                | Press (Button "knob_push") when prompter.Behavior = SiriusXM ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        let num = prompt.Substring(2)
 
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelNumber = num)
-                        |> Seq.tryHead
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        let channel =
+                            channels
+                            |> Seq.where (fun c -> c.channelNumber = num)
+                            |> Seq.tryHead
 
-                    match channel with
-                    | Some c ->
-                        do! clearAsync ()
-                        do! playSiriusXMChannelAsync c.channelNumber c.name
-                    | None ->
-                        do! customPrompt.WriteAsync("> ")
-                })
+                        match channel with
+                        | Some c ->
+                            do! clearAsync ()
+                            do! playSiriusXMChannelAsync c.channelNumber c.name
+                        | None ->
+                            do! prompter.WriteAsync("> ")
+                    })
 
-            | Some text, Button "knob_push" when customPrompt.Behavior = LoadPresetMulti ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let num = text.Substring(2)
+                | Press (Button "knob_push") when prompter.Behavior = LoadPresetMulti ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        let num = prompt.Substring(2)
                         
-                    do! clearAsync ()
-                    do! Players.simulateButtonAsync player $"playPreset_{num}"
-                })
-
-            | Some text, Button "knob_push" when customPrompt.Behavior = SeekTo ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let array =
-                        text.Substring(2)
-                        |> Utility.split ':'
-                        |> Array.map Int32.TryParse
-
-                    let time =
-                        match array with
-                        | [| (true, s) |] ->
-                            Some s
-                        | [| (true, m); (true, s) |] ->
-                            Some (60 * m + s)
-                        | [| (true, h); (true, m); (true, s) |] ->
-                            Some (3600 * h + 60 * m + s)
-                        | _ ->
-                            None
-
-                    match time with
-                    | Some t ->
                         do! clearAsync ()
-                        do! Playlist.setTimeAsync player t
-                    | _ ->
-                        do! customPrompt.WriteAsync("> ")
-                })
+                        do! Players.simulateButtonAsync player $"playPreset_{num}"
+                    })
 
-            | Some _, Button "exit_left" ->
+                | Press (Button "knob_push") when prompter.Behavior = SeekTo ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        let array =
+                            prompt.Substring(2)
+                            |> Utility.split ':'
+                            |> Array.map Int32.TryParse
+
+                        let time =
+                            match array with
+                            | [| (true, s) |] ->
+                                Some s
+                            | [| (true, m); (true, s) |] ->
+                                Some (60 * m + s)
+                            | [| (true, h); (true, m); (true, s) |] ->
+                                Some (3600 * h + 60 * m + s)
+                            | _ ->
+                                None
+
+                        match time with
+                        | Some t ->
+                            do! clearAsync ()
+                            do! Playlist.setTimeAsync player t
+                        | _ ->
+                            do! prompter.WriteAsync("> ")
+                    })
+
+                | Press (Button "exit_left") ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        do! clearAsync ()
+                    })
+
+                | _ -> ()
+        }
+
+        let processNormalEntryAsync ircode time = task {
+            let mappings =
+                if powerState = On
+                then MappingsOn
+                else MappingsOff
+
+            let mapping =
+                mappings
+                |> Map.tryFind ircode
+                |> Option.defaultValue NoAction
+
+            match mapping with
+            | Hold actionList ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! clearAsync ()
-                })
-
-            | Some _, _ -> ()
-
-            | _, PowerHold defaultButton ->
-                do! doOnceAsync ircode (fun () -> task {
-                    if Option.isNone defaultButton then
-                        let message = "Hold to turn on radio..."
-                        do! Players.setDisplayAsync player message message (TimeSpan.FromSeconds(3))
+                    for a in actionList do
+                        match a with
+                        | Message m -> do! Players.setDisplayAsync player m m (TimeSpan.FromSeconds(5))
+                        | _ -> ()
 
                     let start = DateTime.UtcNow
 
-                    let mutable poweredOn = false
+                    let mutable actionTriggered = false
 
-                    while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(150) do
+                    while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(250) do
                         do! Task.Delay(100)
 
-                        if not poweredOn then
+                        if not actionTriggered then
                             if DateTime.UtcNow - start >= TimeSpan.FromSeconds(3) then
-                                do! Players.togglePowerAsync player
-                                poweredOn <- true
+                                do! clearAsync ()
 
-                    if not poweredOn then
-                        match defaultButton with
-                        | Some button -> do! Players.simulateButtonAsync player button
-                        | None -> do! clearAsync ()
+                                for a in actionList do
+                                    match a with
+                                    | OnHold pressAction -> do! pressAsync pressAction
+                                    | _ -> ()
+
+                                actionTriggered <- true
+
+                    if not actionTriggered then
+                        for a in actionList do
+                        match a with
+                        | OnRelease pressAction -> do! pressAsync pressAction
+                        | _ -> ()
                 })
 
-            | _, Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+            | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                 do! doOnceAsync ircode (fun () -> task {
-                    match customPrompt.Behavior with
+                    match prompter.Behavior with
                     | Digit ->
                         do! Players.simulateButtonAsync player str
                     | LoadPresetSingle ->
                         do! Players.simulateButtonAsync player $"playPreset_{str}"
                     | _ ->
-                        do! customPrompt.WriteAsync($"> {str}")
+                        do! prompter.WriteAsync($"> {str}")
                 })
 
-            | _, Input ->
+            | Input ->
                 do! doOnceAsync ircode (fun () -> task {
                     let all = seq {
                         Digit
@@ -269,39 +311,16 @@ module LyrionIRHandler =
 
                     let! (header, _) = Players.getDisplayNowAsync player
                     if header = "Input Mode" then
-                        customPrompt.Behavior <-
+                        prompter.Behavior <-
                             Seq.pairwise all
-                            |> Seq.where (fun (a, _) -> a = customPrompt.Behavior)
+                            |> Seq.where (fun (a, _) -> a = prompter.Behavior)
                             |> Seq.map (fun (_, b) -> b)
                             |> Seq.head
 
-                    do! Players.setDisplayAsync player "Input Mode" (getTitle customPrompt.Behavior) (TimeSpan.FromSeconds(3))
+                    do! Players.setDisplayAsync player "Input Mode" (getTitle prompter.Behavior) (TimeSpan.FromSeconds(3))
                 })
 
-            | _, Info ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! (previousHeader, _) = Players.getDisplayNowAsync player
-
-                    do! Players.simulateButtonAsync player "now_playing"
-
-                    if previousHeader = "Now Playing" then
-                        let! channelId = SXM.getChannelIdAsync player
-                        match channelId with
-                        | None -> ()
-                        | Some id ->
-                            let! songs = SXM.getSongsAsync id
-                            let song =
-                                songs
-                                |> Seq.sortByDescending (fun cut -> cut.startTime)
-                                |> Seq.tryHead
-                            match song with
-                            | None -> ()
-                            | Some c ->
-                                let artist = String.concat " / " c.artists
-                                do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
-                })
-
-            | _, ChannelUp when not channelChanging ->
+            | ChannelUp when not channelChanging ->
                 do! doOnceAsync ircode (fun () -> task {
                     let! id = SXM.getChannelIdAsync player
 
@@ -313,7 +332,7 @@ module LyrionIRHandler =
                                 do! playSiriusXMChannelAsync b.channelNumber b.name
                 })
 
-            | _, ChannelDown when not channelChanging ->
+            | ChannelDown when not channelChanging ->
                 do! doOnceAsync ircode (fun () -> task {
                     let! id = SXM.getChannelIdAsync player
 
@@ -325,17 +344,24 @@ module LyrionIRHandler =
                                 do! playSiriusXMChannelAsync a.channelNumber a.name
                 })
 
-            | _, Simulate name ->
+            | Simulate name ->
                 do! Players.simulateIRAsync player Slim[name] time
 
-            | _, Button button ->
+            | Press pressAction ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! Players.simulateButtonAsync player button
+                    do! pressAsync pressAction
                 })
 
             | _ -> ()
         }
 
+        let processIRAsync ircode time = task {
+            holdTime.Value <- DateTime.UtcNow
+
+            match prompter.CurrentText with
+            | Some prompt -> do! processPromptEntryAsync ircode prompt
+            | None -> do! processNormalEntryAsync ircode time
+        }
 
         let processCommandAsync command = task {
             try
@@ -369,6 +395,7 @@ module LyrionIRHandler =
             if not (handlers |> Map.containsKey player) then
                 let handler = new Handler(player)
                 handlers <- handlers |> Map.add player handler
+                ignore (Players.getPowerAsync player)
 
         override _.ExecuteAsync(cancellationToken) = task {
             use _ = reader |> Observable.subscribe (fun command ->
@@ -385,7 +412,6 @@ module LyrionIRHandler =
                 for i in [0 .. count - 1] do
                     let! player = Players.getIdAsync i
                     init player
-                    do! Players.getPowerAsync player :> Task
             with ex ->
                 Console.Error.WriteLine(ex)
 

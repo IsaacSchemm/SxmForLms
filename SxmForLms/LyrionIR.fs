@@ -68,24 +68,27 @@ module LyrionIR =
         "preset_6", 0x76896a95
     ]
 
+    type Press =
+    | Button of string
+    | StreamInfo
+
+    type HoldAction =
+    | Message of string
+    | OnHold of Press
+    | OnRelease of Press
+
     type Action =
     | Input
     | Simulate of string
-    | PowerHold of button: string option
-    | Button of string
+    | Hold of HoldAction list
+    | Press of Press
     | Dot
-    | Info
     | ChannelUp
     | ChannelDown
     | NoAction
 
-    let MappingsOff = Map.ofList [
-        0x61a0f00f, PowerHold None
-        0x61a0708f, PowerHold None
-    ]
-
-    let MappingsOn = Map.ofList [
-        0x61a0f00f, Button "power"
+    let ``NS-RC4NA-14`` = [
+        0x61a0f00f, Press (Button "power")
 
         0x61a0b847, Input
 
@@ -104,21 +107,21 @@ module LyrionIR =
 
         0x61a028d7, Simulate "home" // Menu
         0x61a09d62, Simulate "home"
-        0x61a0d827, Button "exit_left"
-        0x61a0e817, Info
+        0x61a0d827, Press (Button "exit_left")
+        0x61a0e817, Hold [OnHold StreamInfo; OnRelease (Button "now_playing")]
 
         0x61a042bd, Simulate "arrow_up"
         0x61a0c23d, Simulate "arrow_down"
         0x61a06897, Simulate "arrow_left"
         0x61a0a857, Simulate "arrow_right"
-        0x61a018e7, Button "knob_push"
+        0x61a018e7, Press (Button "knob_push")
 
         0x61a022dd, NoAction // Aspect
         0x61a038c7, NoAction // CCD
 
         0x61a030cf, Simulate "volup"
         0x61a0b04f, Simulate "voldown"
-        0x61a0708f, PowerHold (Some "muting")
+        0x61a0708f, Press (Button "muting")
 
         0x61a050af, ChannelUp
         0x61a0d02f, ChannelDown
@@ -130,11 +133,31 @@ module LyrionIR =
 
         0x61a00ef1, Simulate "play"
         0x61a0817e, Simulate "pause"
-        0x61a08e71, Button "stop"
+        0x61a08e71, Press (Button "stop")
         0x61a012ed, NoAction // "Audio"
 
         0x61a07e81, Simulate "rew"
         0x61a0be41, Simulate "fwd"
-        0x61a001fe, Button "jump_rew"
-        0x61a0fe01, Button "jump_fwd"
+        0x61a001fe, Press (Button "jump_rew")
+        0x61a0fe01, Press (Button "jump_fwd")
+    ]
+
+    let Remotes = [``NS-RC4NA-14``]
+
+    let MappingsOn = Map.ofList [
+        for ircode, action in Seq.collect id Remotes do
+            match action with
+            | Press (Button "muting") ->
+                ircode, Hold [OnHold (Button "power"); OnRelease (Button "muting")]
+            | _ ->  
+                ircode, action
+    ]
+
+    let MappingsOff = Map.ofList [
+        for ircode, action in Seq.collect id Remotes do
+            match action with
+            | Press (Button "power")
+            | Press (Button "muting") ->
+                ircode, Hold [Message "Hold to turn on radio..."; OnHold (Button "power")]
+            | _ -> ()
     ]

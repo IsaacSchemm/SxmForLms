@@ -209,81 +209,68 @@ module LyrionIRHandler =
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
 
-            match mapping with
+            do! doOnceAsync ircode (fun () -> task {
+                match mapping with
                 | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        do! prompter.WriteAsync($"{prompt}{str}")
-                    })
+                    do! prompter.WriteAsync($"{prompt}{str}")
 
                 | Dot when prompter.Behavior = SeekTo ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        do! prompter.WriteAsync($"{prompt}:")
-                    })
+                    do! prompter.WriteAsync($"{prompt}:")
 
                 | Simulate "arrow_left" ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        if prompt.Length > 2 then
-                            do! prompter.WriteAsync(prompt.Substring(0, prompt.Length - 1))
-                    })
+                    do! prompter.WriteAsync(prompt.Substring(0, prompt.Length - 1))
 
                 | Press (Button "knob_push") when prompter.Behavior = SiriusXM ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        let num = prompt.Substring(2)
+                    let num = prompt.Substring(2)
 
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                        let channel =
-                            channels
-                            |> Seq.where (fun c -> c.channelNumber = num)
-                            |> Seq.tryHead
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channel =
+                        channels
+                        |> Seq.where (fun c -> c.channelNumber = num)
+                        |> Seq.tryHead
 
-                        match channel with
-                        | Some c ->
-                            do! clearAsync ()
-                            do! playSiriusXMChannelAsync c.channelNumber c.name
-                        | None ->
-                            do! prompter.WriteAsync("> ")
-                    })
+                    match channel with
+                    | Some c ->
+                        do! clearAsync ()
+                        do! playSiriusXMChannelAsync c.channelNumber c.name
+                    | None ->
+                        do! prompter.WriteAsync("> ")
 
                 | Press (Button "knob_push") when prompter.Behavior = LoadPresetMulti ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        let num = prompt.Substring(2)
+                    let num = prompt.Substring(2)
                         
-                        do! clearAsync ()
-                        do! Players.simulateButtonAsync player $"playPreset_{num}"
-                    })
+                    do! clearAsync ()
+                    do! Players.simulateButtonAsync player $"playPreset_{num}"
 
                 | Press (Button "knob_push") when prompter.Behavior = SeekTo ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        let array =
-                            prompt.Substring(2)
-                            |> Utility.split ':'
-                            |> Array.map Int32.TryParse
+                    let array =
+                        prompt.Substring(2)
+                        |> Utility.split ':'
+                        |> Array.map Int32.TryParse
 
-                        let time =
-                            match array with
-                            | [| (true, s) |] ->
-                                Some s
-                            | [| (true, m); (true, s) |] ->
-                                Some (60 * m + s)
-                            | [| (true, h); (true, m); (true, s) |] ->
-                                Some (3600 * h + 60 * m + s)
-                            | _ ->
-                                None
-
-                        match time with
-                        | Some t ->
-                            do! clearAsync ()
-                            do! Playlist.setTimeAsync player t
+                    let time =
+                        match array with
+                        | [| (true, s) |] ->
+                            Some s
+                        | [| (true, m); (true, s) |] ->
+                            Some (60 * m + s)
+                        | [| (true, h); (true, m); (true, s) |] ->
+                            Some (3600 * h + 60 * m + s)
                         | _ ->
-                            do! prompter.WriteAsync("> ")
-                    })
+                            None
+
+                    match time with
+                    | Some t ->
+                        do! clearAsync ()
+                        do! Playlist.setTimeAsync player t
+                    | _ ->
+                        do! prompter.WriteAsync("> ")
 
                 | Press (Button "exit_left") ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        do! clearAsync ()
-                    })
+                    do! clearAsync ()
 
                 | _ -> ()
+            })
         }
 
         let processNormalEntryAsync ircode time = task {

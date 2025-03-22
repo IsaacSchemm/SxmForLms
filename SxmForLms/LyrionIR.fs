@@ -142,7 +142,56 @@ module LyrionIR =
         0x61a0fe01, Press (Button "jump_fwd")
     ]
 
-    let Remotes = [``NS-RC4NA-14``]
+    let XRT500 = [
+        0x20DFF40B, Press Input
+        0x20DF10EF, Press (Button "power")
+
+        0x20DFAC53, Simulate "rew"
+        0x20DFEC13, Simulate "pause"
+        0x20DFCC33, Simulate "play"
+        0x20DF6C93, Simulate "fwd"
+
+        0x20DF9C63, NoAction // CC
+        0x20DF2CD3, NoAction // Rec
+        0x20DF0CF3, Press (Button "stop")
+        0x20DFF20D, Simulate "home" // Menu
+
+        0x20DF926D, Press (Button "exit_left")
+        0x20DFD827, Hold [OnHold StreamInfo; OnRelease (Button "now_playing")]
+        0x20DF52AD, Simulate "arrow_left" // Back
+        0x20DF38C7, Simulate "favorites" // Guide
+
+        0x20DFA25D, Simulate "arrow_up"
+        0x20DF629D, Simulate "arrow_down"
+        0x20DFE21D, Simulate "arrow_left"
+        0x20DF12ED, Simulate "arrow_right"
+        0x20DF22DD, Press (Button "knob_push")
+
+        0x20DF40BF, Simulate "volup"
+        0x20DFC03F, Simulate "voldown"
+
+        0x20DFB44B, Press StreamInfo // Vizio
+
+        0x20DF906F, Press (Button "muting")
+        0x20DFEE11, NoAction // Aspect
+        0x20DFE619, NoAction // Pic
+        0x20DF58A7, Simulate "repeat"
+
+        0x20DF8877, Simulate "1"
+        0x20DF48B7, Simulate "2"
+        0x20DFC837, Simulate "3"
+        0x20DF28D7, Simulate "4"
+        0x20DFA857, Simulate "5"
+        0x20DF6897, Simulate "6"
+        0x20DFE817, Simulate "7"
+        0x20DF18E7, Simulate "8"
+        0x20DF9867, Simulate "9"
+        0x20DF5CA3, Press (Button "knob_push") // Enter
+        0x20DF08F7, Simulate "0"
+        0x20DFFF00, Dot // Dash
+    ]
+
+    let Remotes = [``NS-RC4NA-14``; XRT500]
 
     let MappingsOn = Map.ofList [
         for ircode, action in Seq.collect id Remotes do

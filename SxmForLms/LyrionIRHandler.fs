@@ -151,8 +151,51 @@ module LyrionIRHandler =
 
         let pressAsync pressAction = task {
             match pressAction with
-            | Button button -> do! Players.simulateButtonAsync player button
-            | StreamInfo -> do! showStreamInfo ()
+            | Button button ->
+                do! Players.simulateButtonAsync player button
+            | StreamInfo ->
+                do! showStreamInfo ()
+            | ChannelUp | ChannelDown when channelChanging ->
+                ()
+            | ChannelUp ->
+                if not channelChanging then
+                    let! id = SXM.getChannelIdAsync player
+
+                    if Option.isSome id then
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                        for (a, b) in Seq.pairwise channels do
+                            if Some a.channelId = id then
+                                do! playSiriusXMChannelAsync b.channelNumber b.name
+            | ChannelDown ->
+                if not channelChanging then
+                    let! id = SXM.getChannelIdAsync player
+
+                    if Option.isSome id then
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                        for (a, b) in Seq.pairwise channels do
+                            if Some b.channelId = id then
+                                do! playSiriusXMChannelAsync a.channelNumber a.name
+            | Input ->
+                let all = seq {
+                    Digit
+                    LoadPresetSingle
+                    LoadPresetMulti
+                    SeekTo
+                    SiriusXM
+                    Digit
+                }
+
+                let! (header, _) = Players.getDisplayNowAsync player
+                if header = "Input Mode" then
+                    prompter.Behavior <-
+                        Seq.pairwise all
+                        |> Seq.where (fun (a, _) -> a = prompter.Behavior)
+                        |> Seq.map (fun (_, b) -> b)
+                        |> Seq.head
+
+                do! Players.setDisplayAsync player "Input Mode" (getTitle prompter.Behavior) (TimeSpan.FromSeconds(3))
         }
 
         let processPromptEntryAsync ircode (prompt: string) = task {
@@ -287,61 +330,12 @@ module LyrionIRHandler =
                         | _ -> ()
                 })
 
-            | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+            | Simulate str when str.Length = 1 && "0123456789".Contains(str) && prompter.Behavior <> Digit ->
                 do! doOnceAsync ircode (fun () -> task {
-                    match prompter.Behavior with
-                    | Digit ->
-                        do! Players.simulateButtonAsync player str
-                    | LoadPresetSingle ->
+                    if prompter.Behavior = LoadPresetSingle then
                         do! Players.simulateButtonAsync player $"playPreset_{str}"
-                    | _ ->
+                    else
                         do! prompter.WriteAsync($"> {str}")
-                })
-
-            | Input ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let all = seq {
-                        Digit
-                        LoadPresetSingle
-                        LoadPresetMulti
-                        SeekTo
-                        SiriusXM
-                        Digit
-                    }
-
-                    let! (header, _) = Players.getDisplayNowAsync player
-                    if header = "Input Mode" then
-                        prompter.Behavior <-
-                            Seq.pairwise all
-                            |> Seq.where (fun (a, _) -> a = prompter.Behavior)
-                            |> Seq.map (fun (_, b) -> b)
-                            |> Seq.head
-
-                    do! Players.setDisplayAsync player "Input Mode" (getTitle prompter.Behavior) (TimeSpan.FromSeconds(3))
-                })
-
-            | ChannelUp when not channelChanging ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! id = SXM.getChannelIdAsync player
-
-                    if Option.isSome id then
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                        for (a, b) in Seq.pairwise channels do
-                            if Some a.channelId = id then
-                                do! playSiriusXMChannelAsync b.channelNumber b.name
-                })
-
-            | ChannelDown when not channelChanging ->
-                do! doOnceAsync ircode (fun () -> task {
-                    let! id = SXM.getChannelIdAsync player
-
-                    if Option.isSome id then
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                        for (a, b) in Seq.pairwise channels do
-                            if Some b.channelId = id then
-                                do! playSiriusXMChannelAsync a.channelNumber a.name
                 })
 
             | Simulate name ->

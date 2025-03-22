@@ -71,6 +71,9 @@ module LyrionIR =
     type Press =
     | Button of string
     | StreamInfo
+    | ChannelUp
+    | ChannelDown
+    | Input
 
     type HoldAction =
     | Message of string
@@ -78,19 +81,16 @@ module LyrionIR =
     | OnRelease of Press
 
     type Action =
-    | Input
     | Simulate of string
     | Hold of HoldAction list
     | Press of Press
     | Dot
-    | ChannelUp
-    | ChannelDown
     | NoAction
 
     let ``NS-RC4NA-14`` = [
         0x61a0f00f, Press (Button "power")
 
-        0x61a0b847, Input
+        0x61a0b847, Press Input
 
         0x61a000ff, Simulate "1"
         0x61a0807f, Simulate "2"
@@ -123,8 +123,8 @@ module LyrionIR =
         0x61a0b04f, Simulate "voldown"
         0x61a0708f, Press (Button "muting")
 
-        0x61a050af, ChannelUp
-        0x61a0d02f, ChannelDown
+        0x61a050af, Press ChannelUp
+        0x61a0d02f, Press ChannelDown
 
         0x61a0c837, Simulate "sleep"
         0x61a0d22d, Simulate "favorites"

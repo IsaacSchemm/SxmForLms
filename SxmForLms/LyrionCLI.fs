@@ -282,4 +282,4 @@ module LyrionCLI =
         let getPathAsync (Player id) = listenForAsync [id; "path"; "?"] (fun command ->
             match command with
             | [x; "path"; path] when x = id -> Some path
-            | b -> None)
+            | _ -> None)

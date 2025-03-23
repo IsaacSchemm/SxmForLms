@@ -1,6 +1,5 @@
 ﻿namespace SxmForLms
 
-open System.Diagnostics
 open System.IO
 open System.Xml
 
@@ -42,7 +41,8 @@ module LyrionFavorites =
             ]
 
             for oldCategory in oldCategories do
-                oldCategory.ParentNode.RemoveChild(oldCategory) |> ignore
+                if oldCategory.Name = categoryName then
+                    oldCategory.ParentNode.RemoveChild(oldCategory) |> ignore
 
             let newCategory = doc.CreateElement("outline")
             newCategory.SetAttribute("icon", "html/images/radio.png")

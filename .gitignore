@@ -4,11 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 .gitignore
-username.txt
-password.txt
-mediaServicesSecret.txt
-navigationServicesSecret.txt
-nowPlayingServicesSecret.txt
+*.txt
 
 # User-specific files
 *.rsuser

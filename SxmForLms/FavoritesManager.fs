@@ -9,13 +9,23 @@ module FavoritesManager =
     let runAsync cancellationToken = task {
         let! address = Network.getAddressAsync cancellationToken
 
-        let! channels = SiriusXMClient.getChannelsAsync cancellationToken
+        let! siriusXMChannels = SiriusXMClient.getChannelsAsync cancellationToken
 
         do! LyrionFavorites.updateFavoritesAsync "SiriusXM" [
-            for channel in channels do {|
+            for channel in siriusXMChannels do {|
                 url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
                 icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
                 text = $"[{channel.channelNumber}] {channel.name}"
+            |}
+        ]
+
+        let! musicChoiceChannels = MusicChoiceClient.getChannelsAsync ()
+
+        do! LyrionFavorites.updateFavoritesAsync "Music Choice" [
+            for channel in musicChoiceChannels do {|
+                url = $"http://{address}:{Config.port}/MusicChoice/PlayChannel?channelID={channel.ChannelID}"
+                icon = $"http://{address}:{Config.port}/MusicChoice/ChannelImage?channelID={channel.ChannelID}"
+                text = $"[{channel.Type}] {channel.Name}"
             |}
         ]
 

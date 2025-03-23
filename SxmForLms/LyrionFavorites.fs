@@ -1,6 +1,5 @@
 ﻿namespace SxmForLms
 
-open System.Diagnostics
 open System.IO
 open System.Xml
 

@@ -6,7 +6,9 @@
 .gitignore
 username.txt
 password.txt
-bookmarks.txt
+mediaServicesSecret.txt
+navigationServicesSecret.txt
+nowPlayingServicesSecret.txt
 
 # User-specific files
 *.rsuser

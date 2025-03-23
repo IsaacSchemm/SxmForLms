@@ -12,6 +12,7 @@
     <Compile Include="LyrionCLI.fs" />
     <Compile Include="LyrionFavorites.fs" />
     <Compile Include="SiriusXMClient.fs" />
+    <Compile Include="MusicChoiceClient.fs" />
     <Compile Include="ChunklistParser.fs" />
     <Compile Include="MediaProxy.fs" />
     <Compile Include="FavoritesManager.fs" />

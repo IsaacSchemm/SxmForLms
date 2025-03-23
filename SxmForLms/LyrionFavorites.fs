@@ -41,7 +41,7 @@ module LyrionFavorites =
             ]
 
             for oldCategory in oldCategories do
-                if oldCategory.Name = categoryName then
+                if attr "text" oldCategory = Some categoryName then
                     oldCategory.ParentNode.RemoveChild(oldCategory) |> ignore
 
             let newCategory = doc.CreateElement("outline")

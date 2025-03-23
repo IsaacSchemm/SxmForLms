@@ -34,37 +34,6 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
-    module SXM =
-        let getChannelIdAsync player = task {
-            let! path = Playlist.getPathAsync player
-
-            match Uri.TryCreate(path, UriKind.Absolute) with
-            | true, uri ->
-                let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
-                let m = proxyPathPattern.Match(uri.AbsolutePath)
-
-                if m.Success then
-                    return Some m.Groups[1].Value
-                else
-                    return None
-            | false, _ ->
-                return None
-        }
-
-        let getSongsAsync channelId = task {
-            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-            let channel =
-                channels
-                |> Seq.where (fun c -> c.channelId = channelId)
-                |> Seq.tryHead
-            match channel with
-            | Some c ->
-                let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                return playlist.cuts
-            | None ->
-                return []
-        }
-
     let requestPowerState player =
         ignore (Players.getPowerAsync player)
 
@@ -89,21 +58,20 @@ module LyrionIRHandler =
                 do! action ()
         }
 
-        let showStreamInfo () = task {
-            let! channelId = SXM.getChannelIdAsync player
-            match channelId with
-            | None -> ()
-            | Some id ->
-                let! songs = SXM.getSongsAsync id
-                let song =
-                    songs
-                    |> Seq.sortByDescending (fun cut -> cut.startTime)
-                    |> Seq.tryHead
-                match song with
-                | None -> ()
-                | Some c ->
-                    let artist = String.concat " / " c.artists
-                    do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+        let currentSiriusXMChannelId = lazy task {
+            let! path = Playlist.getPathAsync player
+
+            match Uri.TryCreate(path, UriKind.Absolute) with
+            | true, uri ->
+                let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
+                let m = proxyPathPattern.Match(uri.AbsolutePath)
+
+                if m.Success then
+                    return Some m.Groups[1].Value
+                else
+                    return None
+            | false, _ ->
+                return None
         }
 
         let mutable channelChanging = false
@@ -160,12 +128,35 @@ module LyrionIRHandler =
             | Button button ->
                 do! Players.simulateButtonAsync player button
             | StreamInfo ->
-                do! showStreamInfo ()
+                let! channelId = currentSiriusXMChannelId.Value
+                match channelId with
+                | None -> ()
+                | Some id ->
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channel =
+                        channels
+                        |> Seq.where (fun c -> c.channelId = id)
+                        |> Seq.tryHead
+
+                    match channel with
+                    | None -> ()
+                    | Some c ->
+                        let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                        let song =
+                            playlist.cuts
+                            |> Seq.sortByDescending (fun cut -> cut.startTime)
+                            |> Seq.tryHead
+
+                        match song with
+                        | None -> ()
+                        | Some c ->
+                            let artist = String.concat " / " c.artists
+                            do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
             | ChannelUp | ChannelDown when channelChanging ->
                 ()
             | ChannelUp ->
                 if not channelChanging then
-                    let! id = SXM.getChannelIdAsync player
+                    let! id = currentSiriusXMChannelId.Value
 
                     if Option.isSome id then
                         let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
@@ -175,7 +166,7 @@ module LyrionIRHandler =
                                 do! playSiriusXMChannelAsync b.channelNumber b.name
             | ChannelDown ->
                 if not channelChanging then
-                    let! id = SXM.getChannelIdAsync player
+                    let! id = currentSiriusXMChannelId.Value
 
                     if Option.isSome id then
                         let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None

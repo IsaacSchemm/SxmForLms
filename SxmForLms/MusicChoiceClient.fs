@@ -2,13 +2,9 @@
 
 open System
 open System.IO
-open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
-open System.Net.Http.Json
 open System.Runtime.Caching
-open System.Threading
-open System.Threading.Tasks
 
 module MusicChoiceClient =
     type MVPD = Spectrum = 134
@@ -118,4 +114,54 @@ module MusicChoiceClient =
         if obj.StreamType <> "HLS" then
             failwith "Stream is not HLS"
         return obj.PrimaryUrl
+    }
+
+    let getCurrentSongIdAsync contentId = task {
+        let! playlistUri = task {
+            let! url = getContentAsync contentId
+            return new Uri(url)
+        }
+
+        let! playlist = task {
+            use req = new HttpRequestMessage(HttpMethod.Get, playlistUri)
+            use! resp = client.SendAsync(req)
+            return! resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+        }
+
+        let chunklistPath =
+            playlist.Split("\n")
+            |> Seq.where (fun str -> not (str.StartsWith("#")))
+            |> Seq.head
+
+        let chunklistUri = new Uri(playlistUri, chunklistPath)
+
+        let! chunklist = task {
+            use req = new HttpRequestMessage(HttpMethod.Get, chunklistUri)
+            use! resp = client.SendAsync(req)
+            return! resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+        }
+
+        let regex = new System.Text.RegularExpressions.Regex("^#EXT-X-MC-SEGMENT-MAP:[0-9]+=\"([0-9]+)\"")
+        let m = regex.Match(chunklist)
+        return m.Groups[1].Value
+    }
+
+    let getNowPlayingAsync (channelId: int) (songId: string) = task {
+        let! bearerToken = getTokenAsync NowPlaying
+        use req = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"https://nowplayingservices.musicchoice.com/api/NowPlaying/OnScreen/{channelId}/{Uri.EscapeDataString(songId)}")
+        req.Headers.Authorization <- new AuthenticationHeaderValue("Bearer", bearerToken)
+        use! resp = client.SendAsync(req)
+        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+        return json |> Utility.deserializeAs {|
+            Line1 = ""
+            Line2 = ""
+            Line3 = ""
+            SongID = ""
+            Facts = [{|
+                Header = ""
+                Fact = ""
+            |}]
+        |}
     }

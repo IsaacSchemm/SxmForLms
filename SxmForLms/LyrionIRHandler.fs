@@ -12,6 +12,14 @@ open LyrionCLI
 open LyrionIR
 
 module LyrionIRHandler =
+    let mutable mcCache = Map.empty
+
+    let storeMusicChoiceId (id: int) (url: string) =
+        mcCache <- Map.add url id mcCache
+
+    let retrieveMusicChoiceId (url: string) =
+        Map.tryFind url mcCache
+
     type DigitBehavior =
     | Digit
     | LoadPresetSingle
@@ -58,8 +66,12 @@ module LyrionIRHandler =
                 do! action ()
         }
 
+        let currentPath = lazy task {
+            return! Playlist.getPathAsync player
+        }
+
         let currentSiriusXMChannelId = lazy task {
-            let! path = Playlist.getPathAsync player
+            let! path = currentPath.Value
 
             match Uri.TryCreate(path, UriKind.Absolute) with
             | true, uri ->
@@ -72,6 +84,11 @@ module LyrionIRHandler =
                     return None
             | false, _ ->
                 return None
+        }
+
+        let currentMusicChoiceChannelId = lazy task {
+            let! path = currentPath.Value
+            return retrieveMusicChoiceId path
         }
 
         let mutable channelChanging = false
@@ -128,10 +145,10 @@ module LyrionIRHandler =
             | Button button ->
                 do! Players.simulateButtonAsync player button
             | StreamInfo ->
-                let! channelId = currentSiriusXMChannelId.Value
-                match channelId with
-                | None -> ()
-                | Some id ->
+                let! siriusXMChannelId = currentSiriusXMChannelId.Value
+                let! musicChoiceChannelId = currentMusicChoiceChannelId.Value
+                match siriusXMChannelId, musicChoiceChannelId with
+                | Some id, _ ->
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channel =
                         channels
@@ -152,6 +169,21 @@ module LyrionIRHandler =
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+                | _, Some id ->
+                    let! channels = MusicChoiceClient.getChannelsAsync ()
+                    for channel in channels do
+                        if channel.ChannelID = id then
+                            do! Players.setDisplayAsync player " " "Loading..." (TimeSpan.FromSeconds(30))
+                            let! songId = MusicChoiceClient.getCurrentSongIdAsync channel.ContentId
+                            let! song = MusicChoiceClient.getNowPlayingAsync id songId
+                            do! Players.setDisplayAsync player song.Line1 song.Line2 (TimeSpan.FromSeconds(6))
+                            do! Task.Delay(5000)
+                            do! Players.setDisplayAsync player song.Line1 song.Line3 (TimeSpan.FromSeconds(6))
+                            do! Task.Delay(5000)
+                            let fact = Seq.randomChoice song.Facts
+                            do! Players.setDisplayAsync player fact.Header fact.Fact (TimeSpan.FromSeconds(12))
+                | _ ->
+                    do! Players.setDisplayAsync player " " "No stream information found" (TimeSpan.FromSeconds(3))
             | ChannelUp | ChannelDown when channelChanging ->
                 ()
             | ChannelUp ->

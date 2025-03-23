@@ -24,7 +24,7 @@ module FavoritesManager =
         do! LyrionFavorites.updateFavoritesAsync "Music Choice" [
             for channel in musicChoiceChannels do {|
                 url = $"http://{address}:{Config.port}/MusicChoice/PlayChannel?channelID={channel.ChannelID}"
-                icon = $"http://{address}:{Config.port}/MusicChoice/ChannelImage?channelID={channel.ChannelID}"
+                icon = "html/imagesradio.png"
                 text = $"[{channel.Type}] {channel.Name}"
             |}
         ]

@@ -32,6 +32,10 @@ module LyrionFavorites =
 
     let updateFavoritesAsync categoryName desiredFavorites = task {
         if File.Exists(path) && getFavorites categoryName <> desiredFavorites then
+            printfn "%s" categoryName
+            for y, z in Seq.zip (getFavorites categoryName) desiredFavorites do
+                if y <> z then
+                    printfn "%A %A" y z
             let doc = new XmlDocument()
             doc.Load(path)
 
@@ -41,7 +45,7 @@ module LyrionFavorites =
             ]
 
             for oldCategory in oldCategories do
-                if oldCategory.Name = categoryName then
+                if attr "text" oldCategory = Some categoryName then
                     oldCategory.ParentNode.RemoveChild(oldCategory) |> ignore
 
             let newCategory = doc.CreateElement("outline")

@@ -55,7 +55,7 @@ module LyrionIRHandler =
                 do! action ()
         }
 
-        let currentSiriusXMChannelId = lazy task {
+        let getCurrentSiriusXMChannelId () = task {
             let! path = Playlist.getPathAsync player
 
             match Uri.TryCreate(path, UriKind.Absolute) with
@@ -125,7 +125,7 @@ module LyrionIRHandler =
             | Button button ->
                 do! Players.simulateButtonAsync player button
             | StreamInfo ->
-                let! channelId = currentSiriusXMChannelId.Value
+                let! channelId = getCurrentSiriusXMChannelId ()
                 match channelId with
                 | None -> ()
                 | Some id ->
@@ -163,7 +163,7 @@ module LyrionIRHandler =
                 ()
             | ChannelUp ->
                 if not channelChanging then
-                    let! id = currentSiriusXMChannelId.Value
+                    let! id = getCurrentSiriusXMChannelId ()
 
                     if Option.isSome id then
                         let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
@@ -173,7 +173,7 @@ module LyrionIRHandler =
                                 do! playSiriusXMChannelAsync b.channelNumber b.name
             | ChannelDown ->
                 if not channelChanging then
-                    let! id = currentSiriusXMChannelId.Value
+                    let! id = getCurrentSiriusXMChannelId ()
 
                     if Option.isSome id then
                         let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None

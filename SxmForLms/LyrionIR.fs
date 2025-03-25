@@ -71,6 +71,7 @@ module LyrionIR =
     type Press =
     | Button of string
     | StreamInfo
+    | Forecast
     | ChannelUp
     | ChannelDown
     | Input
@@ -117,7 +118,7 @@ module LyrionIR =
         0x61a018e7, Press (Button "knob_push")
 
         0x61a022dd, NoAction // Aspect
-        0x61a038c7, NoAction // CCD
+        0x61a038c7, Press Forecast // CCD
 
         0x61a030cf, Simulate "volup"
         0x61a0b04f, Simulate "voldown"
@@ -151,7 +152,7 @@ module LyrionIR =
         0x20DFCC33, Simulate "play"
         0x20DF6C93, Simulate "fwd"
 
-        0x20DF9C63, NoAction // CC
+        0x20DF9C63, Press Forecast // CC
         0x20DF2CD3, NoAction // Rec
         0x20DF0CF3, Press (Button "stop")
         0x20DFF20D, Simulate "home" // Menu

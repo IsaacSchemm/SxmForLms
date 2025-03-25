@@ -34,9 +34,6 @@ module LyrionIRHandler =
         | true, value -> Some value
         | false, _ -> None
 
-    let requestPowerState player =
-        ignore (Players.getPowerAsync player)
-
     type Handler(player: Player) =
         let mutable buttonsPressed = Map.empty
 
@@ -152,6 +149,16 @@ module LyrionIRHandler =
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+            | Forecast ->
+                let! forecasts = Weather.getForecastsAsync ()
+                let! alerts = Weather.getAlertsAsync ()
+
+                do! Reader.readAsync player [
+                    for forecast in Seq.truncate 2 forecasts do
+                        forecast
+                    for alert in alerts do
+                        alert.info
+                ]
             | ChannelUp | ChannelDown when channelChanging ->
                 ()
             | ChannelUp ->
@@ -387,7 +394,7 @@ module LyrionIRHandler =
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
                 | [x; "power"] when Player x = player ->
-                    requestPowerState player
+                    ignore (Players.getPowerAsync player)
                 | [x; "power"; "0"] when Player x = player ->
                     powerState <- false
                 | [x; "power"; "1"] when Player x = player ->
@@ -414,7 +421,7 @@ module LyrionIRHandler =
                 let handler = new Handler(player)
                 handlers <- handlers |> Map.add player handler
 
-                requestPowerState player
+                ignore (Players.getPowerAsync player)
 
         override _.ExecuteAsync(cancellationToken) = task {
             use _ = reader |> Observable.subscribe (fun command ->

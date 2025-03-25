@@ -271,10 +271,23 @@ module LyrionCLI =
             | [x; "mode"; "pause"] when x = id -> Some Paused
             | _ -> None)
 
+        let getTitleAsync (Player id) = listenForAsync [id; "title"; "?"] (fun command ->
+            match command with
+            | [x; "title"; title] when x = id -> Some title
+            | _ -> None)
+
         let playItemAsync (Player id) item title = sendAsync [
             id
             "playlist"
             "play"
+            item
+            title
+        ]
+
+        let insertItemAsync (Player id) item title = sendAsync [
+            id
+            "playlist"
+            "insert"
             item
             title
         ]

@@ -8,6 +8,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddHostedService<LyrionCLI.Service>();
 builder.Services.AddHostedService<FavoritesManager.Service>();
 builder.Services.AddHostedService<LyrionIRHandler.Service>();
+builder.Services.AddHostedService<WeatherManager.Service>();
 
 var app = builder.Build();
 

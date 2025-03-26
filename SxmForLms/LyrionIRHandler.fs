@@ -418,31 +418,18 @@ module LyrionIRHandler =
 
         let mutable handlers = Map.empty
 
-        let init player = ignore (task {
-            try
-                if not (handlers |> Map.containsKey player) then
-                    let handler = new Handler(player)
-                    handlers <- handlers |> Map.add player handler
-
-                let! state = Players.getPowerAsync player
-                handlers[player].PowerState <- state
-            with ex -> Console.Error.WriteLine(ex)
-        })
-
         override _.ExecuteAsync(cancellationToken) = task {
-            use _ = reader |> Observable.subscribe (fun command ->
-                match command with
-                | [playerid; "client"; "new"]
-                | [playerid; "client"; "reconnect"] ->
-                    init (Player playerid)
-                | _ -> ())
-
             while not cancellationToken.IsCancellationRequested do
                 try
                     let! count = Players.countAsync ()
                     for i in [0 .. count - 1] do
                         let! player = Players.getIdAsync i
-                        init player
+
+                        if not (handlers |> Map.containsKey player) then
+                            handlers <- handlers |> Map.add player (new Handler(player))
+
+                        let! state = Players.getPowerAsync player
+                        handlers[player].PowerState <- state
                 with ex -> Console.Error.WriteLine(ex)
 
                 do! Task.Delay(TimeSpan.FromMinutes(15), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)

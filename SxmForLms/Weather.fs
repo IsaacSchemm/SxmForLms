@@ -3,7 +3,7 @@
 open System
 open System.Runtime.Caching
 
-open Reader
+open Speech
 
 module Weather =
     type Alert = {
@@ -12,8 +12,8 @@ module Weather =
         info: Readable
     }
 
-    let getForecastsAsync () = task {
-        let! obj = NWS.getForecastAsync.Invoke()
+    let getForecastsAsync cancellationToken = task {
+        let! obj = NWS.getForecastAsync cancellationToken
         return [
             for f in obj.properties.periods do {
                 screen = $"{f.name}: {f.temperature}°{f.temperatureUnit}, {f.shortForecast}"
@@ -22,8 +22,8 @@ module Weather =
         ]
     }
 
-    let getAlertsAsync () = task {
-        let! obj = NWS.getActiveAlertsAsync ()
+    let getAlertsAsync cancellationToken = task {
+        let! obj = NWS.getActiveAlertsAsync cancellationToken
         return [
             for f in obj.features do {
                 id = f.properties.id
@@ -50,8 +50,8 @@ module Weather =
         | :? Known -> true
         | _ -> false
 
-    let getNewAlertsAsync () = task {
-        let! alerts = getAlertsAsync ()
+    let getNewAlertsAsync cancellationToken = task {
+        let! alerts = getAlertsAsync cancellationToken
         return [
             for a in alerts do
                 if not (isAlertKnown a) then

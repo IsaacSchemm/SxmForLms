@@ -4,7 +4,6 @@ open System
 open System.IO
 open System.Net.Http
 open System.Runtime.Caching
-open System.Threading.Tasks
 
 module NWS =
     let USER_AGENT = "SxmForLms/0.1 (https://github.com/IsaacSchemm/SxmForLms)"
@@ -26,42 +25,46 @@ module NWS =
         else
             nyc
 
-    let cache (ts: TimeSpan) (f: unit -> Task<'T>) =
-        let key = $"{Guid.NewGuid()}"
-        new Func<Task<'T>>(fun () -> task {
-            match MemoryCache.Default[key] with
-            | :? 'T as item ->
-                return item
-            | _ ->
-                let! result = f ()
-                MemoryCache.Default.Add(key, result, DateTime.UtcNow + ts) |> ignore
-                return result
-        })
+    let tryCacheGet key =
+        match MemoryCache.Default[key] with
+        | :? 'T as item -> Some item
+        | _ -> None
 
-    let getPointAsync = cache (TimeSpan.FromHours(4)) (fun () -> task {
-        use! resp = client.GetAsync($"/points/{latitude},{longitude}")
-        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
-        return json |> Utility.deserializeAs {|
-            properties = {|
-                forecast = ""
-                relativeLocation = {|
-                    properties = {|
-                        city = ""
-                        state = ""
-                        distance = {|
-                            unitCode = ""
-                            value = 0.0
+    let getPointAsync cancellationToken = task {
+        let key = "058769d7-1c03-49ca-856c-25b22887cad3"
+        match tryCacheGet key with
+        | Some obj ->
+            return obj
+        | None ->
+            use! resp = client.GetAsync(
+                $"/points/{latitude},{longitude}",
+                cancellationToken = cancellationToken)
+            let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
+            let obj = json |> Utility.deserializeAs {|
+                properties = {|
+                    forecast = ""
+                    relativeLocation = {|
+                        properties = {|
+                            city = ""
+                            state = ""
+                            distance = {|
+                                unitCode = ""
+                                value = 0.0
+                            |}
                         |}
                     |}
                 |}
             |}
-        |}
-    })
+            MemoryCache.Default.Add(key, obj, DateTime.UtcNow.AddDays(1)) |> ignore
+            return obj
+    }
 
-    let getForecastAsync = cache (TimeSpan.FromMinutes(15)) (fun () -> task {
-        let! point = getPointAsync.Invoke()
-        use! resp = client.GetAsync(point.properties.forecast)
-        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+    let getForecastAsync cancellationToken = task {
+        let! point = getPointAsync cancellationToken
+        use! resp = client.GetAsync(
+            point.properties.forecast,
+            cancellationToken = cancellationToken)
+        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
         return json |> Utility.deserializeAs {|
             properties = {|
                 generatedAt = DateTimeOffset.MinValue
@@ -75,14 +78,13 @@ module NWS =
                 |}]
             |}
         |}
-    })
+    }
 
-    let getActiveAlertsAsync () = task {
-        use! resp =
-            if DateTime.UtcNow < new DateTime(2025, 3, 26)
-            then client.GetAsync($"/alerts/active?area=WI")
-            else client.GetAsync($"/alerts/active?point={latitude},{longitude}")
-        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync()
+    let getActiveAlertsAsync cancellationToken = task {
+        use! resp = client.GetAsync(
+            $"/alerts/active?point={latitude},{longitude}",
+            cancellationToken = cancellationToken)
+        let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
         return json |> Utility.deserializeAs {|
             features = [{|
                 properties = {|

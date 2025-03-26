@@ -16,7 +16,7 @@
     <Compile Include="MediaProxy.fs" />
     <Compile Include="FavoritesManager.fs" />
     <Compile Include="LyrionIR.fs" />
-    <Compile Include="Reader.fs" />
+    <Compile Include="Speech.fs" />
     <Compile Include="NWS.fs" />
     <Compile Include="Weather.fs" />
     <Compile Include="WeatherManager.fs" />

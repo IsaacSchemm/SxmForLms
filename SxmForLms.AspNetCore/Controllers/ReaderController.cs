@@ -6,7 +6,7 @@ namespace SxmForLms.AspNetCore.Controllers
     {
         public async Task<IActionResult> Speech(Guid id)
         {
-            string speech = Reader.retrieveSpeech(id);
+            string speech = SxmForLms.Speech.retrieveSpeech(id);
             byte[] data = await SpeechSynthesis.generateWavAsync(speech);
             return File(data, "audio/wav");
         }

@@ -19,10 +19,12 @@ module WeatherManager =
                         if not (List.isEmpty alerts) then
                             for i in [0 .. count - 1] do
                                 let! player = Players.getIdAsync i
-                                do! Reader.readAsync player [
-                                    for alert in alerts do
-                                        alert.info
-                                ]
+                                let! powerState = Players.getPowerAsync player
+                                if powerState then
+                                    do! Reader.readAsync player [
+                                        for alert in alerts do
+                                            alert.info
+                                    ]
                     with ex -> Console.Error.WriteLine(ex)
 
                 do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)

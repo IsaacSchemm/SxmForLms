@@ -46,6 +46,7 @@ SxmForLms maintains a TCP connection to LMS to monitor the radio for infrared re
     * Seek (ss, hh:ss, mm:hh:ss) (with prompt)
     * Play SiriusXM channel (with prompt)
     * Calculator (with prompt)
+* Reading weather forecasts and alerts from https://api.weather.gov/ (alerts are checked every 5 minutes while at least one radio is powered on)
 * Performing one action (such as Mute) when a button is pressed and released, but a separate action (such as Power) when held for five seconds
 
 Functions marked "with prompt" will override the radio's display temporarily so the user can enter a number, timestamp, or expression.

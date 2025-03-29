@@ -6,7 +6,7 @@ open System.Threading
 
 open LyrionCLI
 
-module Reader =
+module Speech =
     type Readable = {
         screen: string
         speech: Guid

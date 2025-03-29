@@ -150,10 +150,10 @@ module LyrionIRHandler =
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
             | Forecast ->
-                let! forecasts = Weather.getForecastsAsync ()
-                let! alerts = Weather.getAlertsAsync ()
+                let! forecasts = Weather.getForecastsAsync CancellationToken.None
+                let! alerts = Weather.getAlertsAsync CancellationToken.None
 
-                do! Reader.readAsync player [
+                do! Speech.readAsync player [
                     for forecast in Seq.truncate 2 forecasts do
                         forecast
                     for alert in alerts do
@@ -393,8 +393,6 @@ module LyrionIRHandler =
                 match command with
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
-                | [x; "power"] when Player x = player ->
-                    ignore (Players.getPowerAsync player)
                 | [x; "power"; "0"] when Player x = player ->
                     powerState <- false
                 | [x; "power"; "1"] when Player x = player ->
@@ -408,6 +406,10 @@ module LyrionIRHandler =
         let subscriber = reader |> Observable.subscribe (fun command ->
             ignore (processCommandAsync command))
 
+        member _.PowerState
+            with get () = powerState
+            and set v = powerState <- v
+
         interface IDisposable with
             member _.Dispose() = subscriber.Dispose()
 
@@ -416,30 +418,19 @@ module LyrionIRHandler =
 
         let mutable handlers = Map.empty
 
-        let init player =
-            if not (handlers |> Map.containsKey player) then
-                let handler = new Handler(player)
-                handlers <- handlers |> Map.add player handler
-
-                ignore (Players.getPowerAsync player)
-
         override _.ExecuteAsync(cancellationToken) = task {
-            use _ = reader |> Observable.subscribe (fun command ->
-                match command with
-                | [playerid; "client"; "new"]
-                | [playerid; "client"; "reconnect"]
-                | [playerid; "ir"; _; _]
-                | [playerid; "unknownir"; _; _] ->
-                    init (Player playerid)
-                | _ -> ())
+            while not cancellationToken.IsCancellationRequested do
+                try
+                    let! count = Players.countAsync ()
+                    for i in [0 .. count - 1] do
+                        let! player = Players.getIdAsync i
 
-            try
-                let! count = Players.countAsync ()
-                for i in [0 .. count - 1] do
-                    let! player = Players.getIdAsync i
-                    init player
-            with ex ->
-                Console.Error.WriteLine(ex)
+                        if not (handlers |> Map.containsKey player) then
+                            handlers <- handlers |> Map.add player (new Handler(player))
 
-            do! Task.Delay(-1, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
+                        let! state = Players.getPowerAsync player
+                        handlers[player].PowerState <- state
+                with ex -> Console.Error.WriteLine(ex)
+
+                do! Task.Delay(TimeSpan.FromMinutes(15), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
         }

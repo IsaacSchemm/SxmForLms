@@ -15,13 +15,13 @@ module WeatherManager =
                 try
                     let! count = Players.countAsync ()
                     if count > 0 then
-                        let! alerts = Weather.getNewAlertsAsync()
+                        let! alerts = Weather.getNewAlertsAsync cancellationToken
                         if not (List.isEmpty alerts) then
                             for i in [0 .. count - 1] do
                                 let! player = Players.getIdAsync i
                                 let! powerState = Players.getPowerAsync player
                                 if powerState then
-                                    do! Reader.readAsync player [
+                                    do! Speech.readAsync player [
                                         for alert in alerts do
                                             alert.info
                                     ]

@@ -10,6 +10,7 @@
     <Compile Include="ActivePatterns.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="LyrionCLI.fs" />
+    <Compile Include="LyrionKnownPlayers.fs" />
     <Compile Include="LyrionFavorites.fs" />
     <Compile Include="SiriusXMClient.fs" />
     <Compile Include="ChunklistParser.fs" />

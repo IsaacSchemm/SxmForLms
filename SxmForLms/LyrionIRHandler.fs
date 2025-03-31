@@ -6,10 +6,9 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 
-open Microsoft.Extensions.Hosting
-
 open LyrionCLI
 open LyrionIR
+open Microsoft.Extensions.Hosting
 
 module LyrionIRHandler =
     type DigitBehavior =
@@ -116,8 +115,6 @@ module LyrionIRHandler =
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
 
-        let mutable powerState = false
-
         let mutable holdTime = ref DateTime.UtcNow
 
         let pressAsync pressAction = task {
@@ -203,189 +200,181 @@ module LyrionIRHandler =
                 do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
         }
 
-        let processPromptEntryAsync ircode (prompt: string) = task {
-            let mappings =
-                if powerState
-                then MappingsOn
-                else MappingsOff
-
-            let mapping =
-                mappings
-                |> Map.tryFind ircode
-                |> Option.defaultValue NoAction
-
-            do! doOnceAsync ircode (fun () -> task {
-                match mapping with
-                | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                    do! appendToPromptAsync str
-
-                | Dot when behavior = SeekTo ->
-                    do! appendToPromptAsync ":"
-
-                | Dot when behavior = Calculator ->
-                    do! appendToPromptAsync "."
-
-                | Simulate "arrow_up" when behavior = Calculator ->
-                    do! appendToPromptAsync "("
-
-                | Simulate "arrow_down" when behavior = Calculator ->
-                    do! appendToPromptAsync ")"
-
-                | Simulate "repeat" when behavior = Calculator ->
-                    do! appendToPromptAsync "^"
-
-                | Simulate "volup" when behavior = Calculator ->
-                    do! appendToPromptAsync "+"
-
-                | Simulate "voldown" when behavior = Calculator ->
-                    do! appendToPromptAsync "-"
-
-                | Press ChannelUp when behavior = Calculator ->
-                    do! appendToPromptAsync "*"
-
-                | Press ChannelDown when behavior = Calculator ->
-                    do! appendToPromptAsync "/"
-
-                | Simulate "rew" when behavior = Calculator ->
-                    do! appendToPromptAsync "<<"
-
-                | Simulate "fwd" when behavior = Calculator ->
-                    do! appendToPromptAsync "<<"
-
-                | Simulate "arrow_left" ->
-                    do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
-
-                | Press (Button "knob_push") when behavior = LoadPresetMulti ->
-                    let num = prompt.Substring(2)
-                        
-                    do! clearAsync ()
-                    do! Players.simulateButtonAsync player $"playPreset_{num}"
-
-                | Press (Button "knob_push") when behavior = SeekTo ->
-                    let array =
-                        prompt.Substring(2)
-                        |> Utility.split ':'
-                        |> Array.map Int32.TryParse
-
-                    let time =
-                        match array with
-                        | [| (true, s) |] ->
-                            Some s
-                        | [| (true, m); (true, s) |] ->
-                            Some (60 * m + s)
-                        | [| (true, h); (true, m); (true, s) |] ->
-                            Some (3600 * h + 60 * m + s)
-                        | _ ->
-                            None
-
-                    match time with
-                    | Some t ->
-                        do! clearAsync ()
-                        do! Playlist.setTimeAsync player t
-                    | _ ->
-                        do! writePromptAsync "> "
-
-                | Press (Button "knob_push") when behavior = SiriusXM ->
-                    let num = prompt.Substring(2)
-
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelNumber = num)
-                        |> Seq.tryHead
-
-                    match channel with
-                    | Some c ->
-                        do! clearAsync ()
-                        do! playSiriusXMChannelAsync c.channelNumber c.name
-                    | None ->
-                        do! writePromptAsync "> "
-
-                | Press (Button "knob_push") when behavior = Calculator ->
-                    let expression = prompt.Substring(2)
-
-                    let parser = new Calcex.Parser()
-                    let tree = parser.Parse(expression)
-                    let result = tree.EvaluateDecimal()
-                    do! Players.setDisplayAsync player "Result" $"{result}" (TimeSpan.FromSeconds(5))
-
-                | Press (Button "exit_left") ->
-                    do! clearAsync ()
-
-                | _ -> ()
-            })
-        }
-
-        let processNormalEntryAsync ircode time = task {
-            let mappings =
-                if powerState
-                then MappingsOn
-                else MappingsOff
-
-            let mapping =
-                mappings
-                |> Map.tryFind ircode
-                |> Option.defaultValue NoAction
-
-            match mapping with
-            | Hold actionList ->
-                do! doOnceAsync ircode (fun () -> task {
-                    for a in actionList do
-                        match a with
-                        | Message m -> do! Players.setDisplayAsync player m m (TimeSpan.FromSeconds(5))
-                        | _ -> ()
-
-                    let start = DateTime.UtcNow
-
-                    let mutable actionTriggered = false
-
-                    while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(250) do
-                        do! Task.Delay(100)
-
-                        if not actionTriggered then
-                            if DateTime.UtcNow - start >= TimeSpan.FromSeconds(3) then
-                                do! clearAsync ()
-
-                                for a in actionList do
-                                    match a with
-                                    | OnHold pressAction -> do! pressAsync pressAction
-                                    | _ -> ()
-
-                                actionTriggered <- true
-
-                    if not actionTriggered then
-                        for a in actionList do
-                        match a with
-                        | Message m -> do! clearAsync ()
-                        | OnRelease pressAction -> do! pressAsync pressAction
-                        | _ -> ()
-                })
-
-            | Simulate str when str.Length = 1 && "0123456789".Contains(str) && behavior <> Digit ->
-                do! doOnceAsync ircode (fun () -> task {
-                    if behavior = LoadPresetSingle then
-                        do! Players.simulateButtonAsync player $"playPreset_{str}"
-                    else
-                        do! writePromptAsync $"> {str}"
-                })
-
-            | Simulate name ->
-                do! Players.simulateIRAsync player Slim[name] time
-
-            | Press pressAction ->
-                do! doOnceAsync ircode (fun () -> task {
-                    do! pressAsync pressAction
-                })
-
-            | _ -> ()
-        }
-
         let processIRAsync ircode time = task {
             holdTime.Value <- DateTime.UtcNow
 
+            let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+
+            let mappings =
+                if powerState
+                then MappingsOn
+                else MappingsOff
+
+            let mapping =
+                mappings
+                |> Map.tryFind ircode
+                |> Option.defaultValue NoAction
+
+            let processPromptEntryAsync (prompt: string) = task {
+                do! doOnceAsync ircode (fun () -> task {
+                    match mapping with
+                    | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
+                        do! appendToPromptAsync str
+
+                    | Dot when behavior = SeekTo ->
+                        do! appendToPromptAsync ":"
+
+                    | Dot when behavior = Calculator ->
+                        do! appendToPromptAsync "."
+
+                    | Simulate "arrow_up" when behavior = Calculator ->
+                        do! appendToPromptAsync "("
+
+                    | Simulate "arrow_down" when behavior = Calculator ->
+                        do! appendToPromptAsync ")"
+
+                    | Simulate "repeat" when behavior = Calculator ->
+                        do! appendToPromptAsync "^"
+
+                    | Simulate "volup" when behavior = Calculator ->
+                        do! appendToPromptAsync "+"
+
+                    | Simulate "voldown" when behavior = Calculator ->
+                        do! appendToPromptAsync "-"
+
+                    | Press ChannelUp when behavior = Calculator ->
+                        do! appendToPromptAsync "*"
+
+                    | Press ChannelDown when behavior = Calculator ->
+                        do! appendToPromptAsync "/"
+
+                    | Simulate "rew" when behavior = Calculator ->
+                        do! appendToPromptAsync "<<"
+
+                    | Simulate "fwd" when behavior = Calculator ->
+                        do! appendToPromptAsync "<<"
+
+                    | Simulate "arrow_left" ->
+                        do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
+
+                    | Press (Button "knob_push") when behavior = LoadPresetMulti ->
+                        let num = prompt.Substring(2)
+                        
+                        do! clearAsync ()
+                        do! Players.simulateButtonAsync player $"playPreset_{num}"
+
+                    | Press (Button "knob_push") when behavior = SeekTo ->
+                        let array =
+                            prompt.Substring(2)
+                            |> Utility.split ':'
+                            |> Array.map Int32.TryParse
+
+                        let time =
+                            match array with
+                            | [| (true, s) |] ->
+                                Some s
+                            | [| (true, m); (true, s) |] ->
+                                Some (60 * m + s)
+                            | [| (true, h); (true, m); (true, s) |] ->
+                                Some (3600 * h + 60 * m + s)
+                            | _ ->
+                                None
+
+                        match time with
+                        | Some t ->
+                            do! clearAsync ()
+                            do! Playlist.setTimeAsync player t
+                        | _ ->
+                            do! writePromptAsync "> "
+
+                    | Press (Button "knob_push") when behavior = SiriusXM ->
+                        let num = prompt.Substring(2)
+
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        let channel =
+                            channels
+                            |> Seq.where (fun c -> c.channelNumber = num)
+                            |> Seq.tryHead
+
+                        match channel with
+                        | Some c ->
+                            do! clearAsync ()
+                            do! playSiriusXMChannelAsync c.channelNumber c.name
+                        | None ->
+                            do! writePromptAsync "> "
+
+                    | Press (Button "knob_push") when behavior = Calculator ->
+                        let expression = prompt.Substring(2)
+
+                        let parser = new Calcex.Parser()
+                        let tree = parser.Parse(expression)
+                        let result = tree.EvaluateDecimal()
+                        do! Players.setDisplayAsync player "Result" $"{result}" (TimeSpan.FromSeconds(5))
+
+                    | Press (Button "exit_left") ->
+                        do! clearAsync ()
+
+                    | _ -> ()
+                })
+            }
+
+            let processNormalEntryAsync () = task {
+                match mapping with
+                | Hold actionList ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        for a in actionList do
+                            match a with
+                            | Message m -> do! Players.setDisplayAsync player m m (TimeSpan.FromSeconds(5))
+                            | _ -> ()
+
+                        let start = DateTime.UtcNow
+
+                        let mutable actionTriggered = false
+
+                        while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(250) do
+                            do! Task.Delay(100)
+
+                            if not actionTriggered then
+                                if DateTime.UtcNow - start >= TimeSpan.FromSeconds(3) then
+                                    do! clearAsync ()
+
+                                    for a in actionList do
+                                        match a with
+                                        | OnHold pressAction -> do! pressAsync pressAction
+                                        | _ -> ()
+
+                                    actionTriggered <- true
+
+                        if not actionTriggered then
+                            for a in actionList do
+                            match a with
+                            | Message m -> do! clearAsync ()
+                            | OnRelease pressAction -> do! pressAsync pressAction
+                            | _ -> ()
+                    })
+
+                | Simulate str when str.Length = 1 && "0123456789".Contains(str) && behavior <> Digit ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        if behavior = LoadPresetSingle then
+                            do! Players.simulateButtonAsync player $"playPreset_{str}"
+                        else
+                            do! writePromptAsync $"> {str}"
+                    })
+
+                | Simulate name ->
+                    do! Players.simulateIRAsync player Slim[name] time
+
+                | Press pressAction ->
+                    do! doOnceAsync ircode (fun () -> task {
+                        do! pressAsync pressAction
+                    })
+
+                | _ -> ()
+            }
+
             match promptText with
-            | Some prompt -> do! processPromptEntryAsync ircode prompt
-            | None -> do! processNormalEntryAsync ircode time
+            | Some prompt -> do! processPromptEntryAsync prompt
+            | None -> do! processNormalEntryAsync ()
         }
 
         let processCommandAsync command = task {
@@ -393,10 +382,6 @@ module LyrionIRHandler =
                 match command with
                 | [x; "playlist"; "newsong"; _; _] when Player x = player ->
                     channelChanging <- false
-                | [x; "power"; "0"] when Player x = player ->
-                    powerState <- false
-                | [x; "power"; "1"] when Player x = player ->
-                    powerState <- true
                 | [x; "unknownir"; IRCode ircode; Decimal time] when Player x = player ->
                     do! processIRAsync ircode time
                 | _ -> ()
@@ -406,31 +391,23 @@ module LyrionIRHandler =
         let subscriber = reader |> Observable.subscribe (fun command ->
             ignore (processCommandAsync command))
 
-        member _.PowerState
-            with get () = powerState
-            and set v = powerState <- v
-
         interface IDisposable with
             member _.Dispose() = subscriber.Dispose()
 
     type Service() =
         inherit BackgroundService()
 
-        let mutable handlers = Map.empty
+        let mutable handlers: IDisposable list = []
 
         override _.ExecuteAsync(cancellationToken) = task {
+            LyrionKnownPlayers.WhenAdded.attachHandler (fun player ->
+                printfn "Creating IR handler for $%A" player
+                handlers <- new Handler(player) :: handlers
+            )
+
             while not cancellationToken.IsCancellationRequested do
-                try
-                    let! count = Players.countAsync ()
-                    for i in [0 .. count - 1] do
-                        let! player = Players.getIdAsync i
+                do! Task.Delay(-1, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
 
-                        if not (handlers |> Map.containsKey player) then
-                            handlers <- handlers |> Map.add player (new Handler(player))
-
-                        let! state = Players.getPowerAsync player
-                        handlers[player].PowerState <- state
-                with ex -> Console.Error.WriteLine(ex)
-
-                do! Task.Delay(TimeSpan.FromMinutes(15), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
+            for x in handlers do
+                x.Dispose()
         }

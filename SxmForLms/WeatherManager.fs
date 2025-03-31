@@ -13,19 +13,18 @@ module WeatherManager =
         override _.ExecuteAsync cancellationToken = task {
             while not cancellationToken.IsCancellationRequested do
                 try
-                    let! count = Players.countAsync ()
-                    if count > 0 then
+                    let mutable players = []
+                    for player in LyrionKnownPlayers.known do
+                        let! state = Players.getPowerAsync player
+                        if state then
+                            players <- player :: players
+
+                    if not (List.isEmpty players) then
                         let! alerts = Weather.getNewAlertsAsync cancellationToken
                         if not (List.isEmpty alerts) then
-                            for i in [0 .. count - 1] do
-                                let! player = Players.getIdAsync i
-                                let! powerState = Players.getPowerAsync player
-                                if powerState then
-                                    do! Speech.readAsync player [
-                                        for alert in alerts do
-                                            alert.info
-                                    ]
-                    with ex -> Console.Error.WriteLine(ex)
+                            for player in players do
+                                do! Speech.readAsync player [for alert in alerts do alert.info]
+                with ex -> Console.Error.WriteLine(ex)
 
                 do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
         }

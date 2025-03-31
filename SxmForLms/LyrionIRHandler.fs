@@ -401,7 +401,7 @@ module LyrionIRHandler =
 
         override _.ExecuteAsync(cancellationToken) = task {
             LyrionKnownPlayers.WhenAdded.attachHandler (fun player ->
-                printfn "Creating IR handler for $%A" player
+                printfn "Creating IR handler for %A" player
                 handlers <- new Handler(player) :: handlers
             )
 

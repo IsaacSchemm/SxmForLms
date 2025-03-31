@@ -3,13 +3,17 @@
 open System
 open System.Threading.Tasks
 open System.Runtime.Caching
+open System.Text.RegularExpressions
 
 open Microsoft.Extensions.Hosting
 
 open LyrionCLI
 
 module LyrionKnownPlayers =
-    let isMacAddress str = str <> ""
+    let macAddressRegex = new Regex("^..:..:..:..:..:..$")
+
+    let isMacAddress (str: string) =
+        macAddressRegex.IsMatch(str)
 
     let mutable known = Set.empty
 

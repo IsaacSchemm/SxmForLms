@@ -2,13 +2,15 @@
 
 open System
 open System.Globalization
+open System.IO
 open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 
+open Microsoft.Extensions.Hosting
+
 open LyrionCLI
 open LyrionIR
-open Microsoft.Extensions.Hosting
 
 module LyrionIRHandler =
     type DigitBehavior =
@@ -18,6 +20,16 @@ module LyrionIRHandler =
     | SeekTo
     | SiriusXM
     | Calculator
+
+    let enabledBehaviors = [
+        Digit
+        LoadPresetSingle
+        LoadPresetMulti
+        SeekTo
+        SiriusXM
+        Calculator
+        Digit
+    ]
 
     let getTitle behavior =
         match behavior with
@@ -80,7 +92,16 @@ module LyrionIRHandler =
             channelChanging <- true
         }
 
-        let mutable behavior = Digit
+        let mutable behavior = Seq.head (seq {
+            if File.Exists("behavior.txt") then
+                let str = File.ReadAllText("behavior.txt")
+                for possibility in enabledBehaviors do
+                    if str = $"{possibility}" then
+                        possibility
+
+            Seq.head enabledBehaviors
+        })
+
         let mutable promptText = None
         let mutable promptMonitor = Task.CompletedTask
 
@@ -179,25 +200,17 @@ module LyrionIRHandler =
                             if Some b.channelId = id then
                                 do! playSiriusXMChannelAsync a.channelNumber a.name
             | Input ->
-                let all = seq {
-                    Digit
-                    LoadPresetSingle
-                    LoadPresetMulti
-                    SeekTo
-                    SiriusXM
-                    Calculator
-                    Digit
-                }
-
                 let! (header, _) = Players.getDisplayNowAsync player
                 if header = "Input Mode" then
                     behavior <-
-                        Seq.pairwise all
+                        Seq.pairwise enabledBehaviors
                         |> Seq.where (fun (a, _) -> a = behavior)
                         |> Seq.map (fun (_, b) -> b)
                         |> Seq.head
 
                 do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
+
+                File.WriteAllText("behavior.txt", $"{behavior}")
         }
 
         let processIRAsync ircode time = task {

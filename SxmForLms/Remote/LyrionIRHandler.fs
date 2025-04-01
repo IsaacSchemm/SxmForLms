@@ -18,6 +18,7 @@ module LyrionIRHandler =
     | LoadPresetSingle
     | LoadPresetMulti
     | SeekTo
+    | AudioCD
     | SiriusXM
     | Calculator
 
@@ -26,6 +27,7 @@ module LyrionIRHandler =
         LoadPresetSingle
         LoadPresetMulti
         SeekTo
+        AudioCD
         SiriusXM
         Calculator
         Digit
@@ -38,6 +40,7 @@ module LyrionIRHandler =
         | LoadPresetMulti -> "Load preset (multi-digit)"
         | SeekTo -> "Seek (ss/mm:ss/hh:mm:ss)"
         | SiriusXM -> "Play SiriusXM channel"
+        | AudioCD -> "Play CD track"
         | Calculator -> "Calculator"
 
     let (|IRCode|_|) (str: string) =
@@ -297,6 +300,25 @@ module LyrionIRHandler =
                         | Some t ->
                             do! clearAsync ()
                             do! Playlist.setTimeAsync player t
+                        | _ ->
+                            do! writePromptAsync "> "
+
+                    | Press (Button "knob_push") when behavior = AudioCD ->
+                        let num = prompt.Substring(2)
+
+                        match num with
+                        | ""
+                        | "0" ->
+                            let! address = Network.getAddressAsync CancellationToken.None
+                            do! Playlist.clearAsync player
+                            let! disc = Icedax.getInfoAsync CancellationToken.None
+                            for track in disc.tracks do
+                                let title = track.title |> Option.defaultValue $"Track {track.number}"
+                                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track.number}" title
+                            do! Playlist.playAsync player
+                        | Int32 track ->
+                            let! address = Network.getAddressAsync CancellationToken.None
+                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track}" $"Track {track}"
                         | _ ->
                             do! writePromptAsync "> "
 

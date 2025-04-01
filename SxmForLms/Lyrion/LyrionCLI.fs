@@ -284,6 +284,20 @@ module LyrionCLI =
             title
         ]
 
+        let addItemAsync (Player id) item title = sendAsync [
+            id
+            "playlist"
+            "add"
+            item
+            title
+        ]
+
+        let clearAsync (Player id) = sendAsync [
+            id
+            "playlist"
+            "clear"
+        ]
+
         let insertItemAsync (Player id) item title = sendAsync [
             id
             "playlist"

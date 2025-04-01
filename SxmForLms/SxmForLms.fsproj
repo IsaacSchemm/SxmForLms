@@ -9,20 +9,20 @@
     <Compile Include="Utility.fs" />
     <Compile Include="ActivePatterns.fs" />
     <Compile Include="Network.fs" />
-    <Compile Include="LyrionCLI.fs" />
-    <Compile Include="LyrionKnownPlayers.fs" />
-    <Compile Include="LyrionFavorites.fs" />
-    <Compile Include="SiriusXMClient.fs" />
-    <Compile Include="ChunklistParser.fs" />
-    <Compile Include="MediaProxy.fs" />
-    <Compile Include="FavoritesManager.fs" />
-    <Compile Include="LyrionIR.fs" />
-    <Compile Include="Speech.fs" />
-    <Compile Include="NWS.fs" />
-    <Compile Include="Weather.fs" />
-    <Compile Include="WeatherManager.fs" />
-    <Compile Include="SpeechSynthesis.fs" />
-    <Compile Include="LyrionIRHandler.fs" />
+    <Compile Include="Streaming\SiriusXMClient.fs" />
+    <Compile Include="Streaming\ChunklistParser.fs" />
+    <Compile Include="Streaming\MediaProxy.fs" />
+    <Compile Include="Lyrion\LyrionCLI.fs" />
+    <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
+    <Compile Include="Lyrion\LyrionFavorites.fs" />
+    <Compile Include="Lyrion\FavoritesManager.fs" />
+    <Compile Include="Info\Speech.fs" />
+    <Compile Include="Info\SpeechSynthesis.fs" />
+    <Compile Include="Info\NWS.fs" />
+    <Compile Include="Info\Weather.fs" />
+    <Compile Include="Info\WeatherManager.fs" />
+    <Compile Include="Remote\LyrionIR.fs" />
+    <Compile Include="Remote\LyrionIRHandler.fs" />
   </ItemGroup>
 
   <ItemGroup>

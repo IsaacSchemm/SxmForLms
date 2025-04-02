@@ -309,6 +309,8 @@ module LyrionIRHandler =
                         match num with
                         | ""
                         | "0" ->
+                            do! clearAsync ()
+
                             let! address = Network.getAddressAsync CancellationToken.None
                             do! Playlist.clearAsync player
                             let! disc = Icedax.getInfoAsync CancellationToken.None
@@ -317,6 +319,8 @@ module LyrionIRHandler =
                                 do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track.number}" title
                             do! Playlist.playAsync player
                         | Int32 track ->
+                            do! clearAsync ()
+
                             let! address = Network.getAddressAsync CancellationToken.None
                             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track}" $"Track {track}"
                         | _ ->

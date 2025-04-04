@@ -187,9 +187,6 @@ module LyrionIRHandler =
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
             | PlayAllTracks ->
                 do! playAllTracksAsync ()
-            | PlayWholeDisc ->
-                let! address = Network.getAddressAsync CancellationToken.None
-                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayWholeDisc" "Audio CD"
             | Forecast ->
                 let! forecasts = Weather.getForecastsAsync CancellationToken.None
                 let! alerts = Weather.getAlertsAsync CancellationToken.None

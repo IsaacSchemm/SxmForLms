@@ -139,6 +139,21 @@ module LyrionIRHandler =
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
 
+        let playAllTracksAsync () = task {
+            do! Playlist.clearAsync player
+
+            do! Players.setDisplayAsync player "Audio CD" "Searching for tracks..." (TimeSpan.FromSeconds(30))
+            let! disc = Icedax.getInfoAsync CancellationToken.None
+            do! clearAsync ()
+
+            let! address = Network.getAddressAsync CancellationToken.None
+            for track in disc.tracks do
+                let title = track.title |> Option.defaultValue $"Track {track.number}"
+                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.number}" title
+
+            do! Playlist.playAsync player
+        }
+
         let mutable holdTime = ref DateTime.UtcNow
 
         let pressAsync pressAction = task {
@@ -170,6 +185,8 @@ module LyrionIRHandler =
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+            | PlayCD ->
+                do! playAllTracksAsync ()
             | Forecast ->
                 let! forecasts = Weather.getForecastsAsync CancellationToken.None
                 let! alerts = Weather.getAlertsAsync CancellationToken.None
@@ -307,22 +324,19 @@ module LyrionIRHandler =
                         let num = prompt.Substring(2)
 
                         match num with
-                        | ""
-                        | "0" ->
+                        | "" ->
+                            do! clearAsync ()
+                            do! playAllTracksAsync ()
+                        | Int32 0 ->
                             do! clearAsync ()
 
                             let! address = Network.getAddressAsync CancellationToken.None
-                            do! Playlist.clearAsync player
-                            let! disc = Icedax.getInfoAsync CancellationToken.None
-                            for track in disc.tracks do
-                                let title = track.title |> Option.defaultValue $"Track {track.number}"
-                                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track.number}" title
-                            do! Playlist.playAsync player
+                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayWholeDisc" "Audio CD"
                         | Int32 track ->
                             do! clearAsync ()
 
                             let! address = Network.getAddressAsync CancellationToken.None
-                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/Play?track={track}" $"Track {track}"
+                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track}" $"Track {track}"
                         | _ ->
                             do! writePromptAsync "> "
 

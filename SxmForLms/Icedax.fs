@@ -68,38 +68,62 @@ module Icedax =
 
     type Span = Track of int | WholeDisc
 
-    let extractWaveAsync span = task {
+    let extractWaveAsync span skip = task {
         let spanString =
             match span with
             | Track n -> $"-t {n}"
             | WholeDisc -> "-d 99999"
 
+        let factor =
+            let bytesPerSecond = 44100 * sizeof<uint16> * 2
+            let sectorsPerSecond = 75
+            let bytesPerSector = bytesPerSecond / sectorsPerSecond
+
+            let mutable bytes = skip
+            let mutable sectors = 0
+
+            while bytes > bytesPerSector + 1000 do
+                bytes <- bytes - bytesPerSector
+                sectors <- sectors + 1
+
+            {|
+                sectors = sectors
+                bytes = bytes
+            |}
+
         let proc =
-            new ProcessStartInfo("icedax", $"-D /dev/cdrom {spanString} -", RedirectStandardOutput = true, RedirectStandardError = true)
+            new ProcessStartInfo("icedax", $"-D /dev/cdrom {spanString} -S 1 -o {factor.sectors} -", RedirectStandardOutput = true, RedirectStandardError = true)
             |> Process.Start
 
-        let tcs = new TaskCompletionSource<int>()
+        let! length = task {
+            let tcs = new TaskCompletionSource<int64>()
 
-        ignore (task {
-            try
-                use sr = proc.StandardError
-                let mutable finished = false
-                while not finished do
-                    let! line = sr.ReadLineAsync()
-                    if isNull line then
-                        finished <- true
-                    else
-                        let m = sampleFileSizePattern.Match(line)
-                        if m.Success then
-                            tcs.SetResult(Int32.Parse(m.Groups[1].Value))
-            with ex ->
-                Console.Error.WriteLine(ex)
-        })
+            ignore (task {
+                try
+                    use sr = proc.StandardError
+                    let mutable finished = false
+                    while not finished do
+                        let! line = sr.ReadLineAsync()
+                        if isNull line then
+                            finished <- true
+                        else
+                            let m = sampleFileSizePattern.Match(line)
+                            if m.Success then
+                                tcs.SetResult(Int64.Parse(m.Groups[1].Value))
+                with ex ->
+                    Console.Error.WriteLine(ex)
+            })
 
-        let! length = tcs.Task
+            return! tcs.Task
+        }
+
+        let stream = proc.StandardOutput.BaseStream
+
+        let buffer = Array.zeroCreate factor.bytes
+        do! stream.ReadExactlyAsync(buffer.AsMemory())
 
         return {|
+            stream = stream
             length = length
-            stream = proc.StandardOutput.BaseStream
         |}
     }

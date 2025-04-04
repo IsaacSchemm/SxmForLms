@@ -72,7 +72,6 @@ module LyrionIR =
     | Button of string
     | StreamInfo
     | PlayAllTracks
-    | PlayWholeDisc
     | Forecast
     | ChannelUp
     | ChannelDown
@@ -119,7 +118,7 @@ module LyrionIR =
         0x61a0a857, Simulate "arrow_right"
         0x61a018e7, Press (Button "knob_push")
 
-        0x61a022dd, Hold [OnHold PlayWholeDisc; OnRelease PlayAllTracks] // Aspect
+        0x61a022dd, Press PlayAllTracks // Aspect
         0x61a038c7, Press Forecast // CCD
 
         0x61a030cf, Simulate "volup"

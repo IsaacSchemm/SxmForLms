@@ -34,11 +34,6 @@ namespace SxmForLms.AspNetCore.Controllers
             return await Play(Icedax.Span.NewTrack(track));
         }
 
-        public async Task<IActionResult> PlayWholeDisc()
-        {
-            return await Play(Icedax.Span.WholeDisc);
-        }
-
         [GeneratedRegex("^bytes=([0-9]+)-([0-9]+)$")]
         private static partial Regex GetRangePattern();
     }

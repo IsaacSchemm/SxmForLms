@@ -66,7 +66,7 @@ module Icedax =
         |}
     }
 
-    type Span = Track of int | WholeDisc
+    type Span = Track of int
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2
     let sectorsPerSecond = 75
@@ -76,7 +76,6 @@ module Icedax =
         let spanString =
             match span with
             | Track n -> $"-t {n}"
-            | WholeDisc -> "-d 99999"
 
         let factor =
 

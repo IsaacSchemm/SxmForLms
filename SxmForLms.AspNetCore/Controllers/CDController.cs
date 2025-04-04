@@ -5,21 +5,17 @@ namespace SxmForLms.AspNetCore.Controllers
 {
     public partial class CDController() : Controller
     {
-        private async Task<IActionResult> PlayFull(Icedax.Span span)
+        private async Task<IActionResult> Play(Icedax.Span span)
         {
-            var obj = await Icedax.extractWaveAsync(span, 0);
+            int offset = 0;
 
-            Response.StatusCode = 200;
-            Response.ContentType = "audio/wav";
+            if (Request.Headers.Range.SingleOrDefault() is string range
+                && GetRangePattern().Match(range) is Match match
+                && match.Success)
+            {
+                offset = int.Parse(match.Groups[1].Value);
+            }
 
-            return File(
-                obj.stream,
-                "audio/wav",
-                enableRangeProcessing: false);
-        }
-
-        private async Task<IActionResult> PlayPartial(Icedax.Span span, int offset)
-        {
             var obj = await Icedax.extractWaveAsync(span, offset);
 
             Response.StatusCode = 200;
@@ -30,21 +26,6 @@ namespace SxmForLms.AspNetCore.Controllers
                 obj.stream,
                 "audio/wav",
                 enableRangeProcessing: false);
-        }
-
-        private async Task<IActionResult> Play(Icedax.Span span)
-        {
-            if (Request.Headers.Range.SingleOrDefault() is string range
-                && GetRangePattern().Match(range) is Match match
-                && match.Success)
-            {
-                int offset = int.Parse(match.Groups[1].Value);
-                return await PlayPartial(span, offset);
-            }
-            else
-            {
-                return await PlayFull(span);
-            }
         }
 
 

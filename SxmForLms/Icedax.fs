@@ -68,6 +68,10 @@ module Icedax =
 
     type Span = Track of int | WholeDisc
 
+    let bytesPerSecond = 44100 * sizeof<uint16> * 2
+    let sectorsPerSecond = 75
+    let bytesPerSector = bytesPerSecond / sectorsPerSecond
+
     let extractWaveAsync span skip = task {
         let spanString =
             match span with
@@ -75,9 +79,6 @@ module Icedax =
             | WholeDisc -> "-d 99999"
 
         let factor =
-            let bytesPerSecond = 44100 * sizeof<uint16> * 2
-            let sectorsPerSecond = 75
-            let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
             let mutable bytes = skip
             let mutable sectors = 0
@@ -124,6 +125,6 @@ module Icedax =
 
         return {|
             stream = stream
-            length = length
+            length = length + int64 (factor.sectors * bytesPerSector)
         |}
     }

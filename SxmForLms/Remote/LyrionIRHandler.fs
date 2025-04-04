@@ -185,8 +185,11 @@ module LyrionIRHandler =
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
-            | PlayCD ->
+            | PlayAllTracks ->
                 do! playAllTracksAsync ()
+            | PlayWholeDisc ->
+                let! address = Network.getAddressAsync CancellationToken.None
+                do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayWholeDisc" "Audio CD"
             | Forecast ->
                 let! forecasts = Weather.getForecastsAsync CancellationToken.None
                 let! alerts = Weather.getAlertsAsync CancellationToken.None
@@ -329,9 +332,7 @@ module LyrionIRHandler =
                             do! playAllTracksAsync ()
                         | Int32 0 ->
                             do! clearAsync ()
-
-                            let! address = Network.getAddressAsync CancellationToken.None
-                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayWholeDisc" "Audio CD"
+                            do! playAllTracksAsync ()
                         | Int32 track ->
                             do! clearAsync ()
 

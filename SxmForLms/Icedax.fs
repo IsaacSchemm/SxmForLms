@@ -59,8 +59,6 @@ module Icedax =
                     let c = char value
                     ignore (body.Append(c))
 
-                    printf "%c" c
-
                     if body.ToString().EndsWith(noDiscMessage) then
                         proc.Kill()
 

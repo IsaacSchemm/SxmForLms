@@ -192,7 +192,7 @@ module LyrionIRHandler =
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
             | Eject ->
-                use proc = Process.Start("eject", Icedax.device)
+                use proc = Process.Start("eject", $"-T {Icedax.device}")
                 do! proc.WaitForExitAsync()
             | PlayAllTracks ->
                 do! playAllTracksAsync ()

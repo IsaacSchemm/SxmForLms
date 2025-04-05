@@ -72,6 +72,7 @@ module LyrionIR =
     | Button of string
     | StreamInfo
     | PlayAllTracks
+    | Eject
     | Forecast
     | ChannelUp
     | ChannelDown
@@ -118,7 +119,7 @@ module LyrionIR =
         0x61a0a857, Simulate "arrow_right"
         0x61a018e7, Press (Button "knob_push")
 
-        0x61a022dd, Press PlayAllTracks // Aspect
+        0x61a022dd, Hold [OnHold Eject; OnRelease PlayAllTracks] // Aspect
         0x61a038c7, Press Forecast // CCD
 
         0x61a030cf, Simulate "volup"
@@ -175,7 +176,7 @@ module LyrionIR =
         0x20DFB44B, Press StreamInfo // Vizio
 
         0x20DF906F, Press (Button "muting")
-        0x20DFEE11, NoAction // Aspect
+        0x20DFEE11, Hold [OnHold Eject; OnRelease PlayAllTracks] // Aspect
         0x20DFE619, NoAction // Pic
         0x20DF58A7, Simulate "repeat"
 

@@ -2,83 +2,92 @@
 
 open System
 open System.Diagnostics
+open System.IO
+open System.Text
 open System.Text.RegularExpressions
 open System.Threading.Tasks
 
 module Icedax =
-    let albumTitlePattern = new Regex("^Album title: '([^']*)'")
-    let trackPattern = new Regex("^T([0-9]+): .* title '([^']*)'")
-    let isrcPattern = new Regex("^T: +([0-9]+) ISRC: ([^ ]+)")
+    let device = "/dev/cdrom"
+
+    let trackPattern = new Regex("^T([0-9]+): .* title '(.*)")
 
     let sampleFileSizePattern = new Regex("^samplefile size will be ([0-9]+) bytes")
 
-    let (|AlbumTitle|_|) (str: string) =
-        let m = albumTitlePattern.Match(str)
-        if m.Success then Some (m.Groups[1].Value) else None
-
-    let (|Track|_|) (str: string) =
+    let (|Track|_|) (str: string) = Seq.tryHead (seq {
         let m = trackPattern.Match(str)
-        if m.Success then Some (m.Groups[1].Value, m.Groups[2].Value) else None
+        if m.Success then
+            let trackNumber = int m.Groups[1].Value
 
-    let (|ISRC|_|) (str: string) =
-        let m = isrcPattern.Match(str)
-        if m.Success then Some (m.Groups[1].Value, m.Groups[2].Value) else None
+            use sr = new StringReader(m.Groups[2].Value)
 
-    let getInfoAsync cancellationToken = task {
+            let str = String [|
+                let mutable finished = false
+                while not finished do
+                    match sr.Read() with
+                    | -1 ->
+                        finished <- true
+                    | v when char v = '\'' ->
+                        finished <- true
+                    | v when char v = '\\' ->
+                        char (sr.Read())
+                    | v ->
+                        char v
+            |]
+
+            (trackNumber, str)
+    })
+
+    let noDiscMessage = "load cdrom please and press enter"
+
+    let rec getInfo () =
         let proc =
-            new ProcessStartInfo("icedax", $"-J -g -D /dev/cdrom", RedirectStandardError = true)
+            new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -L 1 --cddbp-server=gnudb.gnudb.org -v toc", RedirectStandardError = true)
             |> Process.Start
 
-        use sr = proc.StandardError
-        let readTask = task {
-            return! sr.ReadToEndAsync(cancellationToken)
-        }
+        let body =
+            let body = new StringBuilder()
 
-        do! proc.WaitForExitAsync(cancellationToken)
-        let! body = readTask
+            use sr = proc.StandardError
 
-        let mutable title = None
-        let mutable trackNumbers = Set.empty
-        let mutable trackTitles = Map.empty
-        let mutable trackISRCs = Map.empty
+            let mutable finished = false
+            while not finished do
+                match sr.Read() with
+                | -1 ->
+                    finished <- true
+                | value ->
+                    let c = char value
+                    ignore (body.Append(c))
 
-        for line in Utility.split '\n' body do
+                    printf "%c" c
+
+                    if body.ToString().EndsWith(noDiscMessage) then
+                        proc.Kill()
+
+            body.ToString()
+
+        proc.WaitForExit()
+
+        let mutable tracks = []
+
+        for line in Utility.split '\n' (body.ToString()) do
             match line with
-            | AlbumTitle t when t <> "" ->
-                title <- Some t
             | Track (n, t) ->
-                trackNumbers <- trackNumbers |> Set.add n
-                if t <> "" then
-                    trackTitles <- trackTitles |> Map.add n t
-            | ISRC (n, c) ->
-                trackISRCs <- trackISRCs |> Map.add n c
+                tracks <- {| number = n; title = t |} :: tracks
             | _ -> ()
 
-        return {|
-            title = title
-            tracks = [
-                for n in trackNumbers |> Seq.sortBy id do {|
-                    number = n
-                    title = trackTitles |> Map.tryFind n
-                    isrc = trackISRCs |> Map.tryFind n
-                |}
-            ]
+        {|
+            tracks = tracks |> Seq.sortBy (fun t -> t.number) |> Seq.toList
         |}
-    }
-
-    type Span = Track of int
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2
     let sectorsPerSecond = 75
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
-    let extractWaveAsync span skip = task {
-        let spanString =
-            match span with
-            | Track n -> $"-t {n}"
+    let extractWaveAsync trackNumber skip = task {
+        let spanString = $"-t {trackNumber}"
 
         let factor =
-
             let mutable bytes = skip
             let mutable sectors = 0
 
@@ -92,7 +101,7 @@ module Icedax =
             |}
 
         let proc =
-            new ProcessStartInfo("icedax", $"-D /dev/cdrom {spanString} -S 1 -o {factor.sectors} -", RedirectStandardOutput = true, RedirectStandardError = true)
+            new ProcessStartInfo("icedax", $"-D {device} {spanString} -S 1 -o {factor.sectors} -", RedirectStandardOutput = true, RedirectStandardError = true)
             |> Process.Start
 
         let! length = task {

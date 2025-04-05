@@ -1,6 +1,7 @@
 ﻿namespace SxmForLms
 
 open System
+open System.Diagnostics
 open System.Globalization
 open System.IO
 open System.Text.RegularExpressions
@@ -140,15 +141,20 @@ module LyrionIRHandler =
         }
 
         let playAllTracksAsync () = task {
-            do! Playlist.clearAsync player
+            do! Players.setDisplayAsync player "Audio CD" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-            do! Players.setDisplayAsync player "Audio CD" "Searching for tracks..." (TimeSpan.FromSeconds(30))
-            let! disc = Icedax.getInfoAsync CancellationToken.None
+            let disc = Icedax.getInfo ()
+
             do! clearAsync ()
+
+            do! Playlist.clearAsync player
 
             let! address = Network.getAddressAsync CancellationToken.None
             for track in disc.tracks do
-                let title = track.title |> Option.defaultValue $"Track {track.number}"
+                let title =
+                    match track.title with
+                    | "" -> $"Track {track.number}"
+                    | x -> x
                 do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.number}" title
 
             do! Playlist.playAsync player
@@ -185,6 +191,9 @@ module LyrionIRHandler =
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+            | Eject ->
+                use proc = Process.Start("eject", Icedax.device)
+                do! proc.WaitForExitAsync()
             | PlayAllTracks ->
                 do! playAllTracksAsync ()
             | Forecast ->

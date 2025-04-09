@@ -54,7 +54,7 @@ module LyrionKnownPlayers =
 
         let setCachedState player state =
             printfn "Storing power state for %A: %b" player state
-            cache.Set(getKey player, state, DateTimeOffset.UtcNow.AddMinutes(15))
+            cache.Set(getKey player, state, DateTimeOffset.UtcNow.AddMinutes(16))
 
         let getCurrentStateAsync player = task {
             printfn "Fetching power state from %A" player

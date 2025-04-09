@@ -86,9 +86,9 @@ module LyrionKnownPlayers =
                 match command with
                 | x :: _ when isMacAddress x && not (known |> Set.contains (Player x)) ->
                     do! refreshAsync ()
-                | [x; "power"; "0"] ->
+                | x :: "power" :: "0" :: _ ->
                     PowerStates.setCachedState (Player x) false
-                | [x; "power"; "1"] ->
+                | x :: "power" :: "1" :: _ ->
                     PowerStates.setCachedState (Player x) true
                 | _ -> ()
             with ex -> Console.Error.WriteLine(ex)

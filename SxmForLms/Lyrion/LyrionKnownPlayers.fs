@@ -77,6 +77,17 @@ module LyrionKnownPlayers =
                 return state
         }
 
+        let getPlayersWithStateAsync requestedState = task {
+            let mutable list = []
+
+            for player in known do
+                let! state = getStateAsync player
+                if state = requestedState then
+                    list <- player :: list
+
+            return list
+        }
+
     type Service() =
         inherit BackgroundService()
 

@@ -17,19 +17,19 @@ module Noise =
         $""
     ]
 
-    let segmentLengthSeconds = 10
+    let segmentLengthSeconds = 60L
 
     let getChunklist () = String.concat "\n" [
-        let sequenceNumber = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 10L
+        let sequenceNumber = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / segmentLengthSeconds
 
         $"#EXTM3U"
         $"#EXT-X-TARGETDURATION:{segmentLengthSeconds}"
         $"#EXT-X-VERSION:1"
         $"#EXT-X-ALLOW-CACHE:NO"
         $"#EXT-X-MEDIA-SEQUENCE:{sequenceNumber}"
-        for i in [0 .. 4] do
+        for i in [0L .. 2L] do
             $"#EXTINF:{segmentLengthSeconds},"
-            $"chunk-{i}.ts"
+            $"chunk-{sequenceNumber + i}.ts"
         ""
     ]
 

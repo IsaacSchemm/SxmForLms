@@ -21,7 +21,6 @@ module LyrionKnownPlayers =
         let mutable handlers: (Player -> unit) list = []
 
         let attachHandler h =
-            printfn "Adding handler: %A (%d known players)" h (Set.count known)
             handlers <- h :: handlers
             for player in known do
                 h player
@@ -33,7 +32,6 @@ module LyrionKnownPlayers =
                 let! player = Players.getIdAsync i
 
                 if not (known |> Set.contains player) then
-                    printfn "Adding: %A (%d handlers)" player (List.length WhenAdded.handlers)
                     known <- known |> Set.add player
                     for h in WhenAdded.handlers do
                         h player
@@ -53,11 +51,9 @@ module LyrionKnownPlayers =
             | _ -> None
 
         let setCachedState player state =
-            printfn "Storing power state for %A: %b" player state
             cache.Set(getKey player, state, DateTimeOffset.UtcNow.AddMinutes(16))
 
         let getCurrentStateAsync player = task {
-            printfn "Fetching power state from %A" player
             try
                 let! state = Players.getPowerAsync player
                 setCachedState player state

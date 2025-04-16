@@ -101,26 +101,27 @@
             &nbsp;
         </div>
     </section>
-    <section id="display">
-        <audio></audio>
-        <iframe id="nowPlaying"></iframe>
-    </section>
     <section>
         <table>
             <tr>
                 <td><button id="stop">&#9724;</button></td>
                 <td><button id="prev">&larr;</button></td>
+                <td><button id="noise">N</button></td>
                 <td><button id="next">&rarr;</button></td>
                 <td><button id="info">&#8505;</button></td>
             </tr>
         </table>
-        <hr />
-        <div>
-            <a href="http://@(Context.Request.Host.Host):9000">
-                Lyrion Music Server
-            </a>
-        </div>
     </section>
+    <section id="display">
+        <audio></audio>
+        <iframe id="nowPlaying"></iframe>
+    </section>
+    <hr />
+    <div>
+        <a href="http://@(Context.Request.Host.Host):9000">
+            Lyrion Music Server
+        </a>
+    </div>
 
     <script type="text/javascript">
         var current = 0;
@@ -208,6 +209,12 @@
             }
 
             playNumber(+channelInfo[channelInfo.length - 1].channelNumber);
+        });
+
+        document.getElementById("noise").addEventListener("click", function (e) {
+            e.preventDefault();
+
+            play("/Noise/playlist.m3u8");
         });
 
         document.getElementById("next").addEventListener("click", function (e) {

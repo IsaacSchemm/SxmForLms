@@ -12,6 +12,11 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return View();
         }
 
+        public IActionResult SiriusXM()
+        {
+            return View();
+        }
+
         public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);

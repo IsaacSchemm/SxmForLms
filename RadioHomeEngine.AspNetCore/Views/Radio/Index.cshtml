@@ -8,7 +8,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
-    <title>RadioHomeEngine</title>
+    <title>Radio Home Engine</title>
     <style type="text/css">
         body {
             background-color: black;
@@ -19,320 +19,34 @@
             text-align: center;
         }
 
-        section {
-            display: block;
-            margin: auto;
-            max-width: 320px;
-        }
-
-        @@media (min-width: 800px) and (orientation: landscape) {
-            #numpad, #display {
-                display: inline-block;
-                margin: 0 40px;
-                vertical-align: top;
-                width: 320px;
-            }
-        }
-
-        #num {
-            font-size: 32pt;
-        }
-            
-        audio {
-            visibility: hidden;
-            width: 100%;
-        }
-
         a {
             color: inherit;
         }
-
-        #nowPlaying {
-            border: 0;
-            height: 400px;
-            width: 100%;
-        }
-
-        table {
-            table-layout: fixed;
-            width: 100%;
-        }
-
-            table button {
-                appearance: none;
-                background-color: steelblue;
-                border: 0;
-                color: white;
-                cursor: pointer;
-                font-size: 24pt;
-                height: 56px;
-                padding: 0;
-                width: 100%;
-            }
     </style>
 </head>
 <body>
-    <section id="numpad">
-        <table>
-            <tr>
-                <td><button id="button1">1</button></td>
-                <td><button id="button2">2</button></td>
-                <td><button id="button3">3</button></td>
-            </tr>
-            <tr>
-                <td><button id="button4">4</button></td>
-                <td><button id="button5">5</button></td>
-                <td><button id="button6">6</button></td>
-            </tr>
-            <tr>
-                <td><button id="button7">7</button></td>
-                <td><button id="button8">8</button></td>
-                <td><button id="button9">9</button></td>
-            </tr>
-            <tr>
-                <td><button id="clear">⌫</button></td>
-                <td><button id="button0">0</button></td>
-                <td><button id="play">&#9654;</button></td>
-            </tr>
-        </table>
-        <div>
-            &nbsp;
-            <span id="num"></span>
-            &nbsp;
-        </div>
-    </section>
-    <section>
-        <table>
-            <tr>
-                <td><button id="stop">&#9724;</button></td>
-                <td><button id="prev">&larr;</button></td>
-                <td><button id="noise">N</button></td>
-                <td><button id="next">&rarr;</button></td>
-                <td><button id="info">&#8505;</button></td>
-            </tr>
-        </table>
-    </section>
-    <section id="display">
-        <audio></audio>
-        <iframe id="nowPlaying"></iframe>
-    </section>
-    <hr />
-    <div>
+    <h1>Radio Home Engine</h1>
+
+    <p>
+        <a href="/Radio/SiriusXM">
+            SiriusXM
+        </a>
+    </p>
+
+    <p>
+        <a id="brownNoise" href="/Noise/playlist.m3u8">
+            Brown noise
+        </a>
+        <br />
+        <small>
+            Native HLS support required
+        </small>
+    </p>
+
+    <p>
         <a href="http://@(Context.Request.Host.Host):9000">
             Lyrion Music Server
         </a>
-    </div>
-
-    <script type="text/javascript">
-        var current = 0;
-
-        if ("wiiu" in window) {
-            document.getElementById("clear").innerHTML = [@Html.Raw(Json.Serialize((char)0xE072))][0];
-            document.getElementById("stop").innerHTML = [@Html.Raw(Json.Serialize((char)0xE098))][0];
-            document.getElementById("info").innerHTML = [@Html.Raw(Json.Serialize((char)0xE06B))][0];
-        }
-
-        function backspace() {
-            const span = document.getElementById("num");
-            const str = span.innerText;
-            if (str) {
-                span.innerText = str.substring(0, str.length - 1);
-            }
-        }
-
-        function enter() {
-            var span = document.getElementById("num");
-            var num = +span.innerText || null;
-
-            if (num)
-                playNumber(num);
-            else
-                stop();
-
-            span.innerText = "";
-        }
-
-        document.body.addEventListener("keydown", function (e) {
-            if (e.key === "Backspace") {
-                e.preventDefault();
-                backspace();
-            }
-        });
-
-        document.body.addEventListener("keypress", function (e) {
-            if ("0123456789".indexOf(e.key) !== -1) {
-                e.preventDefault();
-                document.getElementById("num").innerText += e.key;
-            } else if (e.key === "Enter") {
-                e.preventDefault();
-                enter();
-            }
-        });
-
-        function addHandler(button, handler) {
-            button.addEventListener("click", handler);
-        }
-
-        for (var i = 0; i <= 9; i++) {
-            const button = document.getElementById("button" + i);
-            var handler = function (e) {
-                e.preventDefault();
-                document.getElementById("num").innerText += e.target.innerText;
-            };
-            addHandler(button, handler);
-        }
-
-        addHandler(document.getElementById("clear"), function (e) {
-            e.preventDefault();
-            backspace();
-        });
-
-        addHandler(document.getElementById("play"), function (e) {
-            e.preventDefault();
-            enter();
-        });
-
-        document.getElementById("stop").addEventListener("click", function (e) {
-            e.preventDefault();
-            stop();
-        });
-
-        document.getElementById("prev").addEventListener("click", function (e) {
-            e.preventDefault();
-
-            for (var i = channelInfo.length - 1; i >= 0; i--) {
-                var num = +channelInfo[i].channelNumber;
-                if (num < current) {
-                    playNumber(num);
-                    return;
-                }
-            }
-
-            playNumber(+channelInfo[channelInfo.length - 1].channelNumber);
-        });
-
-        document.getElementById("noise").addEventListener("click", function (e) {
-            e.preventDefault();
-
-            play("/Noise/playlist.m3u8");
-        });
-
-        document.getElementById("next").addEventListener("click", function (e) {
-            e.preventDefault();
-
-            for (var i = 0; i < channelInfo.length; i++) {
-                var num = +channelInfo[i].channelNumber;
-                if (num > current) {
-                    playNumber(num);
-                    return;
-                }
-            }
-
-            playNumber(+channelInfo[0].channelNumber);
-        });
-
-        document.getElementById("info").addEventListener("click", function (e) {
-            e.preventDefault();
-
-            if (current) {
-                window.open("/Radio/RecentlyPlaying?num=" + current);
-            }
-        });
-
-        function playNumber(num) {
-            updateLabel(num);
-
-            play("/Radio/PlayChannel?num=" + encodeURIComponent(num));
-        };
-
-        function stop() {
-            updateLabel("");
-
-            play(null);
-        }
-
-        function updateLabel(num) {
-            current = +num;
-
-            document.getElementById("nowPlaying").src = num
-                ? "/Radio/NowPlaying?num=" + encodeURIComponent(num)
-                : "about:blank";
-        }
-
-        function play(url) {
-            if ("wiiu" in window) {
-                if (url)
-                    window.open(url);
-                else
-                    wiiu.videoplayer.end();
-
-                return;
-            }
-
-            var audio = document.getElementsByTagName("audio")[0];
-            audio.style.visibility = "hidden";
-            audio.pause();
-
-            if (!url)
-                return;
-
-            audio.src = url;
-            audio.style.visibility = "visible";
-            audio.play();
-        };
-    </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.18/hls.min.js"
-            integrity="sha512-hARxLWym80kd0Bzl5/93OuW1ujaKfvmJ90yTKak/RB67JuNIjtErU2H7H3bteyfzMuqiSK0tXarT7eK6lEWBBA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
-
-    <script type="text/javascript">
-        var hls = null;
-
-        if ("Hls" in window && Hls.isSupported()) {
-            play = async (url) => {
-                try {
-                    var audio = document.getElementsByTagName("audio")[0];
-                    audio.pause();
-
-                    audio.style.visibility = "hidden";
-
-                    if (hls)
-                        hls.destroy();
-
-                    if (!url)
-                        return;
-
-                    audio.pause();
-
-                    hls = new Hls({ startPosition: 0 });
-
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        console.warn({ event, data });
-                    });
-
-                    var pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
-                    hls.attachMedia(audio);
-                    await pr;
-
-                    if (hls) {
-                        hls.loadSource(url);
-
-                        await new Promise(r => hls.on(Hls.Events.MANIFEST_PARSED, r));
-                    } else {
-                        audio.src = url;
-                    }
-
-                    audio.style.visibility = "visible";
-                    audio.play();
-                } catch (e) {
-                    console.error(e);
-                }
-            };
-        }
-    </script>
-
-    <script type="text/javascript" src="/Radio/ChannelInfo"></script>
+    </p>
 </body>
 </html>

@@ -26,6 +26,14 @@ module FavoritesManager =
                         |}
                     ]
 
+                    do! LyrionFavorites.updateFavoritesAsync "Radio Home Engine" [
+                        {|
+                            url = $"http://{address}:{Config.port}/Noise/playlist.m3u8"
+                            icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num=0"
+                            text = $"Brown noise"
+                        |}
+                    ]
+
                     do! Task.Delay(TimeSpan.FromHours(12), cancellationToken)
                 else
                     printfn "Not updating SiriusXM channel list right now because radio is on: %A" playersOn

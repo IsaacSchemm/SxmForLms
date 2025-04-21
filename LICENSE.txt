@@ -1,4 +1,4 @@
-MIT License
+Radio Home Engine
 
 Copyright (c) 2025 Isaac Schemm
 

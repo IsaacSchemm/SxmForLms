@@ -96,7 +96,7 @@ module LyrionIR =
 
     let RCAProjector = [
         0x00ff15ea, Press (Button "power")
-        0x00ff11ee, Press (Button "muting")
+        0x00ff11ee, Simulate "muting"
         0x00ff09f6, Press (Button "jump_rew")
         0x00ffc13e, Press (Button "jump_fwd")
         0x00ff19e6, Simulate "rew"

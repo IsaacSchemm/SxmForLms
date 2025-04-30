@@ -17,32 +17,26 @@ module LyrionIRHandler =
     type DigitBehavior =
     | Digit
     | LoadPresetSingle
-    | LoadPresetMulti
     | SeekTo
     | AudioCD
     | SiriusXM
-    | Calculator
 
     let enabledBehaviors = [
         Digit
         LoadPresetSingle
-        LoadPresetMulti
         SeekTo
         AudioCD
         SiriusXM
-        Calculator
         Digit
     ]
 
     let getTitle behavior =
         match behavior with
-        | Digit -> "Direct digit entry"
-        | LoadPresetSingle -> "Load preset (single-digit)"
-        | LoadPresetMulti -> "Load preset (multi-digit)"
-        | SeekTo -> "Seek (ss/mm:ss/hh:mm:ss)"
-        | SiriusXM -> "Play SiriusXM channel"
-        | AudioCD -> "Play CD track"
-        | Calculator -> "Calculator"
+        | Digit -> "Direct"
+        | LoadPresetSingle -> "Preset (1-9)"
+        | SeekTo -> "Seek to"
+        | AudioCD -> "CD track"
+        | SiriusXM -> "SiriusXM channel"
 
     let (|IRCode|_|) (str: string) =
         match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
@@ -115,20 +109,23 @@ module LyrionIRHandler =
             let header = getTitle behavior
             do! Players.setDisplayAsync player header text (TimeSpan.FromSeconds(10))
 
-            if promptMonitor.IsCompleted then promptMonitor <- task {
-                try
-                    printf "Monitoring remote screen..."
-                    let mutable finished = false
-                    while not finished do
-                        printf "."
-                        do! Task.Delay(200)
-                        let! (current, _) = Players.getDisplayNowAsync player
-                        if current <> header then
-                            printfn " screen reset."
-                            promptText <- None
-                            finished <- true
-                with ex -> Console.Error.WriteLine(ex)
-            }
+            if promptMonitor.IsCompleted then
+                promptMonitor <- task {
+                    try
+                        printf "Monitoring remote screen..."
+                        let mutable finished = false
+                        while not finished do
+                            printf "."
+                            do! Task.Delay(200)
+                            let! (current, _) = Players.getDisplayNowAsync player
+                            if current <> header then
+                                printfn " screen reset."
+                                finished <- true
+                    with ex ->
+                        Console.Error.WriteLine(ex)
+
+                    promptText <- None
+                }
         }
 
         let appendToPromptAsync text =
@@ -140,8 +137,10 @@ module LyrionIRHandler =
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
 
-        let playAllTracksAsync () = task {
-            do! Players.setDisplayAsync player "Audio CD" "Searching for tracks..." (TimeSpan.FromSeconds(999))
+        let playAllTracksAsync (startAtTrack: int) = task {
+            do! Players.simulateButtonAsync player "stop"
+
+            do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
             let disc = Icedax.getInfo ()
 
@@ -150,7 +149,7 @@ module LyrionIRHandler =
             do! Playlist.clearAsync player
 
             let! address = Network.getAddressAsync CancellationToken.None
-            for track in disc.tracks do
+            for track in disc.tracks |> Seq.skipWhile (fun t -> t.number < startAtTrack) do
                 let title =
                     match track.title with
                     | "" -> $"Track {track.number}"
@@ -199,7 +198,7 @@ module LyrionIRHandler =
                 use proc = Process.Start("eject", $"-T {Icedax.device}")
                 do! proc.WaitForExitAsync()
             | PlayAllTracks ->
-                do! playAllTracksAsync ()
+                do! playAllTracksAsync 0
             | Forecast ->
                 do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))
 
@@ -272,49 +271,11 @@ module LyrionIRHandler =
                     | PromptPress (Dot, _) when behavior = SeekTo ->
                         do! appendToPromptAsync ":"
 
-                    | PromptPress (Dot, _) when behavior = Calculator ->
-                        do! appendToPromptAsync "."
-
-                    | Simulate "arrow_up" when behavior = Calculator ->
-                        do! appendToPromptAsync "("
-
-                    | Simulate "arrow_down" when behavior = Calculator ->
-                        do! appendToPromptAsync ")"
-
-                    | Simulate "repeat" when behavior = Calculator ->
-                        do! appendToPromptAsync "^"
-
-                    | Simulate "volup" when behavior = Calculator ->
-                        do! appendToPromptAsync "+"
-
-                    | Simulate "voldown" when behavior = Calculator ->
-                        do! appendToPromptAsync "-"
-
-                    | Press ChannelUp
-                    | Press (Button "jump_fwd") when behavior = Calculator ->
-                        do! appendToPromptAsync "*"
-
-                    | Press ChannelDown
-                    | Press (Button "jump_rew") when behavior = Calculator ->
-                        do! appendToPromptAsync "/"
-
-                    | Simulate "rew" when behavior = Calculator ->
-                        do! appendToPromptAsync "<<"
-
-                    | Simulate "fwd" when behavior = Calculator ->
-                        do! appendToPromptAsync "<<"
-
                     | PromptPress (Backspace, _) when prompt = "> " ->
                         do! clearAsync ()
 
                     | PromptPress (Backspace, _) ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
-
-                    | Press (Button "knob_push") when behavior = LoadPresetMulti ->
-                        let num = prompt.Substring(2)
-                        
-                        do! clearAsync ()
-                        do! Players.simulateButtonAsync player $"playPreset_{num}"
 
                     | Press (Button "knob_push") when behavior = SeekTo ->
                         let array =
@@ -346,15 +307,10 @@ module LyrionIRHandler =
                         match num with
                         | "" ->
                             do! clearAsync ()
-                            do! playAllTracksAsync ()
-                        | Int32 0 ->
-                            do! clearAsync ()
-                            do! playAllTracksAsync ()
+                            do! playAllTracksAsync 0
                         | Int32 track ->
                             do! clearAsync ()
-
-                            let! address = Network.getAddressAsync CancellationToken.None
-                            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track}" $"Track {track}"
+                            do! playAllTracksAsync track
                         | _ ->
                             do! writePromptAsync "> "
 
@@ -373,14 +329,6 @@ module LyrionIRHandler =
                             do! playSiriusXMChannelAsync c.channelNumber c.name
                         | None ->
                             do! writePromptAsync "> "
-
-                    | Press (Button "knob_push") when behavior = Calculator ->
-                        let expression = prompt.Substring(2)
-
-                        let parser = new Calcex.Parser()
-                        let tree = parser.Parse(expression)
-                        let result = tree.EvaluateDecimal()
-                        do! Players.setDisplayAsync player "Result" $"{result}" (TimeSpan.FromSeconds(5))
 
                     | Press (Button "exit_left")
                     | Press Input ->

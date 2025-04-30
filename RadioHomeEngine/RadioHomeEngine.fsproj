@@ -28,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="calcex.core" Version="0.2.0" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />

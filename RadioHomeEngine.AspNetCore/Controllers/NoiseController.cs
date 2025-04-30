@@ -1,7 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
@@ -9,7 +6,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
     public class NoiseController : Controller
     {
         [Route("Noise/playlist.m3u8")]
-        public async Task<IActionResult> Playlist(CancellationToken cancellationToken)
+        public IActionResult Playlist(CancellationToken cancellationToken)
         {
             return Content(
                 Noise.getPlaylist(),
@@ -18,7 +15,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [Route("Noise/chunklist.m3u8")]
-        public async Task<IActionResult> Chunklist(CancellationToken cancellationToken)
+        public IActionResult Chunklist(CancellationToken cancellationToken)
         {
             return Content(
                 Noise.getChunklist(),

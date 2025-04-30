@@ -101,11 +101,11 @@ module LyrionIR =
         0x00ffc936, Hold [OnHold (Button "pause"); OnRelease (Button "play")]
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Hold [OnRelease PlayAllTracks; OnHold Forecast] // Flip
+        0x00ff6b94, Hold [OnRelease PlayAllTracks; OnHold Eject] // Flip
         0x00ffe916, Press Input // Source
-        0x00ff6996, Press StreamInfo // Zoom
+        0x00ff6996, Hold [OnRelease StreamInfo; OnHold Forecast] // Zoom
         0x00ff8976, Simulate "home" // Menu
-        0x00ff25da, Simulate "arrow_left"
+        0x00ff25da, Press (Button "exit_left")
         0x00ffa956, Simulate "arrow_up"
         0x00ff59a6, Simulate "arrow_down"
         0x00ffd926, Simulate "arrow_left"

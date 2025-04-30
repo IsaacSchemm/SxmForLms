@@ -167,13 +167,12 @@ module LyrionIRHandler =
             | Button button ->
                 do! Players.simulateButtonAsync player button
             | StreamInfo ->
-                do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
-
                 let! channelId = getCurrentSiriusXMChannelId ()
                 match channelId with
-                | None ->
-                    do! clearAsync ()
+                | None -> ()
                 | Some id ->
+                    do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
+
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channel =
                         channels
@@ -292,11 +291,11 @@ module LyrionIRHandler =
                         do! appendToPromptAsync "-"
 
                     | Press ChannelUp
-                    | Simulate "jump_fwd" when behavior = Calculator ->
+                    | Press (Button "jump_fwd") when behavior = Calculator ->
                         do! appendToPromptAsync "*"
 
                     | Press ChannelDown
-                    | Simulate "jump_rew" when behavior = Calculator ->
+                    | Press (Button "jump_rew") when behavior = Calculator ->
                         do! appendToPromptAsync "/"
 
                     | Simulate "rew" when behavior = Calculator ->
@@ -306,7 +305,7 @@ module LyrionIRHandler =
                         do! appendToPromptAsync "<<"
 
                     | Simulate "arrow_left"
-                    | Backspace when prompt.Length > 2 ->
+                    | Backspace when prompt.StartsWith("> ") && prompt.Length > 2 ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
                     | Press (Button "knob_push") when behavior = LoadPresetMulti ->
@@ -381,7 +380,11 @@ module LyrionIRHandler =
                         let result = tree.EvaluateDecimal()
                         do! Players.setDisplayAsync player "Result" $"{result}" (TimeSpan.FromSeconds(5))
 
-                    | Press (Button "exit_left") ->
+                    | Press (Button "exit_left")
+                    | Press Input ->
+                        do! clearAsync ()
+
+                    | Backspace when prompt = "> " ->
                         do! clearAsync ()
 
                     | _ -> ()

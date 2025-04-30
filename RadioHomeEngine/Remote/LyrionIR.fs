@@ -68,8 +68,7 @@ module LyrionIR =
         "preset_6", 0x76896a95
     ]
 
-    type Press =
-    | Button of string
+    type CustomAction =
     | StreamInfo
     | PlayAllTracks
     | Eject
@@ -77,6 +76,11 @@ module LyrionIR =
     | ChannelUp
     | ChannelDown
     | Input
+    | CustomNumeric of int
+
+    type Press =
+    | Button of string
+    | Custom of CustomAction
 
     type HoldAction =
     | Message of string
@@ -92,6 +96,7 @@ module LyrionIR =
     | Hold of HoldAction list
     | Press of Press
     | PromptPress of PromptAction * Press
+    | Number of int
     | NoAction
 
     let RCAProjector = [
@@ -104,9 +109,9 @@ module LyrionIR =
         0x00ffc936, Hold [OnHold (Button "pause"); OnRelease (Button "play")]
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Hold [OnRelease PlayAllTracks; OnHold Eject] // Flip
-        0x00ffe916, Press Input // Source
-        0x00ff6996, Press StreamInfo // Zoom
+        0x00ff6b94, Hold [OnRelease (Custom PlayAllTracks); OnHold (Custom Eject)] // Flip
+        0x00ffe916, Press (Custom Input) // Source
+        0x00ff6996, Press (Custom StreamInfo) // Zoom
         0x00ff8976, Simulate "home" // Menu
         0x00ff25da, Press (Button "exit_left")
         0x00ffa956, Simulate "arrow_up"
@@ -114,24 +119,18 @@ module LyrionIR =
         0x00ffd926, Simulate "arrow_left"
         0x00ff9966, Simulate "arrow_right"
         0x00ff7986, Press (Button "knob_push")
-        0x00ffe11e, Simulate "1"
-        0x00ff619e, Simulate "2"
-        0x00ffa15e, Simulate "3"
-        0x00ffd12e, Simulate "4"
-        0x00ff51ae, Simulate "5"
-        0x00ff916e, Simulate "6"
-        0x00fff10e, Simulate "7"
-        0x00ff718e, Simulate "8"
-        0x00ffb14e, Simulate "9"
-        0x00ff21de, PromptPress (Dot, Forecast) // Recall
+        0x00ffe11e, Number 1
+        0x00ff619e, Number 2
+        0x00ffa15e, Number 3
+        0x00ffd12e, Number 4
+        0x00ff51ae, Number 5
+        0x00ff916e, Number 6
+        0x00fff10e, Number 7
+        0x00ff718e, Number 8
+        0x00ffb14e, Number 9
+        0x00ff21de, PromptPress (Dot, (Custom Forecast)) // Recall
         0x00ff49b6, Simulate "0"
         0x00ff29d6, PromptPress (Backspace, Button "favorites")
     ]
 
-    let MappingsOn = Map.ofList [
-        yield! RCAProjector
-    ]
-
-    let MappingsOff = Map.ofList [
-        yield! RCAProjector
-    ]
+    let Mappings = Map.ofList RCAProjector

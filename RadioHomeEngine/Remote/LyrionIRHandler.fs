@@ -161,112 +161,125 @@ module LyrionIRHandler =
 
         let mutable holdTime = ref DateTime.UtcNow
 
+        let customActionAsync action = task {
+            let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+            if powerState then
+                match action with
+                | StreamInfo ->
+                    let! channelId = getCurrentSiriusXMChannelId ()
+                    match channelId with
+                    | None -> ()
+                    | Some id ->
+                        do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
+
+                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                        let channel =
+                            channels
+                            |> Seq.where (fun c -> c.channelId = id)
+                            |> Seq.tryHead
+
+                        match channel with
+                        | None ->
+                            do! clearAsync ()
+                        | Some c ->
+                            let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                            let song =
+                                playlist.cuts
+                                |> Seq.sortByDescending (fun cut -> cut.startTime)
+                                |> Seq.tryHead
+
+                            match song with
+                            | None ->
+                                do! clearAsync ()
+                            | Some c ->
+                                let artist = String.concat " / " c.artists
+                                do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(5))
+
+                | Eject ->
+                    use proc = Process.Start("eject", $"-T {Icedax.device}")
+                    do! proc.WaitForExitAsync()
+
+                | PlayAllTracks ->
+                    do! playAllTracksAsync 0
+
+                | Forecast ->
+                    do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))
+
+                    let! forecasts = Weather.getForecastsAsync CancellationToken.None
+                    let! alerts = Weather.getAlertsAsync CancellationToken.None
+
+                    do! Speech.readAsync player [
+                        for forecast in Seq.truncate 2 forecasts do
+                            forecast
+                        for alert in alerts do
+                            alert.info
+                    ]
+
+                | ChannelUp | ChannelDown when channelChanging ->
+                    ()
+
+                | ChannelUp ->
+                    if not channelChanging then
+                        let! id = getCurrentSiriusXMChannelId ()
+
+                        if Option.isSome id then
+                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                            for (a, b) in Seq.pairwise channels do
+                                if Some a.channelId = id then
+                                    do! playSiriusXMChannelAsync b.channelNumber b.name
+
+                | ChannelDown ->
+                    if not channelChanging then
+                        let! id = getCurrentSiriusXMChannelId ()
+
+                        if Option.isSome id then
+                            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+
+                            for (a, b) in Seq.pairwise channels do
+                                if Some b.channelId = id then
+                                    do! playSiriusXMChannelAsync a.channelNumber a.name
+
+                | Input ->
+                    let! (header, _) = Players.getDisplayNowAsync player
+                    if header = "Input Mode" then
+                        behavior <-
+                            Seq.pairwise enabledBehaviors
+                            |> Seq.where (fun (a, _) -> a = behavior)
+                            |> Seq.map (fun (_, b) -> b)
+                            |> Seq.head
+
+                    do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
+
+                    File.WriteAllText("behavior.txt", $"{behavior}")
+                | CustomNumeric n ->
+                    if behavior = LoadPresetSingle then
+                        do! Players.simulateButtonAsync player $"playPreset_{n}"
+                    else if powerState then
+                        do! writePromptAsync $"> {n}"
+        }
+
         let pressAsync pressAction = task {
             match pressAction with
             | Button button ->
                 do! Players.simulateButtonAsync player button
-            | StreamInfo ->
-                let! channelId = getCurrentSiriusXMChannelId ()
-                match channelId with
-                | None -> ()
-                | Some id ->
-                    do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
-
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelId = id)
-                        |> Seq.tryHead
-
-                    match channel with
-                    | None ->
-                        do! clearAsync ()
-                    | Some c ->
-                        let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                        let song =
-                            playlist.cuts
-                            |> Seq.sortByDescending (fun cut -> cut.startTime)
-                            |> Seq.tryHead
-
-                        match song with
-                        | None ->
-                            do! clearAsync ()
-                        | Some c ->
-                            let artist = String.concat " / " c.artists
-                            do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(5))
-            | Eject ->
-                use proc = Process.Start("eject", $"-T {Icedax.device}")
-                do! proc.WaitForExitAsync()
-            | PlayAllTracks ->
-                do! playAllTracksAsync 0
-            | Forecast ->
-                do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))
-
-                let! forecasts = Weather.getForecastsAsync CancellationToken.None
-                let! alerts = Weather.getAlertsAsync CancellationToken.None
-
-                do! Speech.readAsync player [
-                    for forecast in Seq.truncate 2 forecasts do
-                        forecast
-                    for alert in alerts do
-                        alert.info
-                ]
-            | ChannelUp | ChannelDown when channelChanging ->
-                ()
-            | ChannelUp ->
-                if not channelChanging then
-                    let! id = getCurrentSiriusXMChannelId ()
-
-                    if Option.isSome id then
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                        for (a, b) in Seq.pairwise channels do
-                            if Some a.channelId = id then
-                                do! playSiriusXMChannelAsync b.channelNumber b.name
-            | ChannelDown ->
-                if not channelChanging then
-                    let! id = getCurrentSiriusXMChannelId ()
-
-                    if Option.isSome id then
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-
-                        for (a, b) in Seq.pairwise channels do
-                            if Some b.channelId = id then
-                                do! playSiriusXMChannelAsync a.channelNumber a.name
-            | Input ->
-                let! (header, _) = Players.getDisplayNowAsync player
-                if header = "Input Mode" then
-                    behavior <-
-                        Seq.pairwise enabledBehaviors
-                        |> Seq.where (fun (a, _) -> a = behavior)
-                        |> Seq.map (fun (_, b) -> b)
-                        |> Seq.head
-
-                do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
-
-                File.WriteAllText("behavior.txt", $"{behavior}")
+            | Custom customAction ->
+                do! customActionAsync customAction
         }
 
         let processIRAsync ircode time = task {
             holdTime.Value <- DateTime.UtcNow
 
-            let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-
-            let mappings =
-                if powerState
-                then MappingsOn
-                else MappingsOff
-
             let mapping =
-                mappings
+                Mappings
                 |> Map.tryFind ircode
                 |> Option.defaultValue NoAction
 
             let processPromptEntryAsync (prompt: string) = task {
                 do! doOnceAsync ircode (fun () -> task {
                     match mapping with
-                    | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
-                        do! appendToPromptAsync str
+                    | Number n ->
+                        do! appendToPromptAsync n
 
                     | PromptPress (Dot, _) when behavior = SeekTo ->
                         do! appendToPromptAsync ":"
@@ -331,7 +344,7 @@ module LyrionIRHandler =
                             do! writePromptAsync "> "
 
                     | Press (Button "exit_left")
-                    | Press Input ->
+                    | Press (Custom _) ->
                         do! clearAsync ()
 
                     | _ -> ()
@@ -368,17 +381,17 @@ module LyrionIRHandler =
                         if not actionTriggered then
                             for a in actionList do
                             match a with
-                            | Message m -> do! clearAsync ()
+                            | Message _ -> do! clearAsync ()
                             | OnRelease pressAction -> do! pressAsync pressAction
                             | _ -> ()
                     })
 
-                | Simulate str when str.Length = 1 && "0123456789".Contains(str) && behavior <> Digit ->
+                | Number n when behavior = Digit ->
+                    do! Players.simulateIRAsync player Slim[$"{n}"] time
+
+                | Number n ->
                     do! doOnceAsync ircode (fun () -> task {
-                        if behavior = LoadPresetSingle then
-                            do! Players.simulateButtonAsync player $"playPreset_{str}"
-                        else
-                            do! writePromptAsync $"> {str}"
+                        do! customActionAsync (CustomNumeric n)
                     })
 
                 | Simulate name ->

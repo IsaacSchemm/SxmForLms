@@ -353,13 +353,8 @@ module LyrionIRHandler =
 
             let processNormalEntryAsync () = task {
                 match mapping with
-                | Hold actionList ->
+                | Hold (short, long) ->
                     do! doOnceAsync ircode (fun () -> task {
-                        for a in actionList do
-                            match a with
-                            | Message m -> do! Players.setDisplayAsync player m m (TimeSpan.FromSeconds(5))
-                            | _ -> ()
-
                         let start = DateTime.UtcNow
 
                         let mutable actionTriggered = false
@@ -370,20 +365,11 @@ module LyrionIRHandler =
                             if not actionTriggered then
                                 if DateTime.UtcNow - start >= TimeSpan.FromSeconds(2) then
                                     do! clearAsync ()
-
-                                    for a in actionList do
-                                        match a with
-                                        | OnHold pressAction -> do! pressAsync pressAction
-                                        | _ -> ()
-
+                                    do! pressAsync long
                                     actionTriggered <- true
 
                         if not actionTriggered then
-                            for a in actionList do
-                            match a with
-                            | Message _ -> do! clearAsync ()
-                            | OnRelease pressAction -> do! pressAsync pressAction
-                            | _ -> ()
+                            do! pressAsync short
                     })
 
                 | Number n when behavior = Digit ->

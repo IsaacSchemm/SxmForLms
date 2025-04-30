@@ -82,18 +82,13 @@ module LyrionIR =
     | Button of string
     | Custom of CustomAction
 
-    type HoldAction =
-    | Message of string
-    | OnHold of Press
-    | OnRelease of Press
-
     type PromptAction =
     | Dot
     | Backspace
 
     type Action =
     | Simulate of string
-    | Hold of HoldAction list
+    | Hold of short: Press * long: Press
     | Press of Press
     | PromptPress of PromptAction * Press
     | Number of int
@@ -106,10 +101,10 @@ module LyrionIR =
         0x00ffc13e, Press (Button "jump_fwd")
         0x00ff19e6, Simulate "rew"
         0x00ff41be, Simulate "fwd"
-        0x00ffc936, Hold [OnHold (Button "pause"); OnRelease (Button "play")]
+        0x00ffc936, Hold (Button "pause", Button "play")
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Hold [OnRelease (Custom PlayAllTracks); OnHold (Custom Eject)] // Flip
+        0x00ff6b94, Hold (Custom PlayAllTracks, Custom Eject) // Flip
         0x00ffe916, Press (Custom Input) // Source
         0x00ff6996, Press (Custom StreamInfo) // Zoom
         0x00ff8976, Simulate "home" // Menu
@@ -129,7 +124,7 @@ module LyrionIR =
         0x00ff718e, Number 8
         0x00ffb14e, Number 9
         0x00ff21de, PromptPress (Dot, (Custom Forecast)) // Recall
-        0x00ff49b6, Simulate "0"
+        0x00ff49b6, Number 0
         0x00ff29d6, PromptPress (Backspace, Button "favorites")
     ]
 

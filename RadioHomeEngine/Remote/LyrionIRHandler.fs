@@ -167,9 +167,12 @@ module LyrionIRHandler =
             | Button button ->
                 do! Players.simulateButtonAsync player button
             | StreamInfo ->
+                do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
+
                 let! channelId = getCurrentSiriusXMChannelId ()
                 match channelId with
-                | None -> ()
+                | None ->
+                    do! clearAsync ()
                 | Some id ->
                     let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
                     let channel =
@@ -178,7 +181,8 @@ module LyrionIRHandler =
                         |> Seq.tryHead
 
                     match channel with
-                    | None -> ()
+                    | None ->
+                        do! clearAsync ()
                     | Some c ->
                         let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
                         let song =
@@ -187,7 +191,8 @@ module LyrionIRHandler =
                             |> Seq.tryHead
 
                         match song with
-                        | None -> ()
+                        | None ->
+                            do! clearAsync ()
                         | Some c ->
                             let artist = String.concat " / " c.artists
                             do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
@@ -197,6 +202,8 @@ module LyrionIRHandler =
             | PlayAllTracks ->
                 do! playAllTracksAsync ()
             | Forecast ->
+                do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))
+
                 let! forecasts = Weather.getForecastsAsync CancellationToken.None
                 let! alerts = Weather.getAlertsAsync CancellationToken.None
 
@@ -284,10 +291,12 @@ module LyrionIRHandler =
                     | Simulate "voldown" when behavior = Calculator ->
                         do! appendToPromptAsync "-"
 
-                    | Press ChannelUp when behavior = Calculator ->
+                    | Press ChannelUp
+                    | Simulate "jump_fwd" when behavior = Calculator ->
                         do! appendToPromptAsync "*"
 
-                    | Press ChannelDown when behavior = Calculator ->
+                    | Press ChannelDown
+                    | Simulate "jump_rew" when behavior = Calculator ->
                         do! appendToPromptAsync "/"
 
                     | Simulate "rew" when behavior = Calculator ->
@@ -296,7 +305,8 @@ module LyrionIRHandler =
                     | Simulate "fwd" when behavior = Calculator ->
                         do! appendToPromptAsync "<<"
 
-                    | Simulate "arrow_left" ->
+                    | Simulate "arrow_left"
+                    | Backspace when prompt.Length > 2 ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
                     | Press (Button "knob_push") when behavior = LoadPresetMulti ->

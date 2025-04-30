@@ -194,7 +194,7 @@ module LyrionIRHandler =
                             do! clearAsync ()
                         | Some c ->
                             let artist = String.concat " / " c.artists
-                            do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+                            do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(5))
             | Eject ->
                 use proc = Process.Start("eject", $"-T {Icedax.device}")
                 do! proc.WaitForExitAsync()
@@ -269,10 +269,10 @@ module LyrionIRHandler =
                     | Simulate str when str.Length = 1 && "0123456789".Contains(str) ->
                         do! appendToPromptAsync str
 
-                    | Dot when behavior = SeekTo ->
+                    | PromptPress (Dot, _) when behavior = SeekTo ->
                         do! appendToPromptAsync ":"
 
-                    | Dot when behavior = Calculator ->
+                    | PromptPress (Dot, _) when behavior = Calculator ->
                         do! appendToPromptAsync "."
 
                     | Simulate "arrow_up" when behavior = Calculator ->
@@ -304,8 +304,10 @@ module LyrionIRHandler =
                     | Simulate "fwd" when behavior = Calculator ->
                         do! appendToPromptAsync "<<"
 
-                    | Simulate "arrow_left"
-                    | Backspace when prompt.StartsWith("> ") && prompt.Length > 2 ->
+                    | PromptPress (Backspace, _) when prompt = "> " ->
+                        do! clearAsync ()
+
+                    | PromptPress (Backspace, _) ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
                     | Press (Button "knob_push") when behavior = LoadPresetMulti ->
@@ -384,9 +386,6 @@ module LyrionIRHandler =
                     | Press Input ->
                         do! clearAsync ()
 
-                    | Backspace when prompt = "> " ->
-                        do! clearAsync ()
-
                     | _ -> ()
                 })
             }
@@ -408,7 +407,7 @@ module LyrionIRHandler =
                             do! Task.Delay(100)
 
                             if not actionTriggered then
-                                if DateTime.UtcNow - start >= TimeSpan.FromSeconds(3) then
+                                if DateTime.UtcNow - start >= TimeSpan.FromSeconds(2) then
                                     do! clearAsync ()
 
                                     for a in actionList do
@@ -437,7 +436,8 @@ module LyrionIRHandler =
                 | Simulate name ->
                     do! Players.simulateIRAsync player Slim[name] time
 
-                | Press pressAction ->
+                | Press pressAction
+                | PromptPress (_, pressAction) ->
                     do! doOnceAsync ircode (fun () -> task {
                         do! pressAsync pressAction
                     })

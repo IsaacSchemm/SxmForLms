@@ -83,12 +83,15 @@ module LyrionIR =
     | OnHold of Press
     | OnRelease of Press
 
+    type PromptAction =
+    | Dot
+    | Backspace
+
     type Action =
     | Simulate of string
     | Hold of HoldAction list
     | Press of Press
-    | Dot
-    | Backspace
+    | PromptPress of PromptAction * Press
     | NoAction
 
     let RCAProjector = [
@@ -103,7 +106,7 @@ module LyrionIR =
         0x00ff31ce, Simulate "volup"
         0x00ff6b94, Hold [OnRelease PlayAllTracks; OnHold Eject] // Flip
         0x00ffe916, Press Input // Source
-        0x00ff6996, Hold [OnRelease StreamInfo; OnHold Forecast] // Zoom
+        0x00ff6996, Press StreamInfo // Zoom
         0x00ff8976, Simulate "home" // Menu
         0x00ff25da, Press (Button "exit_left")
         0x00ffa956, Simulate "arrow_up"
@@ -120,9 +123,9 @@ module LyrionIR =
         0x00fff10e, Simulate "7"
         0x00ff718e, Simulate "8"
         0x00ffb14e, Simulate "9"
-        0x00ff21de, Dot // Recall
+        0x00ff21de, PromptPress (Dot, Forecast) // Recall
         0x00ff49b6, Simulate "0"
-        0x00ff29d6, Backspace
+        0x00ff29d6, PromptPress (Backspace, Button "favorites")
     ]
 
     let MappingsOn = Map.ofList [

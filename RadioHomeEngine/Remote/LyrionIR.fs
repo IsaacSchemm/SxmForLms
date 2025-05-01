@@ -99,7 +99,7 @@ module LyrionIR =
         0x00ffc936, Simulate "play"
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Press (Custom PlayAllTracks) // Flip
+        0x00ff6b94, Press (Custom Forecast) // Flip
         0x00ffe916, Press (Custom Input) // Source
         0x00ff6996, Press (Custom StreamInfo) // Zoom
         0x00ff8976, Simulate "home" // Menu
@@ -118,7 +118,7 @@ module LyrionIR =
         0x00fff10e, Number 7
         0x00ff718e, Number 8
         0x00ffb14e, Number 9
-        0x00ff21de, Press (Custom Forecast) // Recall
+        0x00ff21de, NoAction // Recall
         0x00ff49b6, Number 0
         0x00ff29d6, Press (Custom Backspace) // Fav/⌫
     ]

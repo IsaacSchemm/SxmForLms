@@ -85,7 +85,6 @@ module LyrionIR =
 
     type Action =
     | Simulate of string
-    | Hold of short: Press * long: Press
     | Press of Press
     | Number of int
     | NoAction
@@ -97,7 +96,7 @@ module LyrionIR =
         0x00ffc13e, Press (Button "jump_fwd")
         0x00ff19e6, Simulate "rew"
         0x00ff41be, Simulate "fwd"
-        0x00ffc936, Hold (Button "pause", Button "play")
+        0x00ffc936, Simulate "play"
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
         0x00ff6b94, Press (Custom PlayAllTracks) // Flip

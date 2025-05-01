@@ -163,8 +163,6 @@ module LyrionIRHandler =
             do! Playlist.playAsync player
         }
 
-        let mutable holdTime = ref DateTime.UtcNow
-
         let customActionAsync action = task {
             let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
             if powerState then
@@ -261,6 +259,7 @@ module LyrionIRHandler =
                         do! Players.simulateButtonAsync player $"playPreset_{n}"
                     else if powerState then
                         do! writePromptAsync $"> {n}"
+                | Backspace -> ()
         }
 
         let pressAsync pressAction = task {
@@ -272,8 +271,6 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            holdTime.Value <- DateTime.UtcNow
-
             let mapping =
                 Mappings
                 |> Map.tryFind ircode
@@ -345,25 +342,6 @@ module LyrionIRHandler =
 
             let processNormalEntryAsync () = task {
                 match mapping with
-                | Hold (short, long) ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        let start = DateTime.UtcNow
-
-                        let mutable actionTriggered = false
-
-                        while DateTime.UtcNow - holdTime.Value < TimeSpan.FromMilliseconds(250) do
-                            do! Task.Delay(100)
-
-                            if not actionTriggered then
-                                if DateTime.UtcNow - start >= TimeSpan.FromSeconds(2) then
-                                    do! clearAsync ()
-                                    do! pressAsync long
-                                    actionTriggered <- true
-
-                        if not actionTriggered then
-                            do! pressAsync short
-                    })
-
                 | Number n when behavior = Digit ->
                     do! Players.simulateIRAsync player Slim[$"{n}"] time
 

@@ -17,14 +17,16 @@ module LyrionIRHandler =
     type DigitBehavior =
     | Digit
     | LoadPresetSingle
-    | SeekTo
+    | SeekToSeconds
+    | SeekToMinutes
     | AudioCD
     | SiriusXM
 
     let enabledBehaviors = [
         Digit
         LoadPresetSingle
-        SeekTo
+        SeekToSeconds
+        SeekToMinutes
         AudioCD
         SiriusXM
         Digit
@@ -34,7 +36,8 @@ module LyrionIRHandler =
         match behavior with
         | Digit -> "Direct"
         | LoadPresetSingle -> "Preset (1-9)"
-        | SeekTo -> "Seek to"
+        | SeekToSeconds -> "Seek to (seconds)"
+        | SeekToMinutes -> "Seek to (minutes)"
         | AudioCD -> "CD track"
         | SiriusXM -> "SiriusXM channel"
 
@@ -281,36 +284,25 @@ module LyrionIRHandler =
                     | Number n ->
                         do! appendToPromptAsync n
 
-                    | PromptPress (Dot, _) when behavior = SeekTo ->
-                        do! appendToPromptAsync ":"
-
                     | PromptPress (Backspace, _) when prompt = "> " ->
                         do! clearAsync ()
 
                     | PromptPress (Backspace, _) ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
-                    | Press (Button "knob_push") when behavior = SeekTo ->
-                        let array =
-                            prompt.Substring(2)
-                            |> Utility.split ':'
-                            |> Array.map Int32.TryParse
-
-                        let time =
-                            match array with
-                            | [| (true, s) |] ->
-                                Some s
-                            | [| (true, m); (true, s) |] ->
-                                Some (60 * m + s)
-                            | [| (true, h); (true, m); (true, s) |] ->
-                                Some (3600 * h + 60 * m + s)
-                            | _ ->
-                                None
-
-                        match time with
-                        | Some t ->
+                    | Press (Button "knob_push") when behavior = SeekToSeconds ->
+                        match prompt.Substring(2) with
+                        | Int32 s ->
                             do! clearAsync ()
-                            do! Playlist.setTimeAsync player t
+                            do! Playlist.setTimeAsync player s
+                        | _ ->
+                            do! writePromptAsync "> "
+
+                    | Press (Button "knob_push") when behavior = SeekToMinutes ->
+                        match prompt.Substring(2) with
+                        | Int32 m ->
+                            do! clearAsync ()
+                            do! Playlist.setTimeAsync player (60 * m)
                         | _ ->
                             do! writePromptAsync "> "
 

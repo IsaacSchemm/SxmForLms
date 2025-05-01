@@ -37,4 +37,6 @@ module FavoritesManager =
                     do! Task.Delay(TimeSpan.FromHours(12), cancellationToken)
                 else
                     printfn "Not updating SiriusXM channel list right now because radio is on: %A" playersOn
+
+                    do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
         }

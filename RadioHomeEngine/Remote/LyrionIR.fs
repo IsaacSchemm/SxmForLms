@@ -77,20 +77,16 @@ module LyrionIR =
     | ChannelDown
     | Input
     | CustomNumeric of int
+    | Backspace
 
     type Press =
     | Button of string
     | Custom of CustomAction
 
-    type PromptAction =
-    | Dot
-    | Backspace
-
     type Action =
     | Simulate of string
     | Hold of short: Press * long: Press
     | Press of Press
-    | PromptPress of PromptAction * Press
     | Number of int
     | NoAction
 
@@ -123,9 +119,9 @@ module LyrionIR =
         0x00fff10e, Number 7
         0x00ff718e, Number 8
         0x00ffb14e, Number 9
-        0x00ff21de, PromptPress (Dot, (Custom Forecast)) // Recall
+        0x00ff21de, Press (Custom Forecast) // Recall
         0x00ff49b6, Number 0
-        0x00ff29d6, PromptPress (Backspace, Button "favorites")
+        0x00ff29d6, Press (Custom Backspace) // Fav/⌫
     ]
 
     let Mappings = Map.ofList RCAProjector

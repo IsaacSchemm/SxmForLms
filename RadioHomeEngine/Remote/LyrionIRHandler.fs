@@ -137,6 +137,7 @@ module LyrionIRHandler =
             | None -> writePromptAsync $"> {text}"
 
         let clearAsync () = task {
+            promptText <- None
             do! Players.setDisplayAsync player " " " " (TimeSpan.FromMilliseconds(1))
         }
 
@@ -284,10 +285,10 @@ module LyrionIRHandler =
                     | Number n ->
                         do! appendToPromptAsync n
 
-                    | PromptPress (Backspace, _) when prompt = "> " ->
+                    | Press (Custom Backspace) when prompt = "> " ->
                         do! clearAsync ()
 
-                    | PromptPress (Backspace, _) ->
+                    | Press (Custom Backspace) ->
                         do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
                     | Press (Button "knob_push") when behavior = SeekToSeconds ->
@@ -337,11 +338,8 @@ module LyrionIRHandler =
                         | None ->
                             do! writePromptAsync "> "
 
-                    | Press (Button "exit_left")
-                    | Press (Custom _) ->
+                    | _ ->
                         do! clearAsync ()
-
-                    | _ -> ()
                 })
             }
 
@@ -377,8 +375,7 @@ module LyrionIRHandler =
                 | Simulate name ->
                     do! Players.simulateIRAsync player Slim[name] time
 
-                | Press pressAction
-                | PromptPress (_, pressAction) ->
+                | Press pressAction ->
                     do! doOnceAsync ircode (fun () -> task {
                         do! pressAsync pressAction
                     })

@@ -104,7 +104,7 @@ module LyrionIR =
         0x00ffc936, Hold (Button "pause", Button "play")
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Hold (Custom PlayAllTracks, Custom Eject) // Flip
+        0x00ff6b94, Press (Custom PlayAllTracks) // Flip
         0x00ffe916, Press (Custom Input) // Source
         0x00ff6996, Press (Custom StreamInfo) // Zoom
         0x00ff8976, Simulate "home" // Menu

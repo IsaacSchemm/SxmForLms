@@ -319,8 +319,10 @@ module LyrionIRHandler =
 
                         match num with
                         | "" ->
+                            do! Players.setDisplayAsync player "Ejecting CD" "Please wait..." (TimeSpan.FromSeconds(10))
+                            use proc = Process.Start("eject", $"-T {Icedax.device}")
+                            do! proc.WaitForExitAsync()
                             do! clearAsync ()
-                            do! playAllTracksAsync 0
                         | Int32 track ->
                             do! clearAsync ()
                             do! playAllTracksAsync track

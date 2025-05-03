@@ -17,7 +17,7 @@ Functionality includes:
     * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device
     * Use of a third-party remote to activate special functions, including:
         * CD playback (using the host computer's CD drive)
-        * Load/save preset
+        * Load preset
         * Seek to timestamp
         * SiriusXM playback
             * Channel number entry
@@ -31,7 +31,7 @@ Functionality includes:
     * iOS 6+ support
     * Wii U support
 
-*This application should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
+*This application's port 5000 should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
 
 ## Build
 

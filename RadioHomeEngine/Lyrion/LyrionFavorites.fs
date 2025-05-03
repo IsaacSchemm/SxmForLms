@@ -12,6 +12,18 @@ module LyrionFavorites =
         |> Option.bind (fun attrs -> Option.ofObj attrs[name])
         |> Option.bind (fun attr -> Option.ofObj attr.Value)
 
+    let hasCategory categoryName = Seq.head (seq {
+        if File.Exists(path) then
+            let doc = new XmlDocument()
+            doc.Load(path)
+
+            for category in doc.GetElementsByTagName("outline") do
+                if attr "text" category = Some categoryName then
+                    true
+
+        false
+    })
+
     let getFavorites categoryName = [
         if File.Exists(path) then
             let doc = new XmlDocument()

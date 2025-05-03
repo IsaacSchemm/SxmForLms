@@ -11,16 +11,16 @@ Functionality includes:
     * Squeezebox devices (via LMS)
     * Devices with web browsers and HLS or MSE support (via the web interface)
 * Extensions to LMS
-    * Automatically managing the "SiriusXM" and "Radio Home Engine" Favorites folders
+    * Automatically managing Favorites folders (provided you create them in LMS first):
+        * `[Radio Home Engine] SiriusXM`
+        * `[Radio Home Engine] Miscellaneous`
     * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device
     * Use of a third-party remote to activate special functions, including:
-        * Calculator
         * CD playback (using the host computer's CD drive)
         * Load/save preset
         * Seek to timestamp
         * SiriusXM playback
             * Channel number entry
-            * Channel up/down
             * "Now Playing" info
         * U.S. weather forecasts (from weather.gov) and alerts, using `espeak` speech synthesis
 * Web interface at HTTP port 5000

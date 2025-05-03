@@ -18,7 +18,12 @@ module FavoritesManager =
 
                     let! channels = SiriusXMClient.getChannelsAsync cancellationToken
 
-                    do! LyrionFavorites.updateFavoritesAsync "SiriusXM" [
+                    let updateAsync name items = task {
+                        if LyrionFavorites.hasCategory name then
+                            do! LyrionFavorites.updateFavoritesAsync name items
+                    }
+
+                    do! updateAsync "[Radio Home Engine] SiriusXM" [
                         for channel in channels do {|
                             url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
                             icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
@@ -26,7 +31,7 @@ module FavoritesManager =
                         |}
                     ]
 
-                    do! LyrionFavorites.updateFavoritesAsync "Radio Home Engine" [
+                    do! updateAsync "[Radio Home Engine] Miscellaneous" [
                         {|
                             url = $"http://{address}:{Config.port}/Noise/playlist.m3u8"
                             icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num=0"

@@ -130,80 +130,8 @@ module LyrionIRHandler =
             do! Players.simulateIRAsync player Slim[name] lastIRTime
         }
 
-        let playAllTracksAsync (startAtTrack: int) = task {
-            do! Players.simulateButtonAsync player "stop"
-
-            do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
-
-            let disc = Icedax.getInfo ()
-
-            do! clearAsync ()
-
-            do! Playlist.clearAsync player
-
-            let! address = Network.getAddressAsync CancellationToken.None
-            for track in disc.tracks |> Seq.skipWhile (fun t -> t.number < startAtTrack) do
-                let title =
-                    match track.title with
-                    | "" -> $"Track {track.number}"
-                    | x -> x
-                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.number}" title
-
-            do! Playlist.playAsync player
-        }
-
         let performCustomActionAsync customAction = task {
             match customAction with
-            | StreamInfo ->
-                let! channelId = getCurrentSiriusXMChannelId ()
-                match channelId with
-                | None -> ()
-                | Some id ->
-                    do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
-
-                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                    let channel =
-                        channels
-                        |> Seq.where (fun c -> c.channelId = id)
-                        |> Seq.tryHead
-
-                    match channel with
-                    | None ->
-                        do! clearAsync ()
-                    | Some c ->
-                        let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                        let song =
-                            playlist.cuts
-                            |> Seq.sortByDescending (fun cut -> cut.startTime)
-                            |> Seq.tryHead
-
-                        match song with
-                        | None ->
-                            do! clearAsync ()
-                        | Some c ->
-                            let artist = String.concat " / " c.artists
-                            do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(5))
-
-            | Eject ->
-                use proc = Process.Start("eject", $"-T {Icedax.device}")
-                do! proc.WaitForExitAsync()
-
-            | PlayAllTracks ->
-                do! playAllTracksAsync 0
-
-            | Forecast ->
-                do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))
-
-                let! forecasts = Weather.getForecastsAsync CancellationToken.None
-                let! alerts = Weather.getAlertsAsync CancellationToken.None
-
-                do! Speech.readAsync player [
-                    for forecast in Seq.truncate 2 forecasts do
-                        forecast
-                    for alert in alerts do
-                        alert.info
-                ]
-
             | ChannelUp | ChannelDown when channelChanging ->
                 ()
 
@@ -254,6 +182,11 @@ module LyrionIRHandler =
                 let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
                 if powerState then
                     do! performCustomActionAsync action
+
+            | Atomic action ->
+                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+                if powerState then
+                    do! AtomicActions.performActionAsync player action
 
             | IRPress name ->
                 do! simulateIRAsync name
@@ -309,7 +242,7 @@ module LyrionIRHandler =
                     do! clearAsync ()
                 | Int32 track ->
                     do! clearAsync ()
-                    do! playAllTracksAsync track
+                    do! AtomicActions.playAllTracksAsync player track
                 | _ ->
                     do! writePromptAsync "> "
 

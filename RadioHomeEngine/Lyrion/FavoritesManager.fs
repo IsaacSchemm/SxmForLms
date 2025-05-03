@@ -23,19 +23,11 @@ module FavoritesManager =
                             do! LyrionFavorites.updateFavoritesAsync name items
                     }
 
-                    do! updateAsync "[Radio Home Engine] SiriusXM" [
+                    do! updateAsync "SiriusXM" [
                         for channel in channels do {|
                             url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
                             icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
                             text = $"[{channel.channelNumber}] {channel.name}"
-                        |}
-                    ]
-
-                    do! updateAsync "[Radio Home Engine] Miscellaneous" [
-                        {|
-                            url = $"http://{address}:{Config.port}/Noise/playlist.m3u8"
-                            icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num=0"
-                            text = $"Brown noise"
                         |}
                     ]
 

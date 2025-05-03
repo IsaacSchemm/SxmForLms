@@ -11,9 +11,7 @@ Functionality includes:
     * Squeezebox devices (via LMS)
     * Devices with web browsers and HLS or MSE support (via the web interface)
 * Extensions to LMS
-    * Automatically managing Favorites folders (provided you create them in LMS first):
-        * `[Radio Home Engine] SiriusXM`
-        * `[Radio Home Engine] Miscellaneous`
+    * Automatically managing the SiriusXM folder in Favorites (provided you create it first)
     * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device
     * Use of a third-party remote to activate special functions, including:
         * CD playback (using the host computer's CD drive)

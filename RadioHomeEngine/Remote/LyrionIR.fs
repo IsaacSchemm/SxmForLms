@@ -69,10 +69,6 @@ module LyrionIR =
     ]
 
     type CustomAction =
-    | StreamInfo
-    | PlayAllTracks
-    | Eject
-    | Forecast
     | ChannelUp
     | ChannelDown
     | Input
@@ -81,6 +77,7 @@ module LyrionIR =
     type Press =
     | Button of string
     | Custom of CustomAction
+    | Atomic of AtomicAction
     | IRPress of string
     | Number of int
 
@@ -99,9 +96,9 @@ module LyrionIR =
         0x00ffc936, Series [IRPress "play"; IRPress "pause"]
         0x00ff39c6, IR "voldown"
         0x00ff31ce, IR "volup"
-        0x00ff6b94, Series [Custom Forecast] // Flip
-        0x00ffe916, Series [Custom Input] // Source
-        0x00ff6996, Series [Custom StreamInfo] // Zoom
+        0x00ff6b94, Series [Atomic Forecast; Atomic PlayBrownNoise] // Flip
+        0x00ffe916, Series [Custom Input; Button "stop"] // Source
+        0x00ff6996, Series [Atomic StreamInfo] // Zoom
         0x00ff8976, IR "home" // Menu
         0x00ff25da, Series [Button "exit_left"]
         0x00ffa956, IR "arrow_up"

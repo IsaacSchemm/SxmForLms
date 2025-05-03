@@ -23,6 +23,7 @@
     <Compile Include="Info\NWS.fs" />
     <Compile Include="Info\Weather.fs" />
     <Compile Include="Info\WeatherManager.fs" />
+    <Compile Include="Remote\AtomicActions.fs" />
     <Compile Include="Remote\LyrionIR.fs" />
     <Compile Include="Remote\LyrionIRHandler.fs" />
   </ItemGroup>

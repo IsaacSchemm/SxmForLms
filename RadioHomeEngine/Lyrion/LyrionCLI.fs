@@ -155,6 +155,11 @@ module LyrionCLI =
             | ["player"; "id"; Int32 i; id] when i = index -> Some (Player id)
             | _ -> None)
 
+        let getNameAsync (Player id) = listenForAsync ["player"; "name"; id; "?"] (fun command ->
+            match command with
+            | "player" :: "name" :: x :: nameStrings when x = id -> Some (String.concat " " nameStrings)
+            | _ -> None)
+
         let getPowerAsync (Player id) = listenForAsync [id; "power"; "?"] (fun command ->
             match command with
             | [x; "power"; "0"] when x = id -> Some false

@@ -1,0 +1,72 @@
+﻿@model LyrionCLI.Player
+@{
+    Layout = null;
+
+    var name = await LyrionCLI.Players.getNameAsync(Model);
+
+    var siriusXMChannels = await SiriusXMClient.getChannelsAsync(CancellationToken.None);
+}
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>@name</title>
+</head>
+<body>
+    <h1>@name</h1>
+
+    <h2>SiriusXM</h2>
+
+    <form method="post" asp-controller="Player" asp-action="PlaySiriusXMChannel" asp-route-id="@Model.Item" target="myframe">
+        <input type="number"
+               name="number"
+               min="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Min()"
+               max="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Max()" />
+        <input type="submit" value="Play" />
+    </form>
+
+    <br />
+
+    <form method="post" asp-controller="Player" asp-action="StreamInfo" asp-route-id="@Model.Item" target="myframe">
+        <input type="submit" value="Display currently playing track title" />
+    </form>
+
+    <h2>Audio CD</h2>
+
+    <form method="post" asp-controller="Player" asp-action="PlayTrack" asp-route-id="@Model.Item" target="myframe">
+        <input type="number"
+               name="number"
+               min="1"
+               max="99" />
+        <input type="submit" value="Play track" />
+    </form>
+
+    <br />
+
+    <form method="post" asp-controller="Player" asp-action="PlayTrack" asp-route-id="@Model.Item" target="myframe">
+        <input type="hidden"
+               name="number"
+               value="1" />
+        <input type="submit" value="Play entire disc" />
+    </form>
+
+    <form method="post" asp-controller="Player" asp-action="Eject" asp-route-id="@Model.Item" target="myframe">
+        <input type="submit" value="Eject" />
+    </form>
+
+    <h2>Miscellaneous</h2>
+
+    <form method="post" asp-controller="Player" asp-action="Forecast" asp-route-id="@Model.Item" target="myframe">
+        <input type="submit" value="Play weather forecast" />
+    </form>
+
+    <form method="post" asp-controller="Player" asp-action="PlayBrownNoise" asp-route-id="@Model.Item" target="myframe">
+        <input type="submit" value="Play brown noise" />
+    </form>
+
+    <iframe name="myframe" style="display: none"></iframe>
+</body>
+</html>

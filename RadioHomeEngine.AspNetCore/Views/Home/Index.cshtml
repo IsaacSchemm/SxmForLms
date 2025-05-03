@@ -11,21 +11,14 @@
     <title>Radio Home Engine</title>
     <style type="text/css">
         body {
-            background-color: black;
-            color: white;
             font-family: sans-serif;
-            font-size: 16pt;
-            margin: 0;
-            text-align: center;
-        }
-
-        a {
-            color: inherit;
         }
     </style>
 </head>
 <body>
     <h1>Radio Home Engine</h1>
+
+    <h2>This device</h2>
 
     <p>
         <a href="/Radio/SiriusXM">
@@ -34,19 +27,35 @@
     </p>
 
     <p>
-        <a id="brownNoise" href="/Noise/playlist.m3u8">
+        <a href="/Noise">
             Brown noise
         </a>
-        <br />
-        <small>
-            Native HLS support required
-        </small>
     </p>
+
+    <h2>Squeezebox devices</h2>
+
+    @foreach (var player in LyrionKnownPlayers.known)
+    {
+        string name = await LyrionCLI.Players.getNameAsync(player);
+        <a asp-controller="Player" asp-action="Index" asp-route-id="@player.Item">
+            @name (@player.Item)
+        </a>
+    }
 
     <p>
         <a href="http://@(Context.Request.Host.Host):9000">
             Lyrion Music Server
         </a>
+    </p>
+
+    <hr />
+
+    <p>
+        <small>
+            Radio Home Engine
+            <br />
+            Copyright (c) 2025 Isaac Schemm
+        </small>
     </p>
 </body>
 </html>

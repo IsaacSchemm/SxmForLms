@@ -5,8 +5,14 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class NoiseController : Controller
     {
+        [Route("Noise")]
+        public IActionResult Index()
+        {
+            return View();
+        }
+
         [Route("Noise/playlist.m3u8")]
-        public IActionResult Playlist(CancellationToken cancellationToken)
+        public IActionResult Playlist()
         {
             return Content(
                 Noise.getPlaylist(),
@@ -15,7 +21,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [Route("Noise/chunklist.m3u8")]
-        public IActionResult Chunklist(CancellationToken cancellationToken)
+        public IActionResult Chunklist()
         {
             return Content(
                 Noise.getChunklist(),

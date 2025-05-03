@@ -11,7 +11,7 @@ type AtomicAction =
 | PlaySiriusXMChannel of int
 | PlayBrownNoise
 | StreamInfo
-| PlayAllTracks
+| PlayTrack of int
 | Eject
 | Forecast
 
@@ -106,8 +106,8 @@ module AtomicActions =
             use proc = Process.Start("eject", $"-T {Icedax.device}")
             do! proc.WaitForExitAsync()
 
-        | PlayAllTracks ->
-            do! playAllTracksAsync player 0
+        | PlayTrack n ->
+            do! playAllTracksAsync player n
 
         | Forecast ->
             do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))

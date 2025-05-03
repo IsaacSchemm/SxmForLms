@@ -10,6 +10,8 @@ module FavoritesManager =
         inherit BackgroundService()
 
         override _.ExecuteAsync cancellationToken = task {
+            do! Task.Delay(TimeSpan.FromSeconds(15), cancellationToken)
+
             while not cancellationToken.IsCancellationRequested do
                 let! playersOn = LyrionKnownPlayers.PowerStates.getPlayersWithStateAsync true
 

@@ -76,39 +76,35 @@ module LyrionIR =
     | ChannelUp
     | ChannelDown
     | Input
-    | CustomNumeric of int
     | Backspace
-
-    type Press =
-    | Button of string
-    | Custom of CustomAction
 
     type Action =
     | Simulate of string
-    | Press of Press
+    | Button of string
+    | Custom of CustomAction
     | Number of int
     | NoAction
 
     let RCAProjector = [
-        0x00ff15ea, Press (Button "power")
+        0x00ff15ea, Button "power"
         0x00ff11ee, Simulate "muting"
-        0x00ff09f6, Press (Button "jump_rew")
-        0x00ffc13e, Press (Button "jump_fwd")
+        0x00ff09f6, Button "jump_rew"
+        0x00ffc13e, Button "jump_fwd"
         0x00ff19e6, Simulate "rew"
         0x00ff41be, Simulate "fwd"
         0x00ffc936, Simulate "play"
         0x00ff39c6, Simulate "voldown"
         0x00ff31ce, Simulate "volup"
-        0x00ff6b94, Press (Custom Forecast) // Flip
-        0x00ffe916, Press (Custom Input) // Source
-        0x00ff6996, Press (Custom StreamInfo) // Zoom
+        0x00ff6b94, Custom Forecast // Flip
+        0x00ffe916, Custom Input // Source
+        0x00ff6996, Custom StreamInfo // Zoom
         0x00ff8976, Simulate "home" // Menu
-        0x00ff25da, Press (Button "exit_left")
+        0x00ff25da, Button "exit_left"
         0x00ffa956, Simulate "arrow_up"
         0x00ff59a6, Simulate "arrow_down"
         0x00ffd926, Simulate "arrow_left"
         0x00ff9966, Simulate "arrow_right"
-        0x00ff7986, Press (Button "knob_push")
+        0x00ff7986, Button "knob_push"
         0x00ffe11e, Number 1
         0x00ff619e, Number 2
         0x00ffa15e, Number 3
@@ -120,7 +116,7 @@ module LyrionIR =
         0x00ffb14e, Number 9
         0x00ff21de, NoAction // Recall
         0x00ff49b6, Number 0
-        0x00ff29d6, Press (Custom Backspace) // Fav/⌫
+        0x00ff29d6, Custom Backspace // Fav/⌫
     ]
 
     let Mappings = Map.ofList RCAProjector

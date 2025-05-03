@@ -163,9 +163,75 @@ module LyrionIRHandler =
             do! Playlist.playAsync player
         }
 
-        let customActionAsync action = task {
-            let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-            if powerState then
+        let processIRAsync ircode time = task {
+            let mapping =
+                Mappings
+                |> Map.tryFind ircode
+                |> Option.defaultValue NoAction
+
+            let processPromptEntryAsync (prompt: string) = task {
+                match mapping with
+                | Number n ->
+                    do! appendToPromptAsync n
+
+                | Custom Backspace when prompt = "> " ->
+                    do! clearAsync ()
+
+                | Custom Backspace ->
+                    do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
+
+                | Button "knob_push" when behavior = SeekToSeconds ->
+                    match prompt.Substring(2) with
+                    | Int32 s ->
+                        do! clearAsync ()
+                        do! Playlist.setTimeAsync player s
+                    | _ ->
+                        do! writePromptAsync "> "
+
+                | Button "knob_push" when behavior = SeekToMinutes ->
+                    match prompt.Substring(2) with
+                    | Int32 m ->
+                        do! clearAsync ()
+                        do! Playlist.setTimeAsync player (60 * m)
+                    | _ ->
+                        do! writePromptAsync "> "
+
+                | Button "knob_push" when behavior = AudioCD ->
+                    let num = prompt.Substring(2)
+
+                    match num with
+                    | "" ->
+                        do! Players.setDisplayAsync player "Ejecting CD" "Please wait..." (TimeSpan.FromSeconds(10))
+                        use proc = Process.Start("eject", $"-T {Icedax.device}")
+                        do! proc.WaitForExitAsync()
+                        do! clearAsync ()
+                    | Int32 track ->
+                        do! clearAsync ()
+                        do! playAllTracksAsync track
+                    | _ ->
+                        do! writePromptAsync "> "
+
+                | Button "knob_push" when behavior = SiriusXM ->
+                    let num = prompt.Substring(2)
+
+                    let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+                    let channel =
+                        channels
+                        |> Seq.where (fun c -> c.channelNumber = num)
+                        |> Seq.tryHead
+
+                    match channel with
+                    | Some c ->
+                        do! clearAsync ()
+                        do! playSiriusXMChannelAsync c.channelNumber c.name
+                    | None ->
+                        do! writePromptAsync "> "
+
+                | _ ->
+                    do! clearAsync ()
+            }
+
+            let performCustomActionAsync action = task {
                 match action with
                 | StreamInfo ->
                     let! channelId = getCurrentSiriusXMChannelId ()
@@ -254,116 +320,47 @@ module LyrionIRHandler =
                     do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
 
                     File.WriteAllText("behavior.txt", $"{behavior}")
-                | CustomNumeric n ->
-                    if behavior = LoadPresetSingle then
-                        do! Players.simulateButtonAsync player $"playPreset_{n}"
-                    else if powerState then
-                        do! writePromptAsync $"> {n}"
+
                 | Backspace -> ()
-        }
+            }
 
-        let pressAsync pressAction = task {
-            match pressAction with
-            | Button button ->
-                do! Players.simulateButtonAsync player button
-            | Custom customAction ->
-                do! customActionAsync customAction
-        }
-
-        let processIRAsync ircode time = task {
-            let mapping =
-                Mappings
-                |> Map.tryFind ircode
-                |> Option.defaultValue NoAction
-
-            let processPromptEntryAsync (prompt: string) = task {
+            match mapping with
+            | _ when Option.isSome promptText ->
                 do! doOnceAsync ircode (fun () -> task {
-                    match mapping with
-                    | Number n ->
-                        do! appendToPromptAsync n
-
-                    | Press (Custom Backspace) when prompt = "> " ->
-                        do! clearAsync ()
-
-                    | Press (Custom Backspace) ->
-                        do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
-
-                    | Press (Button "knob_push") when behavior = SeekToSeconds ->
-                        match prompt.Substring(2) with
-                        | Int32 s ->
-                            do! clearAsync ()
-                            do! Playlist.setTimeAsync player s
-                        | _ ->
-                            do! writePromptAsync "> "
-
-                    | Press (Button "knob_push") when behavior = SeekToMinutes ->
-                        match prompt.Substring(2) with
-                        | Int32 m ->
-                            do! clearAsync ()
-                            do! Playlist.setTimeAsync player (60 * m)
-                        | _ ->
-                            do! writePromptAsync "> "
-
-                    | Press (Button "knob_push") when behavior = AudioCD ->
-                        let num = prompt.Substring(2)
-
-                        match num with
-                        | "" ->
-                            do! Players.setDisplayAsync player "Ejecting CD" "Please wait..." (TimeSpan.FromSeconds(10))
-                            use proc = Process.Start("eject", $"-T {Icedax.device}")
-                            do! proc.WaitForExitAsync()
-                            do! clearAsync ()
-                        | Int32 track ->
-                            do! clearAsync ()
-                            do! playAllTracksAsync track
-                        | _ ->
-                            do! writePromptAsync "> "
-
-                    | Press (Button "knob_push") when behavior = SiriusXM ->
-                        let num = prompt.Substring(2)
-
-                        let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                        let channel =
-                            channels
-                            |> Seq.where (fun c -> c.channelNumber = num)
-                            |> Seq.tryHead
-
-                        match channel with
-                        | Some c ->
-                            do! clearAsync ()
-                            do! playSiriusXMChannelAsync c.channelNumber c.name
-                        | None ->
-                            do! writePromptAsync "> "
-
-                    | _ ->
-                        do! clearAsync ()
+                    do! processPromptEntryAsync (Option.get promptText)
                 })
-            }
 
-            let processNormalEntryAsync () = task {
-                match mapping with
-                | Number n when behavior = Digit ->
-                    do! Players.simulateIRAsync player Slim[$"{n}"] time
+            | Simulate name ->
+                do! Players.simulateIRAsync player Slim[name] time
 
-                | Number n ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        do! customActionAsync (CustomNumeric n)
-                    })
+            | Number n when behavior = Digit ->
+                do! Players.simulateIRAsync player Slim[$"{n}"] time
 
-                | Simulate name ->
-                    do! Players.simulateIRAsync player Slim[name] time
+            | Number n when behavior = LoadPresetSingle ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.simulateButtonAsync player $"playPreset_{n}"
+                })
 
-                | Press pressAction ->
-                    do! doOnceAsync ircode (fun () -> task {
-                        do! pressAsync pressAction
-                    })
+            | Number n ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+                    if powerState then
+                        do! writePromptAsync $"> {n}"
+                })
 
-                | _ -> ()
-            }
+            | Button button ->
+                do! doOnceAsync ircode (fun () -> task {
+                    do! Players.simulateButtonAsync player button
+                })
 
-            match promptText with
-            | Some prompt -> do! processPromptEntryAsync prompt
-            | None -> do! processNormalEntryAsync ()
+            | Custom action ->
+                do! doOnceAsync ircode (fun () -> task {
+                    let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+                    if powerState then
+                        do! performCustomActionAsync action
+                })
+
+            | _ -> ()
         }
 
         let processCommandAsync command = task {

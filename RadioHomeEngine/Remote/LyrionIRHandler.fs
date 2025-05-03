@@ -164,12 +164,11 @@ module LyrionIRHandler =
         }
 
         let processIRAsync ircode time = task {
-            let mapping =
-                Mappings
-                |> Map.tryFind ircode
-                |> Option.defaultValue NoAction
+            let processPromptEntryAsync mapping = task {
+                let prompt =
+                    promptText
+                    |> Option.defaultValue "> "
 
-            let processPromptEntryAsync (prompt: string) = task {
                 match mapping with
                 | Number n ->
                     do! appendToPromptAsync n
@@ -324,10 +323,15 @@ module LyrionIRHandler =
                 | Backspace -> ()
             }
 
+            let mapping =
+                Mappings
+                |> Map.tryFind ircode
+                |> Option.defaultValue NoAction
+
             match mapping with
             | _ when Option.isSome promptText ->
                 do! doOnceAsync ircode (fun () -> task {
-                    do! processPromptEntryAsync (Option.get promptText)
+                    do! processPromptEntryAsync mapping
                 })
 
             | Simulate name ->

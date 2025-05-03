@@ -248,27 +248,23 @@ module LyrionIRHandler =
         let pressAsync press = task {
             match press with
             | Button button ->
-                if firstPressed = lastPressed then
-                    do! Players.simulateButtonAsync player button
+                do! Players.simulateButtonAsync player button
 
             | Custom action ->
-                if firstPressed = lastPressed then
-                    let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-                    if powerState then
-                        do! performCustomActionAsync action
+                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+                if powerState then
+                    do! performCustomActionAsync action
 
             | IRPress name ->
                 do! simulateIRAsync name
 
             | Number n when behavior = LoadPresetSingle ->
-                if firstPressed = lastPressed then
-                    do! Players.simulateButtonAsync player $"playPreset_{n}"
+                do! Players.simulateButtonAsync player $"playPreset_{n}"
 
             | Number n ->
-                if firstPressed = lastPressed then
-                    let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-                    if powerState then
-                        do! writePromptAsync $"> {n}"
+                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
+                if powerState then
+                    do! writePromptAsync $"> {n}"
         }
 
         let processPromptEntryAsync press = task {
@@ -369,10 +365,6 @@ module LyrionIRHandler =
             | Series [single] when Option.isSome promptText ->
                 if firstPressed = lastPressed then
                     do! processPromptEntryAsync single
-
-            | Series [single] when Option.isSome promptText ->
-                if firstPressed = lastPressed then
-                    do! pressAsync single
 
             | Series presses ->
                 if firstPressed = lastPressed then

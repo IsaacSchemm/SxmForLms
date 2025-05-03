@@ -120,7 +120,7 @@ module LyrionIR =
         0x00ffb14e, Series [Number 9]
         0x00ff21de, NoAction // Recall
         0x00ff49b6, Series [Number 0]
-        0x00ff29d6, Series [Custom Backspace] // Fav/⌫
+        0x00ff29d6, Series [Custom Backspace; IRPress "favorites"] // Fav/⌫
     ]
 
     let Mappings = Map.ofList RCAProjector

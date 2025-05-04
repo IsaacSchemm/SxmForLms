@@ -74,16 +74,35 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return await Display(id);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Button(string id, string button)
+        {
+            await AtomicActions.performActionAsync(
+                Player.NewPlayer(id),
+                AtomicAction.NewButton(button));
+
+            return await Display(id);
+        }
+
         [HttpGet]
         public async Task<IActionResult> Display(string id)
         {
             await Task.Delay(250);
 
-            var display = LyrionKnownPlayers.known.IsEmpty
-                ? new("Radio Home Engine", "No Squeezebox players connected")
-                : await Players.getDisplayNowAsync(Player.NewPlayer(id));
+            for (int i = 0; i < 2; i++)
+            {
+                try
+                {
+                    if (!LyrionKnownPlayers.known.IsEmpty)
+                    {
+                        var display = await Players.getDisplayNowAsync(Player.NewPlayer(id));
+                        return View("Display", display);
+                    }
+                }
+                catch (NoMatchingResponseException) { }
+            }
 
-            return View(display);
+            return NoContent();
         }
     }
 }

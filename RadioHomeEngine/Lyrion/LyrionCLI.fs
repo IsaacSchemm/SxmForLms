@@ -110,7 +110,7 @@ module LyrionCLI =
                 do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
         }
 
-    exception NoMatchingResponseException of command: string list * period: TimeSpan
+    exception NoMatchingResponseException of command: string list
 
     let listenForAsync command chooser = task {
         let tcs = new TaskCompletionSource<'T>()
@@ -123,17 +123,23 @@ module LyrionCLI =
         while not initialConnectionEstablished do
             do! Task.Delay(TimeSpan.FromSeconds(1))
 
-        do! sendAsync command
-
-        let period = TimeSpan.FromSeconds(5)
-
-        let! completed = Task.WhenAny [
-            Task.Delay(period)
+        let jointTask = Task.WhenAny [
+            Task.Delay(TimeSpan.FromSeconds(5))
             tcs.Task
         ]
 
-        if completed <> tcs.Task then
-            raise (NoMatchingResponseException (command, period))
+        let _ = task {
+            try
+                while not jointTask.IsCompleted do
+                    do! sendAsync command
+                    do! Task.Delay(500)
+            with ex -> Console.Error.WriteLine(ex)
+        }
+
+        let! completedTask = jointTask
+
+        if completedTask <> tcs.Task then
+            raise (NoMatchingResponseException command)
 
         return! tcs.Task
     }

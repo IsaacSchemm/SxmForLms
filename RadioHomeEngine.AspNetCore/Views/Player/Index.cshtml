@@ -21,7 +21,7 @@
 <body>
     <h1>@name</h1>
 
-    <iframe name="myframe" width="300" height="50" src="Display?id=@Uri.EscapeDataString(Model.Item)"></iframe>
+    <iframe name="myframe" width="300" height="50" src="/Player/Display?id=@Uri.EscapeDataString(Model.Item)"></iframe>
 
     <hr />
 
@@ -49,7 +49,8 @@
         <input type="number"
                name="number"
                min="1"
-               max="99" />
+               max="99"
+               value="1" />
         <button type="submit">Play track</button>
     </form>
 
@@ -69,6 +70,31 @@
     <hr />
 
     <h2>Miscellaneous</h2>
+
+    <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe">
+        <input type="hidden" name="button" value="power" />
+        <button type="submit">Power</button>
+    </form>
+
+    <br />
+
+    <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe" style="display: inline">
+        <input type="hidden" name="button" value="play" />
+        <button type="submit">Play</button>
+    </form>
+
+    <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe" style="display: inline">
+        <input type="hidden" name="button" value="pause" />
+        <button type="submit">Pause</button>
+    </form>
+
+    <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe" style="display: inline">
+        <input type="hidden" name="button" value="stop" />
+        <button type="submit">Stop</button>
+    </form>
+
+    <br />
+    <br />
 
     <form method="post" asp-controller="Player" asp-action="Forecast" asp-route-id="@Model.Item" target="myframe">
         <button type="submit">Play weather forecast</button>

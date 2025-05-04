@@ -14,6 +14,7 @@ type AtomicAction =
 | PlayTrack of int
 | Eject
 | Forecast
+| Button of string
 
 module AtomicActions =
     let getCurrentSiriusXMChannelId player = task {
@@ -121,4 +122,7 @@ module AtomicActions =
                 for alert in alerts do
                     alert.info
             ]
+
+        | Button name ->
+            do! Players.simulateButtonAsync player name
     }

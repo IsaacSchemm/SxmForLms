@@ -35,7 +35,7 @@ module LyrionCLI =
 
         override _.ExecuteAsync(cancellationToken) = task {
             while not cancellationToken.IsCancellationRequested do
-                let! ip = Network.getAddressAsync cancellationToken
+                let! ip = Network.getAddressAsync ()
 
                 printfn $"Connecting to {ip}:{port}"
 

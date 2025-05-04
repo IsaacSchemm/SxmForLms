@@ -8,13 +8,13 @@ open FSharp.Data
 type NetworkInterfaces = JsonProvider<"""[{"ifname":"lo","addr_info":[{"family":"inet","local":"127.0.0.1"}]}]""">
 
 module Network =
-    let getAddressAsync cancellationToken = task {
+    let getAddressAsync () = task {
         try
             let proc =
                 new ProcessStartInfo("ip", "-j address", RedirectStandardOutput = true)
                 |> Process.Start
 
-            let! result = proc.StandardOutput.ReadToEndAsync(cancellationToken)
+            let! result = proc.StandardOutput.ReadToEndAsync()
 
             let ip =
                 result

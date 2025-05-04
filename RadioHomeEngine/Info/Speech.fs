@@ -26,7 +26,7 @@ module Speech =
         let! path = Playlist.getPathAsync player
         let! title = Playlist.getTitleAsync player
 
-        let! address = Network.getAddressAsync CancellationToken.None
+        let! address = Network.getAddressAsync ()
 
         do! Playlist.insertItemAsync player path title
 

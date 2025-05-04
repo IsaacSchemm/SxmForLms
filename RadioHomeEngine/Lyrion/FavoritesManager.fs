@@ -16,7 +16,7 @@ module FavoritesManager =
                 let! playersOn = LyrionKnownPlayers.PowerStates.getPlayersWithStateAsync true
 
                 if List.isEmpty playersOn then
-                    let! address = Network.getAddressAsync cancellationToken
+                    let! address = Network.getAddressAsync ()
 
                     let! channels = SiriusXMClient.getChannelsAsync cancellationToken
 

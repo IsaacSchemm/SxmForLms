@@ -44,7 +44,7 @@ module AtomicActions =
 
         do! Playlist.clearAsync player
 
-        let! address = Network.getAddressAsync CancellationToken.None
+        let! address = Network.getAddressAsync ()
         for track in disc.tracks |> Seq.skipWhile (fun t -> t.number < startAtTrack) do
             let title =
                 match track.title with
@@ -66,11 +66,11 @@ module AtomicActions =
                 |> Seq.tryHead
                 |> Option.defaultValue $"SiriusXM {channelNumber}"
 
-            let! address = Network.getAddressAsync CancellationToken.None
+            let! address = Network.getAddressAsync ()
             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}" $"[{channelNumber}] {name}"
 
         | PlayBrownNoise ->
-            let! address = Network.getAddressAsync CancellationToken.None
+            let! address = Network.getAddressAsync ()
             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Noise/playlist.m3u8" "Brown noise"
 
         | StreamInfo ->

@@ -66,7 +66,7 @@ module LyrionIRHandler =
         let mutable channelChanging = false
 
         let playSiriusXMChannelAsync channelNumber name = task {
-            let! address = Network.getAddressAsync CancellationToken.None
+            let! address = Network.getAddressAsync ()
             let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
             let name = $"[{channelNumber}] {name}"
             do! Playlist.playItemAsync player url name

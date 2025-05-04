@@ -2,7 +2,9 @@
 @{
     Layout = null;
 
-    var name = await LyrionCLI.Players.getNameAsync(Model);
+    var name = LyrionKnownPlayers.known.Contains(Model)
+        ? await LyrionCLI.Players.getNameAsync(Model)
+        : Model.Item;
 
     var siriusXMChannels = await SiriusXMClient.getChannelsAsync(CancellationToken.None);
 }
@@ -17,6 +19,8 @@
 </head>
 <body>
     <h1>@name</h1>
+
+    <iframe name="myframe" width="250" height="50" src="Display?id=@Uri.EscapeDataString(Model.Item)"></iframe>
 
     <h2>SiriusXM</h2>
 
@@ -66,7 +70,5 @@
     <form method="post" asp-controller="Player" asp-action="PlayBrownNoise" asp-route-id="@Model.Item" target="myframe">
         <input type="submit" value="Play brown noise" />
     </form>
-
-    <iframe name="myframe" style="display: none"></iframe>
 </body>
 </html>

@@ -1,0 +1,90 @@
+﻿<style type="text/css">
+    body {
+        background-color: black;
+        color: white;
+        font-family: sans-serif;
+        margin: 0;
+        text-align: center;
+    }
+
+    a {
+        color: inherit;
+    }
+
+    input {
+        min-width: 120px;
+    }
+
+    table {
+        margin: auto;
+    }
+
+    audio, video {
+        width: 280px;
+    }
+
+    iframe {
+        border: 1px solid currentColor;
+    }
+
+    #entryStage,
+    #playbackStage {
+        display: inline-block;
+        vertical-align: top;
+    }
+
+    #entryStage button,
+    #playbackStage button {
+        appearance: none;
+        background-color: steelblue;
+        border: 0;
+        color: white;
+        cursor: pointer;
+        font-size: 24pt;
+        height: 56px;
+        max-width: 280px;
+        padding: 0;
+        width: 100%;
+    }
+
+    @@media (max-width: 600px) {
+        #entryStage,
+        #playbackStage {
+            display: block;
+        }
+
+        body.active #entryStage,
+        body:not(.active) #playbackStage {
+            display: none;
+        }
+    }
+
+    #numpad {
+        margin: auto;
+        table-layout: fixed;
+        width: 280px;
+    }
+
+    #numEntry {
+        background-color: inherit;
+        border: 0;
+        color: inherit;
+        font-size: 32pt;
+        padding: 0;
+        text-align: center;
+        width: 160px;
+    }
+
+    #playbackControls iframe {
+        border: 0;
+        height: 450px;
+        width: 230px;
+        margin-right: 8px;
+    }
+
+    #playbackControls button {
+        display: block;
+        width: 50px;
+        margin-bottom: 4px;
+    }
+</style>

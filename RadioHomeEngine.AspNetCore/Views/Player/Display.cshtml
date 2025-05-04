@@ -1,6 +1,17 @@
 ﻿@model Tuple<string, string>
 <html>
-    <head></head>
+    <head>
+        @await Html.PartialAsync("_Styles")
+
+        <style type="text/css">
+            body {
+                margin: 8px;
+                font-size: 12pt;
+                text-align: left;
+                white-space: nowrap;
+            }    
+        </style>
+    </head>
     <body style="opacity: 1">
         <small>@Model.Item1</small>
         <br />
@@ -19,7 +30,9 @@
             }
 
             @@keyframes fadeout {
-              100% { opacity: 0 }
+                100% {
+                    opacity: 0;
+                }
             }
         </style>
     </body>

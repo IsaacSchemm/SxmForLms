@@ -10,22 +10,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
     <title>@Model.Channel.Name - Now Playing</title>
-    <style type="text/css">
-        body {
-            background-color: black;
-            color: white;
-            font-family: sans-serif;
-            font-size: 16pt;
-            margin: 0;
-            text-align: center;
-        }
-
-        main {
-            display: block;
-            margin: auto;
-            max-width: 320px;
-        }
-    </style>
+    @await Html.PartialAsync("_Styles")
 </head>
 <body>
     <main>

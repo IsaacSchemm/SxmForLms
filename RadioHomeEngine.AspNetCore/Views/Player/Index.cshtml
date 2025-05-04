@@ -16,11 +16,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
     <title>@name</title>
+    @await Html.PartialAsync("_Styles")
 </head>
 <body>
     <h1>@name</h1>
 
-    <iframe name="myframe" width="250" height="50" src="Display?id=@Uri.EscapeDataString(Model.Item)"></iframe>
+    <iframe name="myframe" width="300" height="50" src="Display?id=@Uri.EscapeDataString(Model.Item)"></iframe>
+
+    <hr />
 
     <h2>SiriusXM</h2>
 
@@ -29,14 +32,16 @@
                name="number"
                min="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Min()"
                max="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Max()" />
-        <input type="submit" value="Play" />
+        <button type="submit">Play</button>
     </form>
 
     <br />
 
     <form method="post" asp-controller="Player" asp-action="StreamInfo" asp-route-id="@Model.Item" target="myframe">
-        <input type="submit" value="Display currently playing track title" />
+        <button type="submit">Display currently playing track title</button>
     </form>
+
+    <hr />
 
     <h2>Audio CD</h2>
 
@@ -45,7 +50,7 @@
                name="number"
                min="1"
                max="99" />
-        <input type="submit" value="Play track" />
+        <button type="submit">Play track</button>
     </form>
 
     <br />
@@ -54,21 +59,23 @@
         <input type="hidden"
                name="number"
                value="1" />
-        <input type="submit" value="Play entire disc" />
+        <button type="submit">Play entire disc</button>
     </form>
 
     <form method="post" asp-controller="Player" asp-action="Eject" asp-route-id="@Model.Item" target="myframe">
-        <input type="submit" value="Eject" />
+        <button type="submit">Eject</button>
     </form>
+
+    <hr />
 
     <h2>Miscellaneous</h2>
 
     <form method="post" asp-controller="Player" asp-action="Forecast" asp-route-id="@Model.Item" target="myframe">
-        <input type="submit" value="Play weather forecast" />
+        <button type="submit">Play weather forecast</button>
     </form>
 
     <form method="post" asp-controller="Player" asp-action="PlayBrownNoise" asp-route-id="@Model.Item" target="myframe">
-        <input type="submit" value="Play brown noise" />
+        <button type="submit">Play brown noise</button>
     </form>
 </body>
 </html>

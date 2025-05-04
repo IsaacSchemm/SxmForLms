@@ -9,146 +9,64 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
     <title>Radio Home Engine - SiriusXM</title>
+    @await Html.PartialAsync("_Styles")
     <style type="text/css">
-        body {
-            background-color: black;
-            color: white;
-            font-family: sans-serif;
-            font-size: 16pt;
-            margin: 0;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 24pt;
-            margin: 8px;
-        }
-
-        audio {
-            visibility: hidden;
-            width: 280px;
-        }
-
-        #entryStage,
-        #playbackStage {
-            display: inline-block;
-            vertical-align: top;
-        }
-
-        @@media (max-width: 600px) {
-            #entryStage,
-            #playbackStage {
-                display: block;
-            }
-
-            body.active #entryStage,
-            body:not(.active) #playbackStage {
-                display: none;
-            }
-        }
-
-        #numpad {
-            margin: auto;
-            table-layout: fixed;
-            width: 280px;
-        }
-
-        #numEntry {
-            background-color: inherit;
-            border: 0;
-            color: inherit;
-            font-size: 32pt;
-            padding: 0;
-            text-align: center;
-            width: 160px;
-        }
-
-        a {
-            color: inherit;
-        }
-
-        table {
-            margin: auto;
-        }
-
         button {
-            appearance: none;
-            background-color: steelblue;
-            border: 0;
-            color: white;
-            cursor: pointer;
             font-size: 24pt;
             height: 56px;
             max-width: 280px;
-            padding: 0;
             width: 100%;
-        }
-
-        #playbackControls iframe {
-            border: 0;
-            height: 450px;
-            width: 230px;
-            margin-right: 8px;
-        }
-
-        #playbackControls button {
-            display: block;
-            width: 50px;
-            margin-bottom: 4px;
-        }
-    </style>
+        }</style>
 </head>
 <body>
-    <main>
-        <section id="entryStage">
-            <table id="numpad">
-                <tr>
-                    <td><button id="button1">1</button></td>
-                    <td><button id="button2">2</button></td>
-                    <td><button id="button3">3</button></td>
-                </tr>
-                <tr>
-                    <td><button id="button4">4</button></td>
-                    <td><button id="button5">5</button></td>
-                    <td><button id="button6">6</button></td>
-                </tr>
-                <tr>
-                    <td><button id="button7">7</button></td>
-                    <td><button id="button8">8</button></td>
-                    <td><button id="button9">9</button></td>
-                </tr>
-                <tr>
-                    <td><button id="clear">⌫</button></td>
-                    <td><button id="button0">0</button></td>
-                    <td><button id="play">&#9654;</button></td>
-                </tr>
-            </table>
+    <section id="entryStage">
+        <table id="numpad">
+            <tr>
+                <td><button id="button1">1</button></td>
+                <td><button id="button2">2</button></td>
+                <td><button id="button3">3</button></td>
+            </tr>
+            <tr>
+                <td><button id="button4">4</button></td>
+                <td><button id="button5">5</button></td>
+                <td><button id="button6">6</button></td>
+            </tr>
+            <tr>
+                <td><button id="button7">7</button></td>
+                <td><button id="button8">8</button></td>
+                <td><button id="button9">9</button></td>
+            </tr>
+            <tr>
+                <td><button id="clear">⌫</button></td>
+                <td><button id="button0">0</button></td>
+                <td><button id="play">&#9654;</button></td>
+            </tr>
+        </table>
 
-            <form>
-                <input id="numEntry" type="text" />
-            </form>
-        </section>
+        <form>
+            <input id="numEntry" type="text" />
+        </form>
+    </section>
 
-        <section id="playbackStage">
-            <table id="playbackControls">
-                <tr>
-                    <td width="0">
-                        <iframe id="nowPlaying"></iframe>
-                    </td>
-                    <td width="0" valign="top">
-                        <button id="next">&uarr;</button>
-                        <button id="prev">&darr;</button>
-                        <br />
-                        <button id="info">&#8505;</button>
-                        <br />
-                        <button id="stop">&#9724;</button>
-                    </td>
-                </tr>
-            </table>
-        </section>
-    </main>
+    <section id="playbackStage">
+        <table id="playbackControls">
+            <tr>
+                <td width="0">
+                    <iframe id="nowPlaying"></iframe>
+                </td>
+                <td width="0" valign="top">
+                    <button id="next">&uarr;</button>
+                    <button id="prev">&darr;</button>
+                    <br />
+                    <button id="info">&#8505;</button>
+                    <br />
+                    <button id="stop">&#9724;</button>
+                </td>
+            </tr>
+        </table>
+    </section>
 
-    <audio>
+    <audio style="visibility: hidden">
         HTML5 audio is not supported in this browser.
     </audio>
 

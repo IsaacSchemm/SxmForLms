@@ -262,10 +262,17 @@ module LyrionCLI =
             if state then "1" else "0"
         ]
 
-        let setTimeAsync (Player id) time = sendAsync [
+        let setTimeAsync (Player id) origin (time: decimal) = sendAsync [
             id
             "time"
-            sprintf "%d" time
+
+            match origin with
+            | SeekOrigin.Begin when time >= 0m ->
+                sprintf "%f" time
+            | SeekOrigin.Current ->
+                sprintf "%+f" time
+            | x ->
+                failwithf "Unsupported seek origin %A %f" x time
         ]
 
         let togglePauseAsync (Player id) = sendAsync [

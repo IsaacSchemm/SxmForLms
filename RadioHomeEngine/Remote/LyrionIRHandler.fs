@@ -219,7 +219,7 @@ module LyrionIRHandler =
                 match prompt.Substring(2) with
                 | Int32 s ->
                     do! clearAsync ()
-                    do! Playlist.setTimeAsync player s
+                    do! Playlist.setTimeAsync player SeekOrigin.Begin (decimal s)
                 | _ ->
                     do! writePromptAsync "> "
 
@@ -227,7 +227,7 @@ module LyrionIRHandler =
                 match prompt.Substring(2) with
                 | Int32 m ->
                     do! clearAsync ()
-                    do! Playlist.setTimeAsync player (60 * m)
+                    do! Playlist.setTimeAsync player SeekOrigin.Begin (60m * decimal m)
                 | _ ->
                     do! writePromptAsync "> "
 

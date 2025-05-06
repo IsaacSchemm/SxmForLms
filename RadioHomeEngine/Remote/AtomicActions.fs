@@ -2,6 +2,7 @@
 
 open System
 open System.Diagnostics
+open System.IO
 open System.Text.RegularExpressions
 open System.Threading
 
@@ -14,6 +15,8 @@ type AtomicAction =
 | PlayTrack of int
 | Eject
 | Forecast
+| SeekBegin of decimal
+| SeekCurrent of decimal
 | Button of string
 
 module AtomicActions =
@@ -122,6 +125,12 @@ module AtomicActions =
                 for alert in alerts do
                     alert.info
             ]
+
+        | SeekBegin time ->
+            do! Playlist.setTimeAsync player SeekOrigin.Begin time
+
+        | SeekCurrent time ->
+            do! Playlist.setTimeAsync player SeekOrigin.Current time
 
         | Button name ->
             do! Players.simulateButtonAsync player name

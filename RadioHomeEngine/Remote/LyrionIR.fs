@@ -1,5 +1,7 @@
 ﻿namespace RadioHomeEngine
 
+open System.IO
+
 module LyrionIR =
     let Slim = Map.ofList [
         "0", 0x76899867
@@ -115,7 +117,7 @@ module LyrionIR =
         0x00fff10e, Series [Number 7]
         0x00ff718e, Series [Number 8]
         0x00ffb14e, Series [Number 9]
-        0x00ff21de, NoAction // Recall
+        0x00ff21de, Series [Atomic (SeekCurrent -10m); Atomic (SeekBegin 0m)] // Recall
         0x00ff49b6, Series [Number 0]
         0x00ff29d6, Series [Custom Backspace; IRPress "favorites"] // Fav/⌫
     ]

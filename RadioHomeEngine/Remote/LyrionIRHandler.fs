@@ -295,10 +295,6 @@ module LyrionIRHandler =
             | Series [Number n] when behavior = Digit ->
                 do! simulateIRAsync $"{n}"
 
-            | Series [single] when Option.isSome promptText ->
-                if firstPressed = lastPressed then
-                    do! processPromptEntryAsync single
-
             | Series presses ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
@@ -319,7 +315,12 @@ module LyrionIRHandler =
                     while not (isFinished()) do
                         do! Task.Delay(50)
 
-                    do! pressAsync (List.head buffer.Value)
+                    let press = (List.head buffer.Value)
+
+                    if Option.isSome promptText then
+                        do! processPromptEntryAsync press
+                    else
+                        do! pressAsync press
 
                     do! walker
 

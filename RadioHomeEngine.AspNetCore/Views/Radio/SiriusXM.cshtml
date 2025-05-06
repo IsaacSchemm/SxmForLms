@@ -208,40 +208,36 @@
         var hls = null;
 
         if ("Hls" in window && Hls.isSupported()) {
-            play = async (url) => {
-                try {
-                    const audio = document.getElementsByTagName("audio")[0];
-                    audio.pause();
+            play = (url) => {
+                const audio = document.getElementsByTagName("audio")[0];
+                audio.pause();
 
-                    audio.style.visibility = "hidden";
+                audio.style.visibility = "hidden";
 
-                    if (hls)
-                        hls.destroy();
+                if (hls)
+                    hls.destroy();
 
-                    if (!url)
-                        return;
+                if (!url)
+                    return;
 
-                    audio.pause();
+                audio.pause();
 
-                    hls = new Hls({ startPosition: 0 });
+                hls = new Hls({ startPosition: 0 });
 
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        console.warn({ event, data });
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    console.warn({ event, data });
+                });
+
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        audio.style.visibility = "visible";
+                        audio.play();
                     });
 
-                    const pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
-                    hls.attachMedia(audio);
-                    await pr;
-
                     hls.loadSource(url);
+                });
 
-                    await new Promise(r => hls.on(Hls.Events.MANIFEST_PARSED, r));
-
-                    audio.style.visibility = "visible";
-                    audio.play();
-                } catch (e) {
-                    console.error(e);
-                }
+                hls.attachMedia(audio);
             };
         }
     </script>

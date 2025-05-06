@@ -20,25 +20,19 @@
             referrerpolicy="no-referrer"></script>
 
     <script type="text/javascript">
-        (async () => {
-            if ("Hls" in window && Hls.isSupported()) {
-                try {
-                    const hls = new Hls({ startPosition: 0 });
+        if ("Hls" in window && Hls.isSupported()) {
+            const hls = new Hls({ startPosition: 0 });
 
-                    hls.on(Hls.Events.ERROR, function (event, data) {
-                        console.warn({ event, data });
-                    });
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                console.warn({ event, data });
+            });
 
-                    const pr = new Promise(r => hls.on(Hls.Events.MEDIA_ATTACHED, r));
-                    hls.attachMedia(document.getElementsByTagName("video")[0]);
-                    await pr;
+            hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                hls.loadSource("/Noise/playlist.m3u8");
+            });
 
-                    hls.loadSource("/Noise/playlist.m3u8");
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-        })();
+            hls.attachMedia(document.getElementsByTagName("video")[0]);
+        }
     </script>
 </body>
 </html>

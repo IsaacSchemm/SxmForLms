@@ -20,22 +20,6 @@ type AtomicAction =
 | Button of string
 
 module AtomicActions =
-    let getCurrentSiriusXMChannelId player = task {
-        let! path = Playlist.getPathAsync player
-
-        match Uri.TryCreate(path, UriKind.Absolute) with
-        | true, uri ->
-            let proxyPathPattern = new Regex("""^/Proxy/playlist-(.+)\.m3u8$""")
-            let m = proxyPathPattern.Match(uri.AbsolutePath)
-
-            if m.Success then
-                return Some m.Groups[1].Value
-            else
-                return None
-        | false, _ ->
-            return None
-    }
-
     let playAllTracksAsync player (startAtTrack: int) = task {
         do! Players.simulateButtonAsync player "stop"
 
@@ -77,34 +61,18 @@ module AtomicActions =
             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Noise/playlist.m3u8" "Brown noise"
 
         | StreamInfo ->
-            let! channelId = getCurrentSiriusXMChannelId player
-            match channelId with
-            | None -> ()
-            | Some id ->
-                do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromSeconds(5))
+            do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(5))
 
-                let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
-                let channel =
-                    channels
-                    |> Seq.where (fun c -> c.channelId = id)
-                    |> Seq.tryHead
+            let! path = Playlist.getPathAsync player
+            let! nowPlaying = ChannelListing.GetNowPlayingByUrlAsync(path, CancellationToken.None)
 
-                match channel with
-                | None ->
-                    do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromMilliseconds(1))
-                | Some c ->
-                    let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
-                    let song =
-                        playlist.cuts
-                        |> Seq.sortByDescending (fun cut -> cut.startTime)
-                        |> Seq.tryHead
+            let (line1, line2) =
+                match nowPlaying with
+                | [] -> ("Info", "No information available.")
+                | [a] -> ("Info", a)
+                | a :: b :: _ -> (a, b)
 
-                    match song with
-                    | None ->
-                        do! Players.setDisplayAsync player "SiriusXM" "Please wait..." (TimeSpan.FromMilliseconds(1))
-                    | Some c ->
-                        let artist = String.concat " / " c.artists
-                        do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(5))
+            do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromMilliseconds(1))
 
         | Eject ->
             use proc = Process.Start("eject", $"-T {Icedax.device}")

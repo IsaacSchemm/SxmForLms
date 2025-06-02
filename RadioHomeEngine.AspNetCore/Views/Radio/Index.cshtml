@@ -1,6 +1,12 @@
 ﻿@model IEnumerable<PlayableChannelModel>
 @{
     Layout = null;
+
+    var playerNames = new Dictionary<LyrionCLI.Player, string>();
+    foreach (var player in LyrionKnownPlayers.known)
+    {
+        playerNames.Add(player, await LyrionCLI.Players.getNameAsync(player));
+    }
 }
 
 <!DOCTYPE html>
@@ -50,6 +56,20 @@
                             <br>
                             <small>Some devices may not be able to play HLS streams directly.</small>
                         </p>
+
+                        @foreach (var player in LyrionKnownPlayers.known)
+                        {
+                            <p>
+                                <form asp-controller="Player" asp-action="PlayUrl">
+                                    <input type="hidden" name="id" value="@player.Item" />
+                                    <input type="hidden" name="url" value="@channel.Url" />
+                                    <input type="hidden" name="name" value="@channel.Name" />
+                                    <button type="submit">
+                                        Play on @playerNames[player]
+                                    </button>
+                                </form>
+                            </p>
+                        }
                     </details>
                 </div>
             }

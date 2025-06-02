@@ -24,7 +24,7 @@ module ChannelListing =
             |}
 
             for channel in externalChannels do {|
-                category = if channel.video then "Video" else "Audio"
+                category = if channel.video then "External (Video)" else "External (Audio)"
                 url = $"http://{address}:{Config.port}/Radio/PlayExternalChannel?id={channel.id}"
                 icon = ""
                 text = channel.name

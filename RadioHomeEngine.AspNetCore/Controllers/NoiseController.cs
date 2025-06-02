@@ -5,12 +5,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class NoiseController : Controller
     {
-        [Route("Noise")]
-        public IActionResult Index()
-        {
-            return View();
-        }
-
         [Route("Noise/playlist.m3u8")]
         public IActionResult Playlist()
         {

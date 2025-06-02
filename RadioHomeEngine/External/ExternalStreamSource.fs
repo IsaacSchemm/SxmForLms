@@ -28,6 +28,5 @@ module ExternalStreamSource =
         let! json = resp.EnsureSuccessStatusCode().Content.ReadAsStringAsync(cancellationToken)
         return json |> Utility.deserializeAs {|
             url = ""
-            nowPlaying = [""]
         |}
     }

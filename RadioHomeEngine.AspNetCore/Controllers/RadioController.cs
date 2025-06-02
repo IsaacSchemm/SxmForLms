@@ -9,25 +9,16 @@ namespace RadioHomeEngine.AspNetCore.Controllers
     {
         public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            List<PlayableChannelModel> channels = [];
+            var allChannels = await ChannelListing.ListChannelsAsync(cancellationToken);
 
-            foreach (var channel in await SiriusXMClient.getChannelsAsync(cancellationToken))
-            {
-                channels.Add(new()
+            IReadOnlyList<PlayableChannelModel> channels = [
+                .. allChannels.Select(c => new PlayableChannelModel
                 {
-                    Name = $"[{channel.channelNumber}] {channel.name}",
-                    Url = Url.Action(nameof(PlayChannel), new { num = channel.channelNumber })
-                });
-            }
-
-            foreach (var channel in await ExternalStreamSource.ListAsync(cancellationToken))
-            {
-                channels.Add(new()
-                {
-                    Name = (channel.video ? "[Video]" : "[Audio]") + " " + channel.name,
-                    Url = Url.Action(nameof(PlayExternalChannel), new { channel.id })
-                });
-            }
+                    Category = c.category,
+                    Name = c.text,
+                    Url = c.url
+                })
+            ];
 
             return View(channels);
         }

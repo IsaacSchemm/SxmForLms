@@ -11,15 +11,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
     <title>Channel List</title>
     @await Html.PartialAsync("_Styles")
+    <style type="text/css">
+        .box {
+            border: 1px solid currentColor;
+            display: inline-block;
+            height: 200px;
+            margin: 0.5em;
+            overflow-y: scroll;
+            vertical-align: top;
+            width: 250px;
+        }
+
+        summary {
+            background-color: steelblue;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 8px 0;
+            user-select: none;
+        }
+    </style>
 </head>
 <body>
-    @foreach (var channel in Model)
+    @foreach (var group in Model.GroupBy(c => c.Category))
     {
-        <p>
-            <a href="@channel.Url">
-                @channel.Name
-            </a>
-        </p>
+        <details>
+            <summary>@group.Key</summary>
+            @foreach (var channel in group)
+            {
+                <div class="box">
+                    <details>
+                        <summary>@channel.Name</summary>
+
+                        <p>
+                            <a href="@channel.Url">
+                                Play on this device
+                            </a>
+                            <br>
+                            <small>Some devices may not be able to play HLS streams directly.</small>
+                        </p>
+                    </details>
+                </div>
+            }
+        </details>
     }
 </body>
 </html>

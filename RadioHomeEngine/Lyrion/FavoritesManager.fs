@@ -16,43 +16,21 @@ module FavoritesManager =
                 let! playersOn = LyrionKnownPlayers.PowerStates.getPlayersWithStateAsync true
 
                 if List.isEmpty playersOn then
-                    let! address = Network.getAddressAsync ()
+                    let! channels = ChannelListing.ListChannelsAsync(cancellationToken)
 
-                    let! channels = SiriusXMClient.getChannelsAsync cancellationToken
-
-                    let! externalChannelsUnordered = ExternalStreamSource.ListAsync(cancellationToken)
-
-                    let externalChannels =
-                        externalChannelsUnordered
-                        |> List.sortBy (fun c -> c.video, c.name)
-
-                    let updateAsync name items = task {
-                        if LyrionFavorites.hasCategory name then
-                            do! LyrionFavorites.updateFavoritesAsync name items
-                    }
-
-                    do! updateAsync "SiriusXM" [
-                        for channel in channels do {|
-                            url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
-                            icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
-                            text = $"[{channel.channelNumber}] {channel.name}"
-                        |}
-                    ]
-
-                    do! updateAsync $"External ({ExternalStreamSource.Host})" [
-                        for channel in externalChannels do {|
-                            url = $"http://{address}:{Config.port}/Radio/PlayExternalChannel?id={channel.id}"
-                            icon = ""
-                            text = String.concat " " [
-                                if channel.video then "[Video]" else "[Audio]"
-                                channel.name
+                    for category, group in channels |> Seq.groupBy (fun c -> c.category) do
+                        if LyrionFavorites.hasCategory category then
+                            do! LyrionFavorites.updateFavoritesAsync category [
+                                for item in group do {|
+                                    url = item.url
+                                    icon = item.icon
+                                    text = item.text
+                                |}
                             ]
-                        |}
-                    ]
 
                     do! Task.Delay(TimeSpan.FromHours(12), cancellationToken)
                 else
-                    printfn "Not updating SiriusXM channel list right now because radio is on: %A" playersOn
+                    printfn "Not updating favorites right now because radio is on: %A" playersOn
 
                     do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
         }

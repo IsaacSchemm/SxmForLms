@@ -15,6 +15,7 @@
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
     <Compile Include="External\ExternalStreamSource.fs" />
+    <Compile Include="ChannelListing.fs" />
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />

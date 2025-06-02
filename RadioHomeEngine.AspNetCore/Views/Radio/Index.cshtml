@@ -1,0 +1,25 @@
+﻿@model IEnumerable<PlayableChannelModel>
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>Channel List</title>
+    @await Html.PartialAsync("_Styles")
+</head>
+<body>
+    @foreach (var channel in Model)
+    {
+        <p>
+            <a href="@channel.Url">
+                @channel.Name
+            </a>
+        </p>
+    }
+</body>
+</html>

@@ -20,6 +20,12 @@ module FavoritesManager =
 
                     let! channels = SiriusXMClient.getChannelsAsync cancellationToken
 
+                    let! externalChannelsUnordered = ExternalStreamSource.ListAsync(cancellationToken)
+
+                    let externalChannels =
+                        externalChannelsUnordered
+                        |> List.sortBy (fun c -> c.video, c.name)
+
                     let updateAsync name items = task {
                         if LyrionFavorites.hasCategory name then
                             do! LyrionFavorites.updateFavoritesAsync name items
@@ -30,6 +36,17 @@ module FavoritesManager =
                             url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
                             icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
                             text = $"[{channel.channelNumber}] {channel.name}"
+                        |}
+                    ]
+
+                    do! updateAsync $"External ({ExternalStreamSource.Host})" [
+                        for channel in externalChannels do {|
+                            url = $"http://{address}:{Config.port}/Radio/PlayExternalChannel?id={channel.id}"
+                            icon = ""
+                            text = String.concat " " [
+                                if channel.video then "[Video]" else "[Audio]"
+                                channel.name
+                            ]
                         |}
                     ]
 

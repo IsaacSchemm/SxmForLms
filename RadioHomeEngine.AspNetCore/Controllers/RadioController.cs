@@ -7,9 +7,29 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class RadioController(IHttpClientFactory httpClientFactory) : Controller
     {
-        public IActionResult Index()
+        public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            return View();
+            List<PlayableChannelModel> channels = [];
+
+            foreach (var channel in await SiriusXMClient.getChannelsAsync(cancellationToken))
+            {
+                channels.Add(new()
+                {
+                    Name = $"[{channel.channelNumber}] {channel.name}",
+                    Url = Url.Action(nameof(PlayChannel), new { num = channel.channelNumber })
+                });
+            }
+
+            foreach (var channel in await ExternalStreamSource.ListAsync(cancellationToken))
+            {
+                channels.Add(new()
+                {
+                    Name = (channel.video ? "[Video]" : "[Audio]") + " " + channel.name,
+                    Url = Url.Action(nameof(PlayExternalChannel), new { channel.id })
+                });
+            }
+
+            return View(channels);
         }
 
         public IActionResult SiriusXM()
@@ -78,6 +98,12 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 : NotFound();
         }
 
+        public async Task<IActionResult> PlayExternalChannel(int id, CancellationToken cancellationToken)
+        {
+            var channel = await ExternalStreamSource.GetAsync(id, cancellationToken);
+            return Redirect(channel.url);
+        }
+
         public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
@@ -92,7 +118,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 
             return View(new NowPlayingModel
             {
-                Channel = new ChannelModel
+                Channel = new PlayingChannelModel
                 {
                     Name = channel.name,
                     Number = num,
@@ -124,7 +150,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 
             return View(new RecentlyPlayingModel
             {
-                Channel = new ChannelModel
+                Channel = new PlayingChannelModel
                 {
                     Name = channel.name,
                     Number = num,

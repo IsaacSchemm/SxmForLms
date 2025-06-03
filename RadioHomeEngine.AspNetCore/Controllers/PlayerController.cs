@@ -13,26 +13,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PlaySiriusXMChannel(string id, int number)
-        {
-            await AtomicActions.performActionAsync(
-                Player.NewPlayer(id),
-                AtomicAction.NewPlaySiriusXMChannel(number));
-
-            return await Display(id);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> PlayBrownNoise(string id)
-        {
-            await AtomicActions.performActionAsync(
-                Player.NewPlayer(id),
-                AtomicAction.PlayBrownNoise);
-
-            return await Display(id);
-        }
-
-        [HttpPost]
         public async Task<IActionResult> StreamInfo(string id)
         {
             await AtomicActions.performActionAsync(

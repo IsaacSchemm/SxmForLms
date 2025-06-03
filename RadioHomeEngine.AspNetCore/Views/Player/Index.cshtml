@@ -25,18 +25,6 @@
 
     <hr />
 
-    <h2>SiriusXM</h2>
-
-    <form method="post" asp-controller="Player" asp-action="PlaySiriusXMChannel" asp-route-id="@Model.Item" target="myframe">
-        <input type="number"
-               name="number"
-               min="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Min()"
-               max="@siriusXMChannels.Select(c => int.Parse(c.channelNumber)).Max()" />
-        <button type="submit">Play</button>
-    </form>
-
-    <br />
-
     <form method="post" asp-controller="Player" asp-action="StreamInfo" asp-route-id="@Model.Item" target="myframe">
         <button type="submit">Display currently playing track title</button>
     </form>
@@ -98,10 +86,6 @@
 
     <form method="post" asp-controller="Player" asp-action="Forecast" asp-route-id="@Model.Item" target="myframe">
         <button type="submit">Play weather forecast</button>
-    </form>
-
-    <form method="post" asp-controller="Player" asp-action="PlayBrownNoise" asp-route-id="@Model.Item" target="myframe">
-        <button type="submit">Play brown noise</button>
     </form>
 </body>
 </html>

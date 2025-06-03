@@ -16,6 +16,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 {
                     Category = c.category,
                     Name = c.text,
+                    ImageSrc = c.icon,
                     Url = c.url
                 })
             ];
@@ -78,6 +79,8 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 
         public async Task<IActionResult> PlayChannel(int num, CancellationToken cancellationToken)
         {
+            ChannelMemory.LastPlayed = ChannelMemory.Channel.NewSiriusXM(num);
+
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 
             var channel = channels
@@ -87,12 +90,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return channel != null
                 ? Redirect($"/Proxy/playlist-{channel.channelId}.m3u8")
                 : NotFound();
-        }
-
-        public async Task<IActionResult> PlayExternalChannel(int id, CancellationToken cancellationToken)
-        {
-            var channel = await ExternalStreamSource.GetAsync(id, cancellationToken);
-            return Redirect(channel.url);
         }
 
         public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)

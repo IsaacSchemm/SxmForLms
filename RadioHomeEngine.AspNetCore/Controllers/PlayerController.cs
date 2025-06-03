@@ -6,8 +6,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class PlayerController : Controller
     {
-        private const string AUTOHIDE = "<script type='text/javascript'>setTimeout(function(){location.href='about:blank';},3000)</script>";
-
         public IActionResult Index(string id)
         {
             var player = Player.NewPlayer(id);

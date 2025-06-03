@@ -6,7 +6,7 @@ module ChannelListing =
 
         let! channels = SiriusXMClient.getChannelsAsync cancellationToken
 
-        let! externalChannels = ExternalStreamSource.ListAsync(cancellationToken)
+        let! externalChannels = ExternalStreamSource.listAsync()
 
         return [
             for channel in channels do {|
@@ -25,8 +25,8 @@ module ChannelListing =
 
             for channel in externalChannels do {|
                 category = if channel.video then "External (Video)" else "External (Audio)"
-                url = $"http://{address}:{Config.port}/Radio/PlayExternalChannel?id={channel.id}"
-                icon = ""
+                url = $"http://{address}:{Config.port}/External/PlayChannel?id={channel.id}"
+                icon = channel.image
                 text = channel.name
             |}
         ]

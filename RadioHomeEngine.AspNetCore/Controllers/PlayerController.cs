@@ -33,17 +33,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PlayUrl(string id, string url, string name)
-        {
-            await Playlist.playItemAsync(
-                Player.NewPlayer(id),
-                url,
-                name);
-
-            return await Display(id);
-        }
-
-        [HttpPost]
         public async Task<IActionResult> Eject(string id)
         {
             await AtomicActions.performActionAsync(

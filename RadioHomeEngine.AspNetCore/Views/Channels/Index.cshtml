@@ -1,4 +1,4 @@
-﻿@model IEnumerable<PlayableChannelModel>
+﻿@model ChannelsModel
 @{
     Layout = null;
 
@@ -43,7 +43,7 @@
     </style>
 </head>
 <body>
-    @foreach (var group in Model.GroupBy(c => c.Category))
+    @foreach (var group in Model.Channels.GroupBy(c => c.Category))
     {
         <details>
             <summary>@group.Key</summary>
@@ -54,7 +54,7 @@
                         <summary>@channel.Name</summary>
 
                         <p>
-                            <img src="@channel.ImageSrc" style="max-width: 100%" />
+                            <img src="@channel.ImageSrc" style="max-width: 100%" loading="lazy" />
                             <br />
                             <a href="@channel.Url">
                                 Play on this device
@@ -63,15 +63,15 @@
                             <small>Some devices may not be able to play HLS streams directly.</small>
                         </p>
 
-                        @foreach (var player in LyrionKnownPlayers.known)
+                        @foreach (var player in Model.Players)
                         {
                             <p>
-                                <form asp-controller="Player" asp-action="PlayUrl" target="myframe">
-                                    <input type="hidden" name="id" value="@player.Item" />
+                                <form asp-action="Play" target="myframe">
+                                    <input type="hidden" name="mac" value="@player.MacAddress" />
                                     <input type="hidden" name="url" value="@channel.Url" />
                                     <input type="hidden" name="name" value="@channel.Name" />
                                     <button type="submit">
-                                        Play on @playerNames[player]
+                                        Play on @player.Name
                                     </button>
                                 </form>
                             </p>

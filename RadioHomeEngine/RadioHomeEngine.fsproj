@@ -17,6 +17,7 @@
     <Compile Include="External\ExternalStreamSource.fs" />
     <Compile Include="ChannelListing.fs" />
     <Compile Include="ChannelMemory.fs" />
+    <Compile Include="Roku.fs" />
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />
@@ -32,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CrossInterfaceRokuDeviceDiscovery" Version="1.0.0" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.4.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.1" />

@@ -15,47 +15,53 @@ module Roku =
         abstract member Location: Uri
         abstract member Name: string
 
-    let mutable Devices = []
-
     let private httpClient = lazy (new HttpClient())
 
+    let mutable Devices = []
+
     let UpdateAsync(cancellationToken: CancellationToken) = task {
+        let timeout =
+            let source = new CancellationTokenSource()
+            source.CancelAfter(TimeSpan.FromSeconds(30))
+            source.Token
+
         let token =
             let source = CancellationTokenSource.CreateLinkedTokenSource([|
                 cancellationToken
+                timeout
             |])
-            source.CancelAfter(TimeSpan.FromSeconds(30))
             source.Token
 
         let! address = Network.getAddressAsync ()
 
-        let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
+        if address <> "localhost" then
+            let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
 
-        let mutable devices = []
+            let mutable devices = []
 
-        let f = fun (ctx: DiscoveredDeviceContext) -> task {
-            match ctx.Device with
-            | :? IHttpRokuDevice as device ->
-                let! info = device.GetDeviceInfoAsync()
+            let f = fun (ctx: DiscoveredDeviceContext) -> task {
+                match ctx.Device with
+                | :? IHttpRokuDevice as device ->
+                    let! info = device.GetDeviceInfoAsync()
 
-                let obj = {
-                    new IDevice with
-                        member _.MacAddress = info.WifiMacAddress
-                        member _.Location = device.Location
-                        member _.Name = $"{info.UserDeviceName} ({info.ModelName})"
-                }
+                    let obj = {
+                        new IDevice with
+                            member _.MacAddress = info.WifiMacAddress
+                            member _.Location = device.Location
+                            member _.Name = $"{info.UserDeviceName} ({info.ModelName})"
+                    }
 
-                devices <- obj :: devices
-            | _ -> ()
+                    devices <- obj :: devices
+                | _ -> ()
 
-            return false
-        }
+                return false
+            }
 
-        try
-            do! client.DiscoverDevicesAsync(f, token)
-        with :? TaskCanceledException as ex when ex.CancellationToken = token -> ()
+            try
+                do! client.DiscoverDevicesAsync(f, token)
+            with :? TaskCanceledException as ex when ex.CancellationToken = token -> ()
 
-        Devices <- devices
+            Devices <- devices
     }
 
     let PlayAsync (device: IDevice) (url: string) (name: string) (cancellationToken: CancellationToken) = task {
@@ -74,6 +80,9 @@ module Roku =
 
         override _.ExecuteAsync cancellationToken = task {
             while not cancellationToken.IsCancellationRequested do
-                do! UpdateAsync(cancellationToken)
+                try
+                    do! UpdateAsync(cancellationToken)
+                with ex ->
+                    Console.Error.WriteLine(ex)
                 do! Task.Delay(TimeSpan.FromHours(1), cancellationToken)
         }

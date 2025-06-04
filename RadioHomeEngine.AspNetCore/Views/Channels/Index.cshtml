@@ -1,12 +1,6 @@
 ﻿@model ChannelsModel
 @{
     Layout = null;
-
-    var playerNames = new Dictionary<LyrionCLI.Player, string>();
-    foreach (var player in LyrionKnownPlayers.known)
-    {
-        playerNames.Add(player, await LyrionCLI.Players.getNameAsync(player));
-    }
 }
 
 <!DOCTYPE html>

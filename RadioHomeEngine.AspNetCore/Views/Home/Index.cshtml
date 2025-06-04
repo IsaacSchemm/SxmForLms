@@ -28,11 +28,10 @@
 
     <h2>Squeezebox devices</h2>
 
-    @foreach (var player in LyrionKnownPlayers.known)
+    @foreach (var k in await LyrionKnownPlayers.Names.getPlayersWithNamesAsync())
     {
-        string name = await LyrionCLI.Players.getNameAsync(player);
-        <a asp-controller="Player" asp-action="Index" asp-route-id="@player.Item">
-            @name (@player.Item)
+        <a asp-controller="Player" asp-action="Index" asp-route-id="@k.player.Item">
+            @k.name (@k.player.Item)
         </a>
     }
 

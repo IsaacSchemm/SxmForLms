@@ -25,7 +25,10 @@ Functionality includes:
     * SiriusXM playback
         * Channel number entry
         * "Now Playing" info
-    * Brown noise HLS stream generator
+    * Channel list, with:
+        * Brown noise HLS stream generator
+        * Ability to include additional channels (from an external console command, see `ExternalStreamSource.fs`)
+        * Ability to play a channel on a Roku device using [Media Assistant](https://github.com/MedievalApple/Media-Assistant)
     * iOS 6+ support
     * Wii U support
 

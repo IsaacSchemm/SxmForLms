@@ -2,9 +2,7 @@
 @{
     Layout = null;
 
-    var name = LyrionKnownPlayers.known.Contains(Model)
-        ? await LyrionCLI.Players.getNameAsync(Model)
-        : Model.Item;
+    var name = await LyrionKnownPlayers.Names.getNameAsync(Model);
 
     var siriusXMChannels = await SiriusXMClient.getChannelsAsync(CancellationToken.None);
 }

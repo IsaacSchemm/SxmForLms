@@ -9,11 +9,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         {
             var allChannels = await ChannelListing.ListChannelsAsync(cancellationToken);
 
-            var lyrionPlayerNames = new Dictionary<LyrionCLI.Player, string>();
-            foreach (var player in LyrionKnownPlayers.known)
-            {
-                lyrionPlayerNames.Add(player, await LyrionCLI.Players.getNameAsync(player));
-            }
+            var knownPlayers = await LyrionKnownPlayers.Names.getPlayersWithNamesAsync();
 
             return View(new ChannelsModel
             {
@@ -27,9 +23,9 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                     })
                 ],
                 Players = [
-                    .. LyrionKnownPlayers.known.Select(player => new ChannelsModel.Player {
-                        MacAddress = player.Item,
-                        Name = lyrionPlayerNames[player]
+                    .. knownPlayers.Select(k => new ChannelsModel.Player {
+                        MacAddress = k.player.Item,
+                        Name = k.name
                     }),
                     .. Roku.Devices.Select(device => new ChannelsModel.Player {
                         MacAddress = device.MacAddress,

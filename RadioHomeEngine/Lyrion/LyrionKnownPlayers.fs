@@ -85,6 +85,35 @@ module LyrionKnownPlayers =
             return list
         }
 
+    module Names =
+        let mutable private names = Map.empty
+
+        let getNameAsync (player: Player) = task {
+            printfn "Fetching name of %A" player
+
+            match Map.tryFind player names with
+            | Some name ->
+                return name
+            | None ->
+                let! name = LyrionCLI.Players.getNameAsync player
+                names <- names |> Map.add player name
+                return name
+        }
+
+        let getPlayersWithNamesAsync () = task {
+            let players = known
+
+            for player in players do
+                do! getNameAsync player :> Task
+
+            return [
+                for player in players do {|
+                    player = player
+                    name = Map.tryFind player names |> Option.defaultValue (string player)
+                |}
+            ]
+        }
+
     type Service() =
         inherit BackgroundService()
 

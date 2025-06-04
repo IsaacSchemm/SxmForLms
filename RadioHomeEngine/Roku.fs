@@ -10,46 +10,42 @@ open CrossInterfaceRokuDeviceDiscovery
 open System.Net.Http
 
 module Roku =
-    type Device = {
-        mac: string
-        name: string
-        host: string
-        port: int
-    }
+    type IDevice =
+        abstract member MacAddress: string
+        abstract member Location: Uri
+        abstract member Name: string
+
+    let mutable Devices = []
 
     let private httpClient = lazy (new HttpClient())
 
-    let mutable Devices = Set.empty
-
     let UpdateAsync(cancellationToken: CancellationToken) = task {
-        let timeoutToken =
-            let source = new CancellationTokenSource()
-            source.CancelAfter(TimeSpan.FromSeconds(15))
-            source.Token
-
         let token =
-            let source = CancellationTokenSource.CreateLinkedTokenSource [|
-                timeoutToken
+            let source = CancellationTokenSource.CreateLinkedTokenSource([|
                 cancellationToken
-            |]
-
+            |])
+            source.CancelAfter(TimeSpan.FromSeconds(30))
             source.Token
 
         let! address = Network.getAddressAsync ()
 
         let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
 
+        let mutable devices = []
+
         let f = fun (ctx: DiscoveredDeviceContext) -> task {
             match ctx.Device with
             | :? IHttpRokuDevice as device ->
                 let! info = device.GetDeviceInfoAsync()
 
-                Devices <- Devices |> Set.add {
-                    mac = info.WifiMacAddress
-                    name = $"{info.UserDeviceName} ({info.ModelName})"
-                    host = device.Location.Host
-                    port = device.Location.Port
+                let obj = {
+                    new IDevice with
+                        member _.MacAddress = info.WifiMacAddress
+                        member _.Location = device.Location
+                        member _.Name = $"{info.UserDeviceName} ({info.ModelName})"
                 }
+
+                devices <- obj :: devices
             | _ -> ()
 
             return false
@@ -58,13 +54,15 @@ module Roku =
         try
             do! client.DiscoverDevicesAsync(f, token)
         with :? TaskCanceledException as ex when ex.CancellationToken = token -> ()
+
+        Devices <- devices
     }
 
-    let PlayAsync (device: Device) (url: string) (name: string) (cancellationToken: CancellationToken) = task {
+    let PlayAsync (device: IDevice) (url: string) (name: string) (cancellationToken: CancellationToken) = task {
         let client = httpClient.Value
 
         use! resp = client.PostAsync(
-            $"http://{device.host}:{device.port}/launch/782875?u={Uri.EscapeDataString(url)}&videoName={Uri.EscapeDataString(name)}",
+            new Uri(device.Location, $"/launch/782875?u={Uri.EscapeDataString(url)}&videoName={Uri.EscapeDataString(name)}"),
             null,
             cancellationToken)
 

@@ -273,13 +273,6 @@ module LyrionIRHandler =
                 do! clearAsync ()
         }
 
-        let showRokuNameAsync keys = task {
-            match (controlledDevice, keys) with
-            | (Roku d, []) -> do! Players.setDisplayAsync player "Remote Control" d.Name (TimeSpan.FromSeconds(5))
-            | (Roku d, keys) -> do! Players.setDisplayAsync player "Remote Control" $"""{d.Name} ({String.concat ", " keys})""" (TimeSpan.FromSeconds(999))
-            | (Squeezebox, _) -> do! Players.setDisplayAsync player "Remote Control" "This device" (TimeSpan.FromSeconds(5))
-        }
-
         let processIRAsync ircode time = task {
             let mapping =
                 Mappings
@@ -310,6 +303,8 @@ module LyrionIRHandler =
                 if firstPressed = lastPressed then
                     let start = firstPressed
 
+                    let! powerState = Players.getPowerAsync player
+
                     let wheel = [
                         Squeezebox
                         for d in Roku.GetDevices() do Roku d
@@ -322,8 +317,16 @@ module LyrionIRHandler =
                         |> Option.defaultValue -1
 
                     controlledDevice <- wheel[index + 1]
-            
-                    do! showRokuNameAsync []
+
+                    let message =
+                        match controlledDevice with
+                        | Roku d -> d.Name
+                        | Squeezebox -> "This device"
+
+                    if powerState then
+                        do! Players.setDisplayAsync player "Remote Control" message (TimeSpan.FromSeconds(5))
+                    else
+                        do! Players.setDisplayAsync player $"Remote Control: {message}" $"Remote Control: {message}" (TimeSpan.FromSeconds(5))
 
                     while firstPressed = start && pressedRecently () do
                         do! Task.Delay(50)
@@ -338,7 +341,9 @@ module LyrionIRHandler =
                     if firstPressed = lastPressed then
                         let start = firstPressed
 
-                        do! showRokuNameAsync [$"{key}"]
+                        do! Players.setPowerAsync player false
+
+                        do! Players.setDisplayAsync player "Remote Control" $"{key}" (TimeSpan.FromSeconds(5))
 
                         do! device.Input.KeyDownAsync(key)
 
@@ -346,10 +351,9 @@ module LyrionIRHandler =
                             do! Task.Delay(50)
 
                         do! device.Input.KeyUpAsync(key)
-                        do! showRokuNameAsync []
+                        do! Players.setDisplayAsync player "Remote Control" "-" (TimeSpan.FromMilliseconds(1))
 
-                | None ->
-                    do! showRokuNameAsync []
+                | None -> ()
 
             | (Squeezebox, IR name) ->
                 do! simulateIRAsync name

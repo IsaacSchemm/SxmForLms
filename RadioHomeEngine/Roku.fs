@@ -40,7 +40,10 @@ module Roku =
                         new IDevice with
                             member _.MacAddress = info.WifiMacAddress
                             member _.Location = device.Location
-                            member _.Name = $"{info.UserDeviceName} ({info.ModelName})"
+                            member _.Name =
+                                if info.UserDeviceName = info.ModelName
+                                then device.Location.Host
+                                else info.UserDeviceName
                             member _.Input = device.Input
                     }
 
@@ -78,10 +81,10 @@ module Roku =
 
         override _.ExecuteAsync cancellationToken = task {
             while not cancellationToken.IsCancellationRequested do
-                use tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                use waitTask = Task.Delay(TimeSpan.FromHours(1), cancellationToken)
 
+                use tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                 use updateTask = UpdateAsync(tokenSource.Token)
-                use waitTask = Task.Delay(TimeSpan.FromHours(1))
 
                 try
                     do! waitTask

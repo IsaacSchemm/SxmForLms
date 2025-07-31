@@ -83,6 +83,8 @@ module LyrionIRHandler =
             Seq.head enabledBehaviors
         })
 
+        let mutable roku: Roku.IDevice option = None
+
         let mutable promptText = None
         let mutable promptMonitor = Task.CompletedTask
 
@@ -288,14 +290,70 @@ module LyrionIRHandler =
             lastPressed <- now
             lastIRTime <- time
 
-            match mapping with
-            | IR name ->
+            let rokuKey =
+                RokuMappings
+                |> Map.tryFind ircode
+
+            let rokuDebounce f1s f2s = task {
+                if firstPressed = lastPressed then
+                    let start = firstPressed
+
+                    for f1 in f1s do do! f1 ()
+
+                    let isFinished () =
+                        firstPressed <> start
+                        || DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed > 150
+
+                    while not (isFinished()) do
+                        do! Task.Delay(10)
+
+                    for f2 in f2s do do! f2 ()
+            }
+
+            match roku, rokuKey, mapping with
+            | _, _, Roku ->
+                let switchRoku = fun () -> task {
+                    let wheel = [
+                        None
+                        for d in Roku.GetDevices() do Some d
+                        None
+                    ]
+
+                    let index =
+                        wheel
+                        |> List.tryFindIndex (fun x -> x = roku)
+                        |> Option.defaultValue -1
+                    roku <- wheel[index + 1]
+            
+                    match roku with
+                    | Some d -> do! Players.setDisplayAsync player "Roku" d.Name (TimeSpan.FromSeconds(5))
+                    | None -> do! Players.setDisplayAsync player "Roku" "Disconnected" (TimeSpan.FromSeconds(5))
+                }
+
+                do! rokuDebounce [switchRoku] []
+
+            | Some device, Some key, _ ->
+                let press = fun () -> task {
+                    do! device.Input.KeyDownAsync(key)
+                    do! Players.setDisplayAsync player "Roku" device.Name (TimeSpan.FromSeconds(5))
+                }
+
+                let release = fun () -> task {
+                    do! device.Input.KeyUpAsync(key)
+                }
+
+                do! rokuDebounce [press] [release]
+
+            | Some device, _, _ ->
+                do! Players.setDisplayAsync player "Roku" device.Name (TimeSpan.FromSeconds(5))
+
+            | None, _, IR name ->
                 do! simulateIRAsync name
 
-            | Series [Number n] when behavior = Digit ->
+            | None, _, Series [Number n] when behavior = Digit ->
                 do! simulateIRAsync $"{n}"
 
-            | Series presses ->
+            | None, _, Series presses ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
 

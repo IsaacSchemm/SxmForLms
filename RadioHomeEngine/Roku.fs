@@ -2,18 +2,20 @@
 
 open System
 open System.Net
+open System.Net.Http
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
-open RokuDotNet.Client
 open CrossInterfaceRokuDeviceDiscovery
-open System.Net.Http
+open RokuDotNet.Client
+open RokuDotNet.Client.Input
 
 module Roku =
     type IDevice =
         abstract member MacAddress: string
         abstract member Location: Uri
         abstract member Name: string
+        abstract member Input: IRokuDeviceInput
 
     let private httpClient = lazy (new HttpClient())
 
@@ -32,7 +34,7 @@ module Roku =
             |])
             source.Token
 
-        let! address = Network.getAddressAsync ()
+        let! address = Task.FromResult "192.168.1.14"//Network.getAddressAsync ()
 
         if address <> "localhost" then
             let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
@@ -49,6 +51,7 @@ module Roku =
                             member _.MacAddress = info.WifiMacAddress
                             member _.Location = device.Location
                             member _.Name = $"{info.UserDeviceName} ({info.ModelName})"
+                            member _.Input = device.Input
                     }
 
                     devices <- obj :: devices

@@ -1,0 +1,55 @@
+﻿@using RokuDotNet.Client.Input
+@model Roku.IDevice
+
+@{
+    SpecialKeys[][] keys = [
+        [SpecialKeys.Back, 0, SpecialKeys.Home],
+        [0, SpecialKeys.Up, 0],
+        [SpecialKeys.Left, SpecialKeys.Select, SpecialKeys.Right],
+        [0, SpecialKeys.Down, 0],
+        [SpecialKeys.InstantReplay, 0, SpecialKeys.Info],
+        [SpecialKeys.Reverse, SpecialKeys.Play, SpecialKeys.Forward]
+    ];
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Radio Home Engine - @Model.Name</title>
+    @await Html.PartialAsync("_Styles")
+    <style type="text/css">
+        button {
+            font-size: 16pt !important;
+            overflow-x: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <h1>
+        @Model.Name
+    </h1>
+    <section id="entryStage">
+        <table id="numpad">
+            @foreach (var row in keys)
+            {
+                <tr>
+                    @foreach (var key in row)
+                    {
+                        <td>
+                            @if (key != 0)
+                            {
+                                <form asp-action="Press" asp-route-macAddress="@Model.MacAddress" asp-route-key="@key">
+                                    <button>
+                                        @key
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </table>
+    </section>
+</body>
+</html>

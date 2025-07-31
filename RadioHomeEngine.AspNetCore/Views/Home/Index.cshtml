@@ -38,9 +38,11 @@
 
     @foreach (var k in await LyrionKnownPlayers.Names.getPlayersWithNamesAsync())
     {
-        <a asp-controller="Player" asp-action="Index" asp-route-id="@k.player.Item">
-            @k.name (@k.player.Item)
-        </a>
+        <p>
+            <a asp-controller="Player" asp-action="Index" asp-route-id="@k.player.Item">
+                @k.name (@k.player.Item)
+            </a>
+        </p>
     }
 
     <p>
@@ -48,6 +50,17 @@
             Lyrion Music Server
         </a>
     </p>
+
+    <h2>Roku devices</h2>
+
+    @foreach (var p in Roku.Devices)
+    {
+        <p>
+            <a asp-controller="Roku" asp-action="Index" asp-route-macAddress="@p.MacAddress">
+                @p.Name (@p.Location.Host)
+            </a>
+        </p>
+    }
 
     <hr />
 

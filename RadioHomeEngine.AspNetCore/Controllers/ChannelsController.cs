@@ -27,7 +27,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                         MacAddress = k.player.Item,
                         Name = k.name
                     }),
-                    .. Roku.Devices.Select(device => new ChannelsModel.Player {
+                    .. Roku.GetDevices().Select(device => new ChannelsModel.Player {
                         MacAddress = device.MacAddress,
                         Name = device.Name
                     })
@@ -47,7 +47,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 }
             }
 
-            foreach (var device in Roku.Devices)
+            foreach (var device in Roku.GetDevices())
             {
                 if (device.MacAddress == mac)
                 {

@@ -8,14 +8,14 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         public IActionResult Index(string? macAddress = null)
         {
             var device = macAddress == null
-                ? Roku.Devices[0]
-                : Roku.Devices.Single(d => d.MacAddress == macAddress);
+                ? Roku.GetDevices().First()
+                : Roku.GetDevices().Single(d => d.MacAddress == macAddress);
             return View(device);
         }
 
         public async Task<IActionResult> Press(string macAddress, SpecialKeys key)
         {
-            var device = Roku.Devices.Single(d => d.MacAddress == macAddress);
+            var device = Roku.GetDevices().Single(d => d.MacAddress == macAddress);
             await device.Input.KeyPressAsync(new PressedKey(key));
             return NoContent();
         }

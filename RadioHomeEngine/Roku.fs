@@ -19,27 +19,17 @@ module Roku =
 
     let private httpClient = lazy (new HttpClient())
 
-    let mutable Devices = []
+    let mutable private pastDevices = []
+    let mutable private currentDevices = []
 
     let UpdateAsync(cancellationToken: CancellationToken) = task {
-        let timeout =
-            let source = new CancellationTokenSource()
-            source.CancelAfter(TimeSpan.FromSeconds(30))
-            source.Token
-
-        let token =
-            let source = CancellationTokenSource.CreateLinkedTokenSource([|
-                cancellationToken
-                timeout
-            |])
-            source.Token
-
-        let! address = Task.FromResult "192.168.1.14"//Network.getAddressAsync ()
+        let! address = Network.getAddressAsync ()
 
         if address <> "localhost" then
-            let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
+            pastDevices <- currentDevices
+            currentDevices <- []
 
-            let mutable devices = []
+            let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
 
             let f = fun (ctx: DiscoveredDeviceContext) -> task {
                 match ctx.Device with
@@ -54,18 +44,23 @@ module Roku =
                             member _.Input = device.Input
                     }
 
-                    devices <- obj :: devices
+                    currentDevices <- obj :: currentDevices
+
+                    printfn "Adding Roku device %s [%s]" obj.Name obj.Location.Host
                 | _ -> ()
 
                 return false
             }
 
             try
-                do! client.DiscoverDevicesAsync(f, token)
-            with :? TaskCanceledException as ex when ex.CancellationToken = token -> ()
-
-            Devices <- devices
+                do! client.DiscoverDevicesAsync(f, cancellationToken)
+            with :? TaskCanceledException as ex when ex.CancellationToken = cancellationToken -> ()
     }
+
+    let GetDevices() =
+        currentDevices @ pastDevices
+        |> Seq.distinctBy (fun d -> d.MacAddress)
+        |> Seq.sortBy (fun d -> d.Name, d.Location.Host)
 
     let PlayAsync (device: IDevice) (url: string) (name: string) (cancellationToken: CancellationToken) = task {
         let client = httpClient.Value
@@ -83,9 +78,20 @@ module Roku =
 
         override _.ExecuteAsync cancellationToken = task {
             while not cancellationToken.IsCancellationRequested do
+                use tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+
+                use updateTask = UpdateAsync(tokenSource.Token)
+                use waitTask = Task.Delay(TimeSpan.FromHours(1))
+
                 try
-                    do! UpdateAsync(cancellationToken)
+                    do! waitTask
                 with ex ->
                     Console.Error.WriteLine(ex)
-                do! Task.Delay(TimeSpan.FromHours(1), cancellationToken)
+
+                tokenSource.Cancel()
+
+                try
+                    do! updateTask
+                with ex ->
+                    Console.Error.WriteLine(ex)
         }

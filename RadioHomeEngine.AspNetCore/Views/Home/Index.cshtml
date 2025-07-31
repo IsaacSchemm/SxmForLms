@@ -53,7 +53,7 @@
 
     <h2>Roku devices</h2>
 
-    @foreach (var p in Roku.Devices)
+    @foreach (var p in Roku.GetDevices())
     {
         <p>
             <a asp-controller="Roku" asp-action="Index" asp-route-macAddress="@p.MacAddress">

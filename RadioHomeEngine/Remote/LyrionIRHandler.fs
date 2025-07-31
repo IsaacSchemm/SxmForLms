@@ -324,9 +324,9 @@ module LyrionIRHandler =
                         | Squeezebox -> "This device"
 
                     if powerState then
-                        do! Players.setDisplayAsync player "Remote Control" message (TimeSpan.FromSeconds(5))
+                        do! Players.setDisplayAsync player "Remote" message (TimeSpan.FromSeconds(5))
                     else
-                        do! Players.setDisplayAsync player $"Remote Control: {message}" $"Remote Control: {message}" (TimeSpan.FromSeconds(5))
+                        do! Players.setDisplayAsync player $"Remote: {message}" $"Remote: {message}" (TimeSpan.FromSeconds(5))
 
                     while firstPressed = start && pressedRecently () do
                         do! Task.Delay(50)
@@ -341,9 +341,7 @@ module LyrionIRHandler =
                     if firstPressed = lastPressed then
                         let start = firstPressed
 
-                        do! Players.setPowerAsync player false
-
-                        do! Players.setDisplayAsync player "Remote Control" $"{key}" (TimeSpan.FromSeconds(5))
+                        do! Players.setDisplayAsync player "Remote" $"{key}" (TimeSpan.FromSeconds(5))
 
                         do! device.Input.KeyDownAsync(key)
 
@@ -351,7 +349,7 @@ module LyrionIRHandler =
                             do! Task.Delay(50)
 
                         do! device.Input.KeyUpAsync(key)
-                        do! Players.setDisplayAsync player "Remote Control" "-" (TimeSpan.FromMilliseconds(1))
+                        do! Players.setDisplayAsync player "Remote" "-" (TimeSpan.FromMilliseconds(1))
 
                 | None -> ()
 

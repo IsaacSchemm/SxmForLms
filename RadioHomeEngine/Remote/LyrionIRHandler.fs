@@ -268,6 +268,12 @@ module LyrionIRHandler =
                 do! clearAsync ()
         }
 
+        let showRokuNameAsync () = task {
+            match roku with
+            | Some d -> do! Players.setDisplayAsync player "Roku" d.Name (TimeSpan.FromSeconds(5))
+            | None -> do! Players.setDisplayAsync player "Roku" "Disconnected" (TimeSpan.FromSeconds(5))
+        }
+
         let processIRAsync ircode time = task {
             let mapping =
                 Mappings
@@ -290,29 +296,18 @@ module LyrionIRHandler =
             lastPressed <- now
             lastIRTime <- time
 
+            let pressedRecently () =
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed <= 150
+
             let rokuKey =
                 RokuMappings
                 |> Map.tryFind ircode
 
-            let rokuDebounce f1s f2s = task {
+            match roku, rokuKey, mapping with
+            | _, _, Roku ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
 
-                    for f1 in f1s do do! f1 ()
-
-                    let isFinished () =
-                        firstPressed <> start
-                        || DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed > 150
-
-                    while not (isFinished()) do
-                        do! Task.Delay(10)
-
-                    for f2 in f2s do do! f2 ()
-            }
-
-            match roku, rokuKey, mapping with
-            | _, _, Roku ->
-                let switchRoku = fun () -> task {
                     let wheel = [
                         None
                         for d in Roku.GetDevices() do Some d
@@ -323,29 +318,29 @@ module LyrionIRHandler =
                         wheel
                         |> List.tryFindIndex (fun x -> x = roku)
                         |> Option.defaultValue -1
+
                     roku <- wheel[index + 1]
             
-                    match roku with
-                    | Some d -> do! Players.setDisplayAsync player "Roku" d.Name (TimeSpan.FromSeconds(5))
-                    | None -> do! Players.setDisplayAsync player "Roku" "Disconnected" (TimeSpan.FromSeconds(5))
-                }
+                    do! showRokuNameAsync ()
 
-                do! rokuDebounce [switchRoku] []
+                    while firstPressed = start && pressedRecently () do
+                        do! Task.Delay(50)
 
             | Some device, Some key, _ ->
-                let press = fun () -> task {
+                if firstPressed = lastPressed then
+                    let start = firstPressed
+
                     do! device.Input.KeyDownAsync(key)
-                    do! Players.setDisplayAsync player "Roku" device.Name (TimeSpan.FromSeconds(5))
-                }
+                    do! showRokuNameAsync ()
 
-                let release = fun () -> task {
+                    while firstPressed = start && pressedRecently () do
+                        do! Task.Delay(50)
+
                     do! device.Input.KeyUpAsync(key)
-                }
+                    do! showRokuNameAsync ()
 
-                do! rokuDebounce [press] [release]
-
-            | Some device, _, _ ->
-                do! Players.setDisplayAsync player "Roku" device.Name (TimeSpan.FromSeconds(5))
+            | Some _, None, _ ->
+                do! showRokuNameAsync ()
 
             | None, _, IR name ->
                 do! simulateIRAsync name
@@ -359,18 +354,13 @@ module LyrionIRHandler =
 
                     let buffer = ref presses
 
-                    let isFinished () =
-                        firstPressed <> start
-                        || DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed > 150
-                        || buffer.Value.Length = 1
-
                     let walker = task {
-                        while not (isFinished()) do
+                        while firstPressed = start && pressedRecently () && buffer.Value.Length > 1 do
                             do! Task.Delay(2000)
                             buffer.Value <- List.tail buffer.Value
                     }
 
-                    while not (isFinished()) do
+                    while firstPressed = start && pressedRecently () && buffer.Value.Length > 1 do
                         do! Task.Delay(50)
 
                     let press = (List.head buffer.Value)

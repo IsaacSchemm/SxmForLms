@@ -20,7 +20,8 @@ Functionality includes:
         * SiriusXM playback
             * Channel number entry
             * "Now Playing" info
-        * U.S. weather forecasts (from weather.gov) and alerts, using `espeak` speech synthesis
+    * Use of a third-party remote to control a Roku device on the same network
+    * U.S. weather alerts, using `espeak` speech synthesis
 * Web interface at HTTP port 5000
     * SiriusXM playback
         * Channel number entry

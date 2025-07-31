@@ -86,7 +86,7 @@ module LyrionIR =
     type Action =
     | IR of string
     | Series of Press list
-    | Roku
+    | Device
     | NoAction
 
     let Mappings = Map.ofList [
@@ -99,9 +99,9 @@ module LyrionIR =
         0x00ffc936, Series [IRPress "play"; IRPress "pause"]
         0x00ff39c6, IR "voldown"
         0x00ff31ce, IR "volup"
-        0x00ff6b94, Roku // Flip
+        0x00ff6b94, Device // Flip
         0x00ffe916, Series [Custom Input; Button "stop"] // Source
-        0x00ff6996, Series [Atomic StreamInfo] // Zoom
+        0x00ff6996, Series [Atomic StreamInfo; Atomic Forecast; Atomic PlayBrownNoise] // Zoom
         0x00ff8976, IR "home" // Menu
         0x00ff25da, Series [Button "exit_left"]
         0x00ffa956, IR "arrow_up"
@@ -124,12 +124,9 @@ module LyrionIR =
     ]
 
     let RokuMappings = Map.ofList [
-        0x00ff11ee, PressedKey SpecialKeys.VolumeMute
         0x00ff19e6, PressedKey SpecialKeys.Reverse
         0x00ff41be, PressedKey SpecialKeys.Forward
         0x00ffc936, PressedKey SpecialKeys.Play
-        0x00ff39c6, PressedKey SpecialKeys.VolumeDown
-        0x00ff31ce, PressedKey SpecialKeys.VolumeUp
         0x00ff6996, PressedKey SpecialKeys.Info
         0x00ff8976, PressedKey SpecialKeys.Home
         0x00ff25da, PressedKey SpecialKeys.Back

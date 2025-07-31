@@ -12,8 +12,13 @@ open Microsoft.Extensions.Hosting
 
 open LyrionCLI
 open LyrionIR
+open RokuDotNet.Client.Input
 
 module LyrionIRHandler =
+    type ControlledDevice =
+    | Squeezebox
+    | Roku of Roku.IDevice
+
     type DigitBehavior =
     | Digit
     | LoadPresetSingle
@@ -83,7 +88,7 @@ module LyrionIRHandler =
             Seq.head enabledBehaviors
         })
 
-        let mutable roku: Roku.IDevice option = None
+        let mutable controlledDevice = Squeezebox
 
         let mutable promptText = None
         let mutable promptMonitor = Task.CompletedTask
@@ -268,10 +273,11 @@ module LyrionIRHandler =
                 do! clearAsync ()
         }
 
-        let showRokuNameAsync () = task {
-            match roku with
-            | Some d -> do! Players.setDisplayAsync player "Roku" d.Name (TimeSpan.FromSeconds(5))
-            | None -> do! Players.setDisplayAsync player "Roku" "Disconnected" (TimeSpan.FromSeconds(5))
+        let showRokuNameAsync keys = task {
+            match (controlledDevice, keys) with
+            | (Roku d, []) -> do! Players.setDisplayAsync player "Remote Control" d.Name (TimeSpan.FromSeconds(5))
+            | (Roku d, keys) -> do! Players.setDisplayAsync player "Remote Control" $"""{d.Name} ({String.concat ", " keys})""" (TimeSpan.FromSeconds(999))
+            | (Squeezebox, _) -> do! Players.setDisplayAsync player "Remote Control" "This device" (TimeSpan.FromSeconds(5))
         }
 
         let processIRAsync ircode time = task {
@@ -299,56 +305,59 @@ module LyrionIRHandler =
             let pressedRecently () =
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed <= 150
 
-            let rokuKey =
-                RokuMappings
-                |> Map.tryFind ircode
-
-            match roku, rokuKey, mapping with
-            | _, _, Roku ->
+            match (controlledDevice, mapping) with
+            | (_, Device) ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
 
                     let wheel = [
-                        None
-                        for d in Roku.GetDevices() do Some d
-                        None
+                        Squeezebox
+                        for d in Roku.GetDevices() do Roku d
+                        Squeezebox
                     ]
 
                     let index =
                         wheel
-                        |> List.tryFindIndex (fun x -> x = roku)
+                        |> List.tryFindIndex (fun x -> x = controlledDevice)
                         |> Option.defaultValue -1
 
-                    roku <- wheel[index + 1]
+                    controlledDevice <- wheel[index + 1]
             
-                    do! showRokuNameAsync ()
+                    do! showRokuNameAsync []
 
                     while firstPressed = start && pressedRecently () do
                         do! Task.Delay(50)
 
-            | Some device, Some key, _ ->
-                if firstPressed = lastPressed then
-                    let start = firstPressed
+            | (Roku device, _) ->
+                let rokuMapping =
+                    RokuMappings
+                    |> Map.tryFind ircode
 
-                    do! device.Input.KeyDownAsync(key)
-                    do! showRokuNameAsync ()
+                match rokuMapping with
+                | Some key ->
+                    if firstPressed = lastPressed then
+                        let start = firstPressed
 
-                    while firstPressed = start && pressedRecently () do
-                        do! Task.Delay(50)
+                        do! showRokuNameAsync [$"{key}"]
 
-                    do! device.Input.KeyUpAsync(key)
-                    do! showRokuNameAsync ()
+                        do! device.Input.KeyDownAsync(key)
 
-            | Some _, None, _ ->
-                do! showRokuNameAsync ()
+                        while firstPressed = start && pressedRecently () do
+                            do! Task.Delay(50)
 
-            | None, _, IR name ->
+                        do! device.Input.KeyUpAsync(key)
+                        do! showRokuNameAsync []
+
+                | None ->
+                    do! showRokuNameAsync []
+
+            | (Squeezebox, IR name) ->
                 do! simulateIRAsync name
 
-            | None, _, Series [Number n] when behavior = Digit ->
+            | (Squeezebox, Series [Number n]) when behavior = Digit ->
                 do! simulateIRAsync $"{n}"
 
-            | None, _, Series presses ->
+            | (Squeezebox, Series presses) ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
 

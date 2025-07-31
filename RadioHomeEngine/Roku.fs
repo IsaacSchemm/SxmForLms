@@ -31,7 +31,7 @@ module Roku =
 
             let client = new CrossInterfaceRokuDeviceDiscoveryClient([IPAddress.Parse(address)])
 
-            let f = fun (ctx: DiscoveredDeviceContext) -> task {
+            let callback = fun (ctx: DiscoveredDeviceContext) -> task {
                 match ctx.Device with
                 | :? IHttpRokuDevice as device ->
                     let! info = device.GetDeviceInfoAsync()
@@ -53,7 +53,7 @@ module Roku =
             }
 
             try
-                do! client.DiscoverDevicesAsync(f, cancellationToken)
+                do! client.DiscoverDevicesAsync(callback, cancellationToken)
             with :? TaskCanceledException as ex when ex.CancellationToken = cancellationToken -> ()
     }
 
@@ -62,7 +62,7 @@ module Roku =
         |> Seq.distinctBy (fun d -> d.MacAddress)
         |> Seq.sortBy (fun d -> d.Name, d.Location.Host)
 
-    let PlayAsync (device: IDevice) (url: string) (name: string) (cancellationToken: CancellationToken) = task {
+    let PlayAsync(device: IDevice, url: string, name: string, cancellationToken: CancellationToken) = task {
         let client = httpClient.Value
 
         use! resp = client.PostAsync(

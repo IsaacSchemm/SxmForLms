@@ -10,6 +10,12 @@
         [SpecialKeys.InstantReplay, 0, SpecialKeys.Info],
         [SpecialKeys.Reverse, SpecialKeys.Play, SpecialKeys.Forward]
     ];
+
+    char[][] keyboard = [
+        "qwertyuiop".ToArray(),
+        "asdfghjkl".ToArray(),
+        "zxcvbnm".ToArray()
+    ];
 }
 
 <!DOCTYPE html>
@@ -51,5 +57,35 @@
             }
         </table>
     </section>
+
+    <table>
+        @foreach (var row in keyboard)
+        {
+            <tr>
+                @foreach (char key in row)
+                {
+                    <td>
+                        @if (key != 0)
+                        {
+                            <form asp-action="PressLiteral" asp-route-macAddress="@Model.MacAddress" asp-route-key="@key">
+                                <button>
+                                    @key
+                                </button>
+                            </form>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+        <tr>
+            <td colspan="10">
+                <form asp-action="PressLiteral" asp-route-macAddress="@Model.MacAddress" asp-route-key=" ">
+                    <button>
+                        space
+                    </button>
+                </form>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

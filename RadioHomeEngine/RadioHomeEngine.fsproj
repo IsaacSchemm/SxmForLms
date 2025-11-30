@@ -10,6 +10,7 @@
     <Compile Include="ActivePatterns.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="Icedax.fs" />
+    <Compile Include="MusicBrainz.fs" />
     <Compile Include="Noise.fs" />
     <Compile Include="Streaming\SiriusXMClient.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
@@ -36,6 +37,7 @@
     <PackageReference Include="CrossInterfaceRokuDeviceDiscovery" Version="1.0.0" />
     <PackageReference Include="FSharp.Data" Version="6.6.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.6.0" />
+    <PackageReference Include="MetaBrainz.MusicBrainz" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.7" />
     <PackageReference Include="System.Runtime.Caching" Version="9.0.7" />

@@ -11,7 +11,7 @@ module Icedax =
     let device = "/dev/cdrom"
 
     let trackPattern = new Regex("^T([0-9]+): .* title '(.*)")
-
+    let cdIndexPattern = new Regex("^CDINDEX discid: (.+)")
     let sampleFileSizePattern = new Regex("^samplefile size will be ([0-9]+) bytes")
 
     let (|Track|_|) (str: string) = Seq.tryHead (seq {
@@ -38,11 +38,17 @@ module Icedax =
             (trackNumber, str)
     })
 
+    let (|CDINDEX|_|) (str: string) = Seq.tryHead (seq {
+        let m = cdIndexPattern.Match(str)
+        if m.Success then
+            m.Groups[1].Value
+    })
+
     let noDiscMessage = "load cdrom please and press enter"
 
     let rec getInfo () =
         let proc =
-            new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -L 1 --cddbp-server=gnudb.gnudb.org -v toc", RedirectStandardError = true)
+            new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
             |> Process.Start
 
         let body =
@@ -67,14 +73,18 @@ module Icedax =
         proc.WaitForExit()
 
         let mutable tracks = []
+        let mutable discid = None
 
         for line in Utility.split '\n' (body.ToString()) do
             match line with
             | Track (n, t) ->
                 tracks <- {| number = n; title = t |} :: tracks
+            | CDINDEX x ->
+                discid <- Some x
             | _ -> ()
 
         {|
+            discid = discid
             tracks = tracks |> Seq.sortBy (fun t -> t.number) |> Seq.toList
         |}
 

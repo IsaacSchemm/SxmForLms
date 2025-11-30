@@ -6,7 +6,7 @@ open System.Net.Http
 open System.Runtime.Caching
 
 module NWS =
-    let USER_AGENT = "RadioHomeEngine/0.1 (https://github.com/IsaacSchemm/RadioHomeEngine)"
+    let USER_AGENT = Config.userAgentString
     let REST_BASE = "https://api.weather.gov/"
 
     let client =

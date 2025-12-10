@@ -45,7 +45,7 @@
                         <td>
                             @if (key != 0)
                             {
-                                <form asp-action="Press" asp-route-macAddress="@Model.MacAddress" asp-route-key="@key">
+                                <form asp-action="Press" asp-route-macAddress="@Model.MacAddress" asp-route-key="@key" data-roku-key="@key">
                                     <button>
                                         @key
                                     </button>
@@ -87,5 +87,124 @@
             </td>
         </tr>
     </table>
+
+    <div id="gamepads">
+
+    </div>
+
+    <script type="text/javascript">
+        function getKey(i) {
+            switch (i) {
+                case 0:
+                    return "Back";
+                case 1:
+                    return "Select";
+                case 2:
+                    return "InstantReplay";
+                case 3:
+                    return "Info";
+                case 4:
+                    return "Reverse";
+                case 5:
+                    return "Forward";
+                case 8:
+                    return "Home";
+                case 9:
+                    return "Play";
+                case 12:
+                    return "Up";
+                case 13:
+                    return "Down";
+                case 14:
+                    return "Left";
+                case 15:
+                    return "Right";
+            }
+        }
+
+        function pressAsync(key) {
+            return fetch(
+                `/Roku/KeyDown?macAddress=@(Model.MacAddress)&key=${key}`,
+                {
+                    method: "post"
+                });
+        }
+
+        function releaseAsync(key) {
+            return fetch(
+                `/Roku/KeyUp?macAddress=@(Model.MacAddress)&key=${key}`,
+                {
+                    method: "post"
+                });
+        }
+
+        window.addEventListener("gamepadconnected", async (e) => {
+            try {
+                const gamepad = navigator.getGamepads()[e.gamepad.index];
+
+                console.log({ gamepad });
+
+                const gamepadDiv = document.createElement("div");
+                gamepadDiv.innerText = gamepad.id;
+                document.getElementById("gamepads").appendChild(gamepadDiv);
+
+                const buttonStates = [];
+
+                // let lastUsed = 0;
+                // let lastTimestamp = 0;
+
+                // const second = 1000;
+                // const frame = second / 30;
+                // const minute = 1000 * 60;
+
+                while (true) {
+                    // const timeSince = Date.now() - lastUsed;
+                    // const interval = timeSince < minute || lastTimestamp != gamepad.timestamp
+                    //     ? frame
+                    //     : second;
+
+                    const interval = 1000 / 60;
+
+                    //gamepadDiv.innerText = `${gamepad.id} (${interval})`;
+
+                    await new Promise(r => setTimeout(r, interval));
+
+                    if (!gamepad.connected) {
+                        return;
+                    }
+
+                    while (buttonStates.length < gamepad.buttons.length) {
+                        buttonStates.push(false);
+                    }
+
+                    for (const [i, button] of gamepad.buttons.entries()) {
+                        if (buttonStates[i] !== button.pressed) {
+                            buttonStates[i] = button.pressed;
+
+                            lastUsed = Date.now();
+                            lastTimestamp = gamepad.timestamp;
+
+                            const key = getKey(i);
+
+                            if (key != null) {
+                                if (button.pressed) await pressAsync(key);
+                                else await releaseAsync(key);
+                            }
+                        }
+                    }
+                }
+
+                for (const [i, state] of buttonStates.entries()) {
+                    if (state) {
+                        await releaseAsync(i);
+                    }
+                }
+
+                document.getElementById("gamepads").removeChild(gamepadDiv);
+            } catch (e) {
+                console.warn(e);
+            }
+        });
+    </script>
 </body>
 </html>

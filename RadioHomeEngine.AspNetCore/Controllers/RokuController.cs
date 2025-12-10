@@ -20,6 +20,20 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return NoContent();
         }
 
+        public async Task<IActionResult> KeyDown(string macAddress, SpecialKeys key)
+        {
+            var device = Roku.GetDevices().Single(d => d.MacAddress == macAddress);
+            await device.Input.KeyDownAsync(new PressedKey(key));
+            return NoContent();
+        }
+
+        public async Task<IActionResult> KeyUp(string macAddress, SpecialKeys key)
+        {
+            var device = Roku.GetDevices().Single(d => d.MacAddress == macAddress);
+            await device.Input.KeyUpAsync(new PressedKey(key));
+            return NoContent();
+        }
+
         public async Task<IActionResult> PressLiteral(string macAddress, char key)
         {
             var device = Roku.GetDevices().Single(d => d.MacAddress == macAddress);

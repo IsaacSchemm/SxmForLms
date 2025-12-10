@@ -29,5 +29,5 @@ module Network =
             return ip
         with ex ->
             Console.Error.WriteLine(ex)
-            return "localhost"
+            return if DateTime.UtcNow < new DateTime(2025, 12, 12) then "192.168.8.146" else "localhost"
     }

@@ -11,9 +11,9 @@ module ChannelListing =
         return [
             for channel in channels do {|
                 category = "SiriusXM"
-                url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channel.channelNumber}"
-                icon = $"http://{address}:{Config.port}/Radio/ChannelImage?num={channel.channelNumber}"
-                text = $"[{channel.channelNumber}] {channel.name}"
+                url = $"http://{address}:{Config.port}/SXM/PlayChannel?num={channel.channelNumber}"
+                icon = $"http://{address}:{Config.port}/SXM/ChannelImage?num={channel.channelNumber}"
+                text = $"[SXM {channel.channelNumber}] {channel.name}"
             |}
 
             {|

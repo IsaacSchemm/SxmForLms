@@ -72,7 +72,7 @@ module LyrionIRHandler =
 
         let playSiriusXMChannelAsync channelNumber name = task {
             let! address = Network.getAddressAsync ()
-            let url = $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}"
+            let url = $"http://{address}:{Config.port}/SXM/PlayChannel?num={channelNumber}"
             let name = $"[{channelNumber}] {name}"
             do! Playlist.playItemAsync player url name
             channelChanging <- true

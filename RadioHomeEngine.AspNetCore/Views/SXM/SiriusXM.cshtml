@@ -153,7 +153,7 @@
             e.preventDefault();
 
             if (current) {
-                window.open("/Radio/RecentlyPlaying?num=" + current);
+                window.open("/SXM/RecentlyPlaying?num=" + current);
             }
         });
 
@@ -164,9 +164,9 @@
 
         function playNumber(num) {
             current = +num;
-            document.getElementById("nowPlaying").src = "/Radio/NowPlaying?num=" + encodeURIComponent(num);
+            document.getElementById("nowPlaying").src = "/SXM/NowPlaying?num=" + encodeURIComponent(num);
             document.body.classList.add("active");
-            play("/Radio/PlayChannel?num=" + encodeURIComponent(num));
+            play("/SXM/PlayChannel?num=" + encodeURIComponent(num));
         };
 
         function stop() {
@@ -242,6 +242,6 @@
         }
     </script>
 
-    <script type="text/javascript" src="/Radio/ChannelInfo"></script>
+    <script type="text/javascript" src="/SXM/ChannelInfo"></script>
 </body>
 </html>

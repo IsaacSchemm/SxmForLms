@@ -109,7 +109,7 @@ module AtomicActions =
                 |> Option.defaultValue $"SiriusXM {channelNumber}"
 
             let! address = Network.getAddressAsync ()
-            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Radio/PlayChannel?num={channelNumber}" $"[{channelNumber}] {name}"
+            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/SXM/PlayChannel?num={channelNumber}" $"[{channelNumber}] {name}"
 
         | PlayBrownNoise ->
             let! address = Network.getAddressAsync ()

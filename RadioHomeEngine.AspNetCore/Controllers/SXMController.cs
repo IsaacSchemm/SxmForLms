@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
 {
-    public class RadioController(IHttpClientFactory httpClientFactory) : Controller
+    public class SXMController(IHttpClientFactory httpClientFactory) : Controller
     {
         public IActionResult SiriusXM()
         {

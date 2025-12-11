@@ -55,9 +55,19 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         [HttpPost]
         public async Task<IActionResult> Button(string id, string button)
         {
-            await AtomicActions.performActionAsync(
+            await LyrionIRHandler.ProcessPressAsync(
                 Player.NewPlayer(id),
-                AtomicAction.NewButton(button));
+                LyrionIR.Press.NewButton(button));
+
+            return await Display(id);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Number(string id, int num)
+        {
+            await LyrionIRHandler.ProcessPressAsync(
+                Player.NewPlayer(id),
+                LyrionIR.Press.NewNumber(num));
 
             return await Display(id);
         }

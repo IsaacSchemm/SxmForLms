@@ -273,6 +273,13 @@ module LyrionIRHandler =
                 do! clearAsync ()
         }
 
+        let processPressAsync press = task {
+            if Option.isSome promptText then
+                do! processPromptEntryAsync press
+            else
+                do! pressAsync press
+        }
+
         let processIRAsync ircode time = task {
             let mapping =
                 Mappings
@@ -376,10 +383,7 @@ module LyrionIRHandler =
 
                     let press = (List.head buffer.Value)
 
-                    if Option.isSome promptText then
-                        do! processPromptEntryAsync press
-                    else
-                        do! pressAsync press
+                    do! processPressAsync press
 
                     do! walker
 
@@ -400,13 +404,23 @@ module LyrionIRHandler =
         let subscriber = reader |> Observable.subscribe (fun command ->
             ignore (processCommandAsync command))
 
+        member _.Player = player
+
+        member _.ProcessPressAsync(press) = processPressAsync press
+
         interface IDisposable with
             member _.Dispose() = subscriber.Dispose()
 
+    let mutable private handlers: Handler list = []
+
+    let ProcessPressAsync(player: Player, press: Press) = task {
+        for handler in handlers do
+            if handler.Player = player then
+                do! handler.ProcessPressAsync(press)
+    }
+
     type Service() =
         inherit BackgroundService()
-
-        let mutable handlers: IDisposable list = []
 
         override _.ExecuteAsync(cancellationToken) = task {
             LyrionKnownPlayers.WhenAdded.attachHandler (fun player ->
@@ -418,5 +432,5 @@ module LyrionIRHandler =
                 do! Task.Delay(-1, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
 
             for x in handlers do
-                x.Dispose()
+                (x :> IDisposable).Dispose()
         }

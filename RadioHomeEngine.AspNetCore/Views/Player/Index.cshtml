@@ -55,6 +55,38 @@
 
     <hr />
 
+    <h2>Numpad</h2>
+
+    <table id="numpad">
+        @for (int j = 0; j < 3; j++) {
+            <tr>
+                @for (int i = 0; i < 3; i++) {
+                    int num = i + 3 * j + 1;
+                    <td>
+                        <form method="post" asp-controller="Player" asp-action="Number" asp-route-id="@Model.Item" target="myframe">
+                            <input type="hidden" name="num" value="@num" />
+                            <button>
+                                @num
+                            </button>
+                        </form>
+                    </td>
+                }
+            </tr>
+        }
+        <tr>
+            <td colspan="3">
+                <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe">
+                    <input type="hidden" name="button" value="knob_push" />
+                    <button>
+                        OK
+                    </button>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    <hr />
+
     <h2>Miscellaneous</h2>
 
     <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe">

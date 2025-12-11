@@ -13,7 +13,7 @@ module ChannelListing =
                 category = "SiriusXM"
                 url = $"http://{address}:{Config.port}/SXM/PlayChannel?num={channel.channelNumber}"
                 icon = $"http://{address}:{Config.port}/SXM/ChannelImage?num={channel.channelNumber}"
-                text = $"[SXM {channel.channelNumber}] {channel.name}"
+                text = $"[{channel.channelNumber}] {channel.name}"
             |}
 
             {|

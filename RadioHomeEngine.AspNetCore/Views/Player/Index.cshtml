@@ -85,5 +85,108 @@
     <form method="post" asp-controller="Player" asp-action="Forecast" asp-route-id="@Model.Item" target="myframe">
         <button type="submit">Play weather forecast</button>
     </form>
+
+    <div id="gamepads"></div>
+
+    <script type="text/javascript">
+        function getButtonPath(i) {
+            switch (i) {
+                case 0:
+                    return "/Player/Button?button=arrow_left";
+                case 1:
+                    return "/Player/Button?button=knob_push";
+                case 2:
+                    return "/Player/Forecast?";
+                case 3:
+                    return "/Player/Button?button=power";
+                case 4:
+                    return "/Player/Button?button=voldown";
+                case 5:
+                    return "/Player/Button?button=volup";
+                case 8:
+                    return "/Player/Button?button=muting";
+                case 9:
+                    return "/Player/Button?button=play_0";
+                case 12:
+                    return "/Player/Button?button=up";
+                case 13:
+                    return "/Player/Button?button=down";
+                case 14:
+                    return "/Player/Button?button=left";
+                case 15:
+                    return "/Player/Button?button=right";
+            }
+        }
+
+        let pressPromise = new Promise(r => r());
+
+        function pressAsync(path) {
+            const previousPromise = pressPromise;
+
+            pressPromise = (async () => {
+                try {
+                    await previousPromise;
+                    await fetch(
+                        `${path}&id=@(Model.Item)`,
+                        { method: "post" });
+                } catch (e) {
+                    console.error(e);
+                }
+            })();
+        }
+
+        window.addEventListener("gamepadconnected", async (e) => {
+            try {
+                const gamepad = navigator.getGamepads()[e.gamepad.index];
+
+                console.log({ gamepad });
+
+                const gamepadDiv = document.createElement("p");
+                gamepadDiv.innerText = gamepad.id;
+                document.getElementById("gamepads").appendChild(gamepadDiv);
+
+                const buttonStates = [];
+
+                while (true) {
+                    const interval = 1000 / 60;
+
+                    await new Promise(r => setTimeout(r, interval));
+
+                    if (!gamepad.connected) {
+                        return;
+                    }
+
+                    while (buttonStates.length < gamepad.buttons.length) {
+                        buttonStates.push(false);
+                    }
+
+                    for (const [i, button] of gamepad.buttons.entries()) {
+                        if (buttonStates[i] !== button.pressed) {
+                            buttonStates[i] = button.pressed;
+
+                            lastUsed = Date.now();
+                            lastTimestamp = gamepad.timestamp;
+
+                            const path = getButtonPath(i);
+
+                            if (path != null) {
+                                if (button.pressed) await pressAsync(path);
+                            }
+                        }
+                    }
+                }
+
+                for (const [i, state] of buttonStates.entries()) {
+                    if (state) {
+                        await releaseAsync(i);
+                    }
+                }
+
+                document.getElementById("gamepads").removeChild(gamepadDiv);
+            } catch (e) {
+                console.warn(e);
+            }
+        });
+    </script>
 </body>
 </html>

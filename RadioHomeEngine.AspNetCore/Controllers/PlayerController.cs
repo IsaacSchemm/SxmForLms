@@ -65,6 +65,9 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         [HttpGet]
         public async Task<IActionResult> Display(string id)
         {
+            if (Request.Headers.Accept.All(str => str?.StartsWith("text/html") == false))
+                return NoContent();
+
             await Task.Delay(250);
 
             for (int i = 0; i < 2; i++)

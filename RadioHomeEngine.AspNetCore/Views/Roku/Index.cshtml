@@ -88,9 +88,7 @@
         </tr>
     </table>
 
-    <div id="gamepads">
-
-    </div>
+    <div id="gamepads"></div>
 
     <script type="text/javascript">
         function getKey(i) {
@@ -144,28 +142,14 @@
 
                 console.log({ gamepad });
 
-                const gamepadDiv = document.createElement("div");
+                const gamepadDiv = document.createElement("p");
                 gamepadDiv.innerText = gamepad.id;
                 document.getElementById("gamepads").appendChild(gamepadDiv);
 
                 const buttonStates = [];
 
-                // let lastUsed = 0;
-                // let lastTimestamp = 0;
-
-                // const second = 1000;
-                // const frame = second / 30;
-                // const minute = 1000 * 60;
-
                 while (true) {
-                    // const timeSince = Date.now() - lastUsed;
-                    // const interval = timeSince < minute || lastTimestamp != gamepad.timestamp
-                    //     ? frame
-                    //     : second;
-
                     const interval = 1000 / 60;
-
-                    //gamepadDiv.innerText = `${gamepad.id} (${interval})`;
 
                     await new Promise(r => setTimeout(r, interval));
 

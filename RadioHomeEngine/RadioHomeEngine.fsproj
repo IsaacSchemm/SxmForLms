@@ -15,7 +15,6 @@
     <Compile Include="Streaming\SiriusXMClient.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
-    <Compile Include="External\ExternalStreamSource.fs" />
     <Compile Include="ChannelListing.fs" />
     <Compile Include="ChannelMemory.fs" />
     <Compile Include="Roku.fs" />

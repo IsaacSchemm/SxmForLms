@@ -8,12 +8,11 @@ RadioHomeEngine is designed to run on a Linux server that is also running [Lyrio
 Functionality includes:
 
 * Decoding and forwarding SiriusXM audio streams to devices on the local network
-    * Squeezebox devices (via LMS)
-    * Devices with web browsers and HLS or MSE support (via the web interface)
-* Extensions to LMS
-    * Automatically managing the SiriusXM folder in Favorites (provided you create it first)
-    * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device
-    * Use of a third-party remote to activate special functions, including:
+* Sending commands to Lyrion Media Server via telnet
+    * Automatically managing folders in Favorites:
+        * SiriusXM
+        * Brown noise
+    * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device, or to activate special functions, including:
         * CD playback (using the host computer's CD drive)
         * Load preset
         * Seek to timestamp
@@ -26,12 +25,12 @@ Functionality includes:
     * SiriusXM playback
         * Channel number entry
         * "Now Playing" info
+    * Roku remote
+        * Game controller input supported
     * Channel list, with:
         * Brown noise HLS stream generator
-        * Ability to include additional channels (from an external console command, see `ExternalStreamSource.fs`)
+        * Ability to play a channel on a Squeezebox device
         * Ability to play a channel on a Roku device using [Media Assistant](https://github.com/MedievalApple/Media-Assistant)
-    * iOS 6+ support
-    * Wii U support
 
 *This application's port 5000 should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
 

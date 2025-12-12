@@ -1,7 +1,7 @@
 ﻿namespace RadioHomeEngine
 
 module ChannelMemory =
-    type Channel = SiriusXM of int | External of int | Nothing
+    type Channel = SiriusXM of int | Nothing
 
     let mutable LastPlayed = Nothing
 
@@ -28,8 +28,5 @@ module ChannelMemory =
                 | Some c ->
                     let artist = String.concat " / " c.artists
                     return [artist; c.title]
-        | External id ->
-            let! nowPlaying = ExternalStreamSource.getNowPlayingAsync(id)
-            return nowPlaying |> Utility.split '\n' |> Array.toList
         | Nothing -> return []
     }

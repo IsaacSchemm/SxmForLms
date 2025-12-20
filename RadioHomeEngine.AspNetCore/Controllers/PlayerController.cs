@@ -72,6 +72,26 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return await Display(id);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Backspace(string id)
+        {
+            await LyrionIRHandler.ProcessPressAsync(
+                Player.NewPlayer(id),
+                LyrionIR.Press.NewCustom(LyrionIR.CustomAction.Backspace));
+
+            return await Display(id);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Input(string id)
+        {
+            await LyrionIRHandler.ProcessPressAsync(
+                Player.NewPlayer(id),
+                LyrionIR.Press.NewCustom(LyrionIR.CustomAction.Input));
+
+            return await Display(id);
+        }
+
         [HttpGet]
         public async Task<IActionResult> Display(string id)
         {

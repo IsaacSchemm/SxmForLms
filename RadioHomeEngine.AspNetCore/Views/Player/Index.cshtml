@@ -58,31 +58,36 @@
     <h2>Numpad</h2>
 
     <table id="numpad">
-        @for (int j = 0; j < 3; j++) {
+        <tbody>
             <tr>
-                @for (int i = 0; i < 3; i++) {
-                    int num = i + 3 * j + 1;
-                    <td>
-                        <form method="post" asp-controller="Player" asp-action="Number" asp-route-id="@Model.Item" target="myframe">
-                            <input type="hidden" name="num" value="@num" />
-                            <button>
-                                @num
-                            </button>
-                        </form>
-                    </td>
-                }
+                <td></td>
+                <td>Mute</td>
+                <td>Info</td>
+                <td>⌫</td>
             </tr>
-        }
-        <tr>
-            <td colspan="3">
-                <form method="post" asp-controller="Player" asp-action="Button" asp-route-id="@Model.Item" target="myframe">
-                    <input type="hidden" name="button" value="knob_push" />
-                    <button>
-                        OK
-                    </button>
-                </form>
-            </td>
-        </tr>
+            <tr>
+                <td>7</td>
+                <td>8</td>
+                <td>9</td>
+                <td>- Vol Dn</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>5</td>
+                <td>6</td>
+                <td>+ Vol Up</td>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>2</td>
+                <td>3</td>
+                <td rowspan="2">OK</td>
+            </tr>
+            <tr>
+                <td colspan="2">0</td>
+                <td>Input</td>
+            </tr>
+        </tbody>
     </table>
 
     <hr />
@@ -202,7 +207,7 @@
                             const path = getButtonPath(i);
 
                             if (path != null) {
-                                if (button.pressed) await pressAsync(path);
+                                if (button.pressed) pressAsync(path);
                             }
                         }
                     }
@@ -217,6 +222,58 @@
                 document.getElementById("gamepads").removeChild(gamepadDiv);
             } catch (e) {
                 console.warn(e);
+            }
+        });
+
+        window.addEventListener("keypress", e => {
+            switch (e.key) {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    e.preventDefault();
+                    pressAsync(`/Player/Number?num=${e.key}`);
+                    break;
+                case '+':
+                    e.preventDefault();
+                    pressAsync(`/Player/Button?button=volup`);
+                    break;
+                case '-':
+                    e.preventDefault();
+                    pressAsync(`/Player/Button?button=voldown`);
+                    break;
+                case '*':
+                    e.preventDefault();
+                    pressAsync(`/Player/StreamInfo?`);
+                    break;
+                case '/':
+                    e.preventDefault();
+                    pressAsync(`/Player/Button?button=muting`);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    pressAsync(`/Player/Button?button=knob_push`);
+                    break;
+                case '.':
+                    e.preventDefault();
+                    pressAsync(`/Player/Input?`);
+                    break;
+            }
+        });
+
+        window.addEventListener("keydown", e => {
+            switch (e.key) {
+                case 'Backspace':
+                case 'Escape':
+                    e.preventDefault();
+                    pressAsync(`/Player/Backspace?`);
+                    break;
             }
         });
     </script>

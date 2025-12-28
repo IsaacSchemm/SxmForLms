@@ -47,9 +47,16 @@
                     <details>
                         <summary>@channel.Name</summary>
 
+                        @if (channel.SiriusXMChannelNumber is int num)
+                        {
+                            <p>
+                                <a asp-controller="SXM" asp-action="ViewChannel" asp-route-num="@num">
+                                    Go to channel
+                                </a>
+                            </p>
+                        }
+
                         <p>
-                            <img src="@channel.ImageSrc" style="max-width: 100%" loading="lazy" />
-                            <br />
                             <a href="@channel.Url">
                                 Play on this device
                             </a>

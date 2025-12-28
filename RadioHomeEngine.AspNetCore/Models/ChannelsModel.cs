@@ -13,6 +13,7 @@ namespace RadioHomeEngine.AspNetCore.Models
             public required string Name { get; init; }
             public required string ImageSrc { get; init; }
             public required string? Url { get; init; }
+            public required int? SiriusXMChannelNumber { get; init; }
         }
         public record Player
         {

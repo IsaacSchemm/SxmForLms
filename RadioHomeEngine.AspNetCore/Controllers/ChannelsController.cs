@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.FSharp.Core;
 using RadioHomeEngine.AspNetCore.Models;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
@@ -19,7 +20,8 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                         Category = c.category,
                         Name = c.text,
                         ImageSrc = c.icon,
-                        Url = c.url
+                        Url = c.url,
+                        SiriusXMChannelNumber = c.num
                     })
                 ],
                 Players = [

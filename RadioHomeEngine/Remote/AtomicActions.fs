@@ -10,7 +10,6 @@ open LyrionCLI
 
 type AtomicAction =
 | PlaySiriusXMChannel of int
-| PlayBrownNoise
 | StreamInfo
 | PlayTrack of int
 | Eject
@@ -110,10 +109,6 @@ module AtomicActions =
 
             let! address = Network.getAddressAsync ()
             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/SXM/PlayChannel?num={channelNumber}" $"[{channelNumber}] {name}"
-
-        | PlayBrownNoise ->
-            let! address = Network.getAddressAsync ()
-            do! Playlist.playItemAsync player $"http://{address}:{Config.port}/Noise/playlist.m3u8" "Brown noise"
 
         | StreamInfo ->
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(5))

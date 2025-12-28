@@ -10,14 +10,16 @@ Functionality includes:
 * Decoding and forwarding SiriusXM audio streams to devices on the local network
 * Sending commands to Lyrion Media Server via telnet
     * Automatically managing the "SiriusXM" folder in Favorites
-    * Use of a third-party remote to activate built-in functions by simulating real buttons on the remote or device, or to activate special functions, including:
-        * CD playback (using the host computer's CD drive)
-        * Load preset
-        * Seek to timestamp
-        * SiriusXM playback
-            * Channel number entry
-            * "Now Playing" info
-    * Use of a third-party remote to control a Roku device on the same network
+    * Use of a third-party remote to:
+        * activate built-in functions by simulating real buttons on the remote or device
+        * activate special functions, including:
+            * CD playback (using the host computer's CD drive)
+            * Load preset
+            * Seek to timestamp
+            * SiriusXM playback
+                * Channel number entry
+                * "Now Playing" info
+        * control a Roku device on the network
     * U.S. weather alerts, using `espeak` speech synthesis
 * Web interface at HTTP port 5000
     * Channel list, with:

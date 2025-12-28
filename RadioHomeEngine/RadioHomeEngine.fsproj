@@ -11,7 +11,6 @@
     <Compile Include="Network.fs" />
     <Compile Include="Icedax.fs" />
     <Compile Include="MusicBrainz.fs" />
-    <Compile Include="Noise.fs" />
     <Compile Include="Streaming\SiriusXMClient.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />

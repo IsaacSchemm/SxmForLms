@@ -37,50 +37,36 @@
     </style>
 </head>
 <body>
-    @foreach (var group in Model.Channels.GroupBy(c => c.Category))
+    @foreach (var channel in Model.Channels)
     {
-        <details>
-            <summary>@group.Key</summary>
-            @foreach (var channel in group)
-            {
-                <div class="box">
-                    <details>
-                        <summary>@channel.Name</summary>
+        <div class="box">
+            <details>
+                <summary>@channel.Name</summary>
 
-                        @if (channel.SiriusXMChannelNumber is int num)
-                        {
-                            <p>
-                                <a asp-controller="SXM" asp-action="ViewChannel" asp-route-num="@num">
-                                    Go to channel
-                                </a>
-                            </p>
-                        }
+                @if (channel.ChannelNumber > 0)
+                {
+                    <p>
+                        <a asp-controller="SXM" asp-action="ViewChannel" asp-route-num="@channel.ChannelNumber">
+                            Go to channel
+                        </a>
+                    </p>
+                }
 
-                        <p>
-                            <a href="@channel.Url">
-                                Play on this device
-                            </a>
-                            <br>
-                            <small>Some devices may not be able to play HLS streams directly.</small>
-                        </p>
-
-                        @foreach (var player in Model.Players)
-                        {
-                            <p>
-                                <form asp-action="Play" target="myframe">
-                                    <input type="hidden" name="mac" value="@player.MacAddress" />
-                                    <input type="hidden" name="url" value="@channel.Url" />
-                                    <input type="hidden" name="name" value="@channel.Name" />
-                                    <button type="submit">
-                                        Play on @player.Name
-                                    </button>
-                                </form>
-                            </p>
-                        }
-                    </details>
-                </div>
-            }
-        </details>
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="Play" target="myframe">
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <input type="hidden" name="url" value="@channel.Url" />
+                            <input type="hidden" name="name" value="@channel.Name" />
+                            <button type="submit">
+                                Play on @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </details>
+        </div>
     }
 
     <iframe name="myframe" width="300" height="50" src="about:blank"></iframe>

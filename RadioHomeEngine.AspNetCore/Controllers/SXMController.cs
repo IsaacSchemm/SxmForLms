@@ -1,36 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RadioHomeEngine.AspNetCore.Models;
 using System.Text;
-using System.Text.Json;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class SXMController(IHttpClientFactory httpClientFactory) : Controller
     {
-        public IActionResult SiriusXM()
-        {
-            return View();
-        }
-
-        public async Task<IActionResult> ChannelInfo(CancellationToken cancellationToken)
-        {
-            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
-
-            var channelInfo = channels.Select(c => new
-            {
-                c.channelNumber,
-                c.name,
-                c.mediumDescription
-            });
-
-            string json = JsonSerializer.Serialize(channelInfo);
-
-            return Content(
-                $"var channelInfo = {json};",
-                "text/javascript",
-                Encoding.UTF8);
-        }
-
         public async Task<IActionResult> ChannelImage(int num, CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
@@ -75,44 +50,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 : NotFound();
         }
 
-        public async Task<IActionResult> NowPlaying(int num, CancellationToken cancellationToken)
-        {
-            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
-            var channel = channels
-                .Where(c => c.channelNumber == $"{num}")
-                .First();
-
-            var playlist = await SiriusXMClient.getPlaylistAsync(
-                channel.channelGuid,
-                channel.channelId,
-                cancellationToken);
-
-            return View(new NowPlayingModel
-            {
-                Channel = new PlayingChannelModel
-                {
-                    Name = channel.name,
-                    Number = num,
-                    Description = channel.mediumDescription,
-                },
-                Song = playlist.cuts
-                    .OrderByDescending(c => c.startTime)
-                    .Select(c => new SongModel
-                    {
-                        Title = c.title,
-                        Artist = string.Join(" / ", c.artists.Except([c.title])),
-                        Album = c.albums.Select(a => a.title).FirstOrDefault()
-                    })
-                    .FirstOrDefault()
-            });
-        }
-
         public async Task<IActionResult> ViewChannel(int num, CancellationToken cancellationToken)
-        {
-            return await RecentlyPlaying(num, cancellationToken);
-        }
-
-        public async Task<IActionResult> RecentlyPlaying(int num, CancellationToken cancellationToken)
         {
             var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
             var channel = channels

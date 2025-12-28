@@ -18,10 +18,10 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                     .. allChannels.Select(c => new ChannelsModel.Channel
                     {
                         Category = c.category,
+                        ChannelNumber = c.num,
                         Name = c.text,
                         ImageSrc = c.icon,
-                        Url = c.url,
-                        SiriusXMChannelNumber = c.num
+                        Url = c.url
                     })
                 ],
                 Players = [

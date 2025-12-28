@@ -3,4 +3,4 @@
 module Config =
     let port = 5000
     let region = "US"
-    let userAgentString = "RadioHomeEngine/0.2 (https://github.com/IsaacSchemm/RadioHomeEngine)"
+    let userAgentString = "RadioHomeEngine/0.3 (https://github.com/IsaacSchemm/RadioHomeEngine)"

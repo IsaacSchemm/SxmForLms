@@ -20,47 +20,13 @@
         </a>
     </p>
 
-    <h2>This device</h2>
-
-    <p>
-        <a href="/SXM/SiriusXM">
-            SiriusXM
-        </a>
-    </p>
-
-    <p>
-        <a href="/Noise">
-            Brown noise
-        </a>
-    </p>
-
-    <h2>Squeezebox devices</h2>
-
-    @foreach (var k in await LyrionKnownPlayers.Names.getPlayersWithNamesAsync())
-    {
-        <p>
-            <a asp-controller="Player" asp-action="Index" asp-route-id="@k.player.Item">
-                @k.name (@k.player.Item)
-            </a>
-        </p>
-    }
+    <hr />
 
     <p>
         <a href="http://@(Context.Request.Host.Host):9000">
             Lyrion Music Server
         </a>
     </p>
-
-    <h2>Roku devices</h2>
-
-    @foreach (var p in Roku.GetDevices())
-    {
-        <p>
-            <a asp-controller="Roku" asp-action="Index" asp-route-macAddress="@p.MacAddress">
-                @p.Name (@p.Location.Host)
-            </a>
-        </p>
-    }
 
     <hr />
 

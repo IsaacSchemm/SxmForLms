@@ -1,7 +1,5 @@
 ﻿namespace RadioHomeEngine
 
-open RokuDotNet.Client.Input
-
 module LyrionIR =
     let Slim = Map.ofList [
         "0", 0x76899867
@@ -86,7 +84,6 @@ module LyrionIR =
     type Action =
     | IR of string
     | Series of Press list
-    | Device
     | NoAction
 
     let Mappings = Map.ofList [
@@ -99,8 +96,8 @@ module LyrionIR =
         0x00ffc936, Series [IRPress "play"; IRPress "pause"]
         0x00ff39c6, IR "voldown"
         0x00ff31ce, IR "volup"
-        0x00ff6b94, Device // Flip
-        0x00ffe916, Series [Custom Input; Button "stop"] // Source
+        0x00ff6b94, Series [Button "stop"] // Flip
+        0x00ffe916, Series [Custom Input] // Source
         0x00ff6996, Series [Atomic StreamInfo; Atomic Forecast] // Zoom
         0x00ff8976, IR "home" // Menu
         0x00ff25da, Series [Button "exit_left"]
@@ -121,30 +118,4 @@ module LyrionIR =
         0x00ff21de, Series [Atomic (SeekCurrent -10m); Atomic (SeekBegin 0m)] // Recall
         0x00ff49b6, Series [Number 0]
         0x00ff29d6, Series [Custom Backspace; IRPress "favorites"] // Fav/⌫
-    ]
-
-    let RokuMappings = Map.ofList [
-        0x00ff19e6, PressedKey SpecialKeys.Reverse
-        0x00ff41be, PressedKey SpecialKeys.Forward
-        0x00ffc936, PressedKey SpecialKeys.Play
-        0x00ff6996, PressedKey SpecialKeys.Info
-        0x00ff8976, PressedKey SpecialKeys.Home
-        0x00ff25da, PressedKey SpecialKeys.Back
-        0x00ffa956, PressedKey SpecialKeys.Up
-        0x00ff59a6, PressedKey SpecialKeys.Down
-        0x00ffd926, PressedKey SpecialKeys.Left
-        0x00ff9966, PressedKey SpecialKeys.Right
-        0x00ff7986, PressedKey SpecialKeys.Select
-        0x00ffe11e, PressedKey '1'
-        0x00ff619e, PressedKey '2'
-        0x00ffa15e, PressedKey '3'
-        0x00ffd12e, PressedKey '4'
-        0x00ff51ae, PressedKey '5'
-        0x00ff916e, PressedKey '6'
-        0x00fff10e, PressedKey '7'
-        0x00ff718e, PressedKey '8'
-        0x00ffb14e, PressedKey '9'
-        0x00ff21de, PressedKey SpecialKeys.InstantReplay
-        0x00ff49b6, PressedKey '0'
-        0x00ff29d6, PressedKey SpecialKeys.Backspace
     ]

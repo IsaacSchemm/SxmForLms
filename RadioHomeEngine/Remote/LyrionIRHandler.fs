@@ -12,13 +12,8 @@ open Microsoft.Extensions.Hosting
 
 open LyrionCLI
 open LyrionIR
-open RokuDotNet.Client.Input
 
 module LyrionIRHandler =
-    type ControlledDevice =
-    | Squeezebox
-    | Roku of Roku.IDevice
-
     type DigitBehavior =
     | Digit
     | LoadPresetSingle
@@ -87,8 +82,6 @@ module LyrionIRHandler =
 
             Seq.head enabledBehaviors
         })
-
-        let mutable controlledDevice = Squeezebox
 
         let mutable promptText = None
         let mutable promptMonitor = Task.CompletedTask
@@ -305,68 +298,14 @@ module LyrionIRHandler =
             let pressedRecently () =
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - lastPressed <= 150
 
-            match (controlledDevice, mapping) with
-            | (_, Device) ->
-                if firstPressed = lastPressed then
-                    let start = firstPressed
-
-                    let! powerState = Players.getPowerAsync player
-
-                    let wheel = [
-                        Squeezebox
-                        for d in Roku.GetDevices() do Roku d
-                        Squeezebox
-                    ]
-
-                    let index =
-                        wheel
-                        |> List.tryFindIndex (fun x -> x = controlledDevice)
-                        |> Option.defaultValue -1
-
-                    controlledDevice <- wheel[index + 1]
-
-                    let message =
-                        match controlledDevice with
-                        | Roku d -> d.Name
-                        | Squeezebox -> "This device"
-
-                    if powerState then
-                        do! Players.setDisplayAsync player "Remote" message (TimeSpan.FromSeconds(5))
-                    else
-                        do! Players.setDisplayAsync player $"Remote: {message}" $"Remote: {message}" (TimeSpan.FromSeconds(5))
-
-                    while firstPressed = start && pressedRecently () do
-                        do! Task.Delay(50)
-
-            | (Roku device, _) ->
-                let rokuMapping =
-                    RokuMappings
-                    |> Map.tryFind ircode
-
-                match rokuMapping with
-                | Some key ->
-                    if firstPressed = lastPressed then
-                        let start = firstPressed
-
-                        do! Players.setDisplayAsync player "Remote" $"{key}" (TimeSpan.FromSeconds(5))
-
-                        do! device.Input.KeyDownAsync(key)
-
-                        while firstPressed = start && pressedRecently () do
-                            do! Task.Delay(50)
-
-                        do! device.Input.KeyUpAsync(key)
-                        do! Players.setDisplayAsync player "Remote" "-" (TimeSpan.FromMilliseconds(1))
-
-                | None -> ()
-
-            | (Squeezebox, IR name) ->
+            match mapping with
+            | IR name ->
                 do! simulateIRAsync name
 
-            | (Squeezebox, Series [Number n]) when behavior = Digit ->
+            | Series [Number n] when behavior = Digit ->
                 do! simulateIRAsync $"{n}"
 
-            | (Squeezebox, Series presses) ->
+            | Series presses ->
                 if firstPressed = lastPressed then
                     let start = firstPressed
 

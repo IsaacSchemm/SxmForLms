@@ -8,17 +8,14 @@ RadioHomeEngine is designed to run on a Linux server that is also running [Lyrio
 Functionality includes:
 
 * Decoding and forwarding SiriusXM audio streams to devices on the local network
+* Playing U.S. weather alerts from `weather.gov`, using `espeak` speech synthesis
 * Use of a third-party remote (listening via the LMS telnet interface) to:
     * activate built-in functions by simulating real buttons on the remote or device
-    * activate special functions, including:
-        * CD playback (using the host computer's CD drive)
-        * Load preset
-        * Seek to timestamp
-        * SiriusXM playback
-            * Channel number entry
-            * "Now Playing" info
-    * control a Roku device on the network
-    * U.S. weather alerts, using `espeak` speech synthesis
+    * play audio CDs (using the host computer's CD drive)
+    * load presets
+    * seek to specific timestamps
+    * play SiriusXM channels
+        * view the title of the current song/program on the most recently entered SiriusXM channel
 * Web interface at HTTP port 5000
     * Channel list, with:
         * A web player for each channel, with a list of recently played tracks

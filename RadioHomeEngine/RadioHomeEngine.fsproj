@@ -14,13 +14,11 @@
     <Compile Include="Streaming\SiriusXMClient.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
-    <Compile Include="ChannelListing.fs" />
     <Compile Include="ChannelMemory.fs" />
     <Compile Include="Roku.fs" />
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />
-    <Compile Include="Lyrion\FavoritesManager.fs" />
     <Compile Include="Info\Speech.fs" />
     <Compile Include="Info\SpeechSynthesis.fs" />
     <Compile Include="Info\NWS.fs" />

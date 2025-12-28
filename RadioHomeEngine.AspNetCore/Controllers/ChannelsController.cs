@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.FSharp.Core;
 using RadioHomeEngine.AspNetCore.Models;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
@@ -8,20 +7,17 @@ namespace RadioHomeEngine.AspNetCore.Controllers
     {
         public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            var allChannels = await ChannelListing.ListChannelsAsync(cancellationToken);
+            var channels = await SiriusXMClient.getChannelsAsync(cancellationToken);
 
             var knownPlayers = await LyrionKnownPlayers.Names.getPlayersWithNamesAsync();
 
             return View(new ChannelsModel
             {
                 Channels = [
-                    .. allChannels.Select(c => new ChannelsModel.Channel
+                    .. channels.Select(c => new ChannelsModel.Channel
                     {
-                        Category = c.category,
-                        ChannelNumber = c.num,
-                        Name = c.text,
-                        ImageSrc = c.icon,
-                        Url = c.url
+                        ChannelNumber = int.Parse(c.channelNumber),
+                        Name = c.name
                     })
                 ],
                 Players = [
@@ -38,8 +34,11 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Play(string mac, string url, string name, CancellationToken cancellationToken)
+        public async Task<IActionResult> Play(string mac, int num, string name, CancellationToken cancellationToken)
         {
+            var address = await Network.getAddressAsync();
+            var url = $"http://{address}:{Config.port}/SXM/PlayChannel?num={num}";
+
             foreach (var player in LyrionKnownPlayers.known)
             {
                 if (player.Item == mac)

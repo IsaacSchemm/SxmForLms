@@ -41,7 +41,10 @@
     {
         <div class="box">
             <details>
-                <summary>@channel.Name</summary>
+                <summary>
+                    <strong>@channel.ChannelNumber</strong>
+                    @channel.Name
+                </summary>
 
                 @if (channel.ChannelNumber > 0)
                 {
@@ -57,7 +60,7 @@
                     <p>
                         <form asp-action="Play" target="myframe">
                             <input type="hidden" name="mac" value="@player.MacAddress" />
-                            <input type="hidden" name="url" value="@channel.Url" />
+                            <input type="hidden" name="num" value="@channel.ChannelNumber" />
                             <input type="hidden" name="name" value="@channel.Name" />
                             <button type="submit">
                                 Play on @player.Name

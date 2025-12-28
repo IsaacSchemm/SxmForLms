@@ -9,11 +9,8 @@ namespace RadioHomeEngine.AspNetCore.Models
 
         public record Channel
         {
-            public required string Category { get; init; }
             public required int ChannelNumber { get; init; }
             public required string Name { get; init; }
-            public required string ImageSrc { get; init; }
-            public required string Url { get; init; }
         }
         public record Player
         {

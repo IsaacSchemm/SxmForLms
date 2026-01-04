@@ -17,7 +17,9 @@ module WeatherManager =
                     for player in LyrionKnownPlayers.known do
                         let! state = Players.getPowerAsync player
                         if state then
-                            players <- player :: players
+                            let! mode = Playlist.getModeAsync player
+                            if mode = Playlist.Mode.Playing then
+                                players <- player :: players
 
                     if not (List.isEmpty players) then
                         let! alerts = Weather.getNewAlertsAsync cancellationToken

@@ -19,6 +19,7 @@
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />
+    <Compile Include="Abcde.fs" />
     <Compile Include="Info\Speech.fs" />
     <Compile Include="Info\SpeechSynthesis.fs" />
     <Compile Include="Info\NWS.fs" />

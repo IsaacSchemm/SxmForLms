@@ -12,6 +12,7 @@ type AtomicAction =
 | PlaySiriusXMChannel of int
 | StreamInfo
 | PlayTrack of int
+| Rip
 | Eject
 | Forecast
 | SeekBegin of decimal
@@ -122,6 +123,9 @@ module AtomicActions =
                 | a :: b :: _ -> (a, b)
 
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(5))
+
+        | Rip ->
+            do! Abcde.ripAsync()
 
         | Eject ->
             use proc = Process.Start("eject", $"-T {Icedax.device}")

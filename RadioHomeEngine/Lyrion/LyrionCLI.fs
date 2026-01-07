@@ -147,7 +147,15 @@ module LyrionCLI =
     type Player = Player of string
 
     module General =
+        let getMediaDirsAsync () = listenForAsync ["pref"; "mediadirs"; "?"] (fun command ->
+            match command with
+            | ["pref"; "mediadirs"; paths ] -> Some (Uri.UnescapeDataString(paths).Split(','))
+            | _ -> None)
+
+        let rescanAsync () = sendAsync ["rescan"]
+
         let exitAsync () = sendAsync ["exit"]
+
         let restartServer () = sendAsync ["restartserver"]
 
     module Players =

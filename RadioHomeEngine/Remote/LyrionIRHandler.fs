@@ -15,31 +15,46 @@ open LyrionIR
 
 module LyrionIRHandler =
     type DigitBehavior =
-    | Digit
-    | LoadPresetSingle
+    | Nothing
+    | Passthrough
+    | PlayPreset
     | SeekToSeconds
     | SeekToMinutes
-    | AudioCD
+    | PlayForecast
+    | PlayCD
+    | RipCD
+    | EjectCD
     | SiriusXM
+    | ViewSiriusXMInfo
 
     let enabledBehaviors = [
-        Digit
-        LoadPresetSingle
+        Nothing
+        Passthrough
+        PlayPreset
         SeekToSeconds
         SeekToMinutes
-        AudioCD
+        PlayForecast
+        PlayCD
+        RipCD
+        EjectCD
         SiriusXM
-        Digit
+        ViewSiriusXMInfo
+        Nothing
     ]
 
-    let getTitle behavior =
+    let getBehaviorTitle behavior =
         match behavior with
-        | Digit -> "Direct"
-        | LoadPresetSingle -> "Preset (1-9)"
+        | Nothing -> "N/A"
+        | Passthrough -> "Passthrough"
+        | PlayPreset -> "Play preset (1-9)"
         | SeekToSeconds -> "Seek to (seconds)"
         | SeekToMinutes -> "Seek to (minutes)"
-        | AudioCD -> "CD track"
-        | SiriusXM -> "SiriusXM channel"
+        | PlayForecast -> "Play weather forecast"
+        | PlayCD -> "Play CD"
+        | RipCD -> "Rip CD"
+        | EjectCD -> "Eject CD"
+        | SiriusXM -> "Play SiriusXM channel"
+        | ViewSiriusXMInfo -> "View SiriusXM program name"
 
     let (|IRCode|_|) (str: string) =
         match Int32.TryParse(str, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture) with
@@ -73,15 +88,7 @@ module LyrionIRHandler =
             channelChanging <- true
         }
 
-        let mutable behavior = Seq.head (seq {
-            if File.Exists("behavior.txt") then
-                let str = File.ReadAllText("behavior.txt")
-                for possibility in enabledBehaviors do
-                    if str = $"{possibility}" then
-                        possibility
-
-            Seq.head enabledBehaviors
-        })
+        let mutable behavior = Seq.head enabledBehaviors
 
         let mutable promptText = None
         let mutable promptMonitor = Task.CompletedTask
@@ -89,7 +96,7 @@ module LyrionIRHandler =
         let writePromptAsync text = task {
             promptText <- Some text
 
-            let header = getTitle behavior
+            let header = getBehaviorTitle behavior
             do! Players.setDisplayAsync player header text (TimeSpan.FromSeconds(10))
 
             if promptMonitor.IsCompleted then
@@ -159,16 +166,14 @@ module LyrionIRHandler =
 
             | Input ->
                 let! (header, _) = Players.getDisplayNowAsync player
-                if header = "Input Mode" then
+                if header = "IR Remote Numeric Entry" then
                     behavior <-
                         Seq.pairwise enabledBehaviors
                         |> Seq.where (fun (a, _) -> a = behavior)
                         |> Seq.map (fun (_, b) -> b)
                         |> Seq.head
 
-                do! Players.setDisplayAsync player "Input Mode" (getTitle behavior) (TimeSpan.FromSeconds(3))
-
-                File.WriteAllText("behavior.txt", $"{behavior}")
+                do! Players.setDisplayAsync player "IR Remote Numeric Entry" (getBehaviorTitle behavior) (TimeSpan.FromSeconds(3))
 
             | Backspace -> ()
         }
@@ -191,13 +196,18 @@ module LyrionIRHandler =
             | IRPress name ->
                 do! simulateIRAsync name
 
-            | Number n when behavior = LoadPresetSingle ->
+            | Number n when behavior = PlayPreset ->
                 do! Players.simulateButtonAsync player $"playPreset_{n}"
 
             | Number n ->
                 let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
                 if powerState then
-                    do! writePromptAsync $"> {n}"
+                    let prompt =
+                        match behavior with
+                        | Nothing -> "Press Input/Source to set up number buttons"
+                        | SeekToSeconds | SeekToMinutes | PlayCD | SiriusXM -> $"> {n}"
+                        | _ -> "Press OK to continue"
+                    do! writePromptAsync prompt
         }
 
         let processPromptEntryAsync press = task {
@@ -205,17 +215,20 @@ module LyrionIRHandler =
                 promptText
                 |> Option.defaultValue "> "
 
-            match press with
-            | Number n ->
+            match press, behavior with
+            | Number n, SeekToSeconds
+            | Number n, SeekToMinutes
+            | Number n, PlayCD
+            | Number n, SiriusXM ->
                 do! appendToPromptAsync n
 
-            | Custom Backspace when prompt = "> " ->
+            | Custom Backspace, _ when prompt = "> " ->
                 do! clearAsync ()
 
-            | Custom Backspace ->
+            | Custom Backspace, _ when prompt.StartsWith("> ") ->
                 do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
-            | Button "knob_push" when behavior = SeekToSeconds ->
+            | Button "knob_push", SeekToSeconds ->
                 match prompt.Substring(2) with
                 | Int32 s ->
                     do! clearAsync ()
@@ -223,7 +236,7 @@ module LyrionIRHandler =
                 | _ ->
                     do! writePromptAsync "> "
 
-            | Button "knob_push" when behavior = SeekToMinutes ->
+            | Button "knob_push", SeekToMinutes ->
                 match prompt.Substring(2) with
                 | Int32 m ->
                     do! clearAsync ()
@@ -231,22 +244,32 @@ module LyrionIRHandler =
                 | _ ->
                     do! writePromptAsync "> "
 
-            | Button "knob_push" when behavior = AudioCD ->
+            | Button "knob_push", PlayForecast ->
+                do! AtomicActions.performActionAsync player AtomicAction.Forecast
+
+            | Button "knob_push", PlayCD ->
                 let num = prompt.Substring(2)
 
                 match num with
                 | "" ->
-                    do! Players.setDisplayAsync player "Ejecting CD" "Please wait..." (TimeSpan.FromSeconds(10))
-                    use proc = Process.Start("eject", $"-T {Icedax.device}")
-                    do! proc.WaitForExitAsync()
                     do! clearAsync ()
+                    do! AtomicActions.playAllTracksAsync player 1
                 | Int32 track ->
                     do! clearAsync ()
                     do! AtomicActions.playAllTracksAsync player track
                 | _ ->
                     do! writePromptAsync "> "
 
-            | Button "knob_push" when behavior = SiriusXM ->
+            | Button "knob_push", RipCD ->
+                do! Players.setDisplayAsync player "Rip CD" "Attempting rip..." (TimeSpan.FromSeconds(3))
+                do! AtomicActions.performActionAsync player AtomicAction.Rip
+                do! Players.setDisplayAsync player "Rip CD" "Rip complete." (TimeSpan.FromSeconds(10))
+
+            | Button "knob_push", EjectCD ->
+                do! clearAsync ()
+                do! AtomicActions.performActionAsync player AtomicAction.Eject
+
+            | Button "knob_push", SiriusXM ->
                 let num = prompt.Substring(2)
 
                 let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
@@ -261,6 +284,10 @@ module LyrionIRHandler =
                     do! playSiriusXMChannelAsync c.channelNumber c.name
                 | None ->
                     do! writePromptAsync "> "
+
+            | Button "knob_push", ViewSiriusXMInfo ->
+                do! clearAsync ()
+                do! AtomicActions.performActionAsync player AtomicAction.SiriusXMNowPlaying
 
             | _ ->
                 do! clearAsync ()
@@ -302,7 +329,7 @@ module LyrionIRHandler =
             | IR name ->
                 do! simulateIRAsync name
 
-            | Series [Number n] when behavior = Digit ->
+            | Series [Number n] when behavior = Passthrough ->
                 do! simulateIRAsync $"{n}"
 
             | Series presses ->

@@ -10,7 +10,7 @@ open LyrionCLI
 
 type AtomicAction =
 | PlaySiriusXMChannel of int
-| StreamInfo
+| SiriusXMNowPlaying
 | PlayTrack of int
 | Rip
 | Eject
@@ -111,7 +111,7 @@ module AtomicActions =
             let! address = Network.getAddressAsync ()
             do! Playlist.playItemAsync player $"http://{address}:{Config.port}/SXM/PlayChannel?num={channelNumber}" $"[{channelNumber}] {name}"
 
-        | StreamInfo ->
+        | SiriusXMNowPlaying ->
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(5))
 
             let! nowPlaying = ChannelMemory.GetNowPlayingAsync(CancellationToken.None)
@@ -125,7 +125,14 @@ module AtomicActions =
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(5))
 
         | Rip ->
-            do! Abcde.ripAsync()
+            //let showStatus line = ignore (task {
+            //    try
+            //        do! Players.setDisplayAsync player "Rip CD" line (TimeSpan.FromSeconds(5))
+            //    with ex ->
+            //        Console.Error.WriteLine(ex)
+            //})
+
+            do! Abcde.ripAsync () //[showStatus]
 
         | Eject ->
             use proc = Process.Start("eject", $"-T {Icedax.device}")

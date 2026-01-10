@@ -98,7 +98,7 @@ module LyrionIR =
         0x00ff31ce, IR "volup"
         0x00ff6b94, Series [Button "stop"] // Flip
         0x00ffe916, Series [Custom Input] // Source
-        0x00ff6996, Series [Atomic StreamInfo; Atomic Forecast] // Zoom
+        0x00ff6996, Series [Atomic SiriusXMNowPlaying] // Zoom
         0x00ff8976, IR "home" // Menu
         0x00ff25da, Series [Button "exit_left"]
         0x00ffa956, IR "arrow_up"

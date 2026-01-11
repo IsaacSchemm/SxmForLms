@@ -6,6 +6,7 @@ type TrackInfo = {
 }
 
 type DiscInfo = {
+    driveNumber: int
     title: string
     artists: string list
     tracks: TrackInfo list

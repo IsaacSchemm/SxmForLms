@@ -8,8 +8,6 @@ open System.Text.RegularExpressions
 open System.Threading.Tasks
 
 module Icedax =
-    let device = "/dev/cdrom"
-
     let albumTitlePattern = new Regex("^Album title: '(.*)")
     let trackPattern = new Regex("^T([0-9]+): .* title '(.*)")
     let cdIndexPattern = new Regex("^CDINDEX discid: (.+)")
@@ -69,7 +67,9 @@ module Icedax =
 
     let noDiscMessage = "load cdrom please and press enter"
 
-    let rec getInfo () =
+    let getInfo driveNumber =
+        let device = DiscDrives.all[driveNumber]
+
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
             |> Process.Start
@@ -112,6 +112,7 @@ module Icedax =
         {|
             discid = discid
             info = {
+                driveNumber = driveNumber
                 title = albumTitle |> Option.orElse discid |> Option.defaultValue ""
                 artists = []
                 tracks = [
@@ -128,7 +129,9 @@ module Icedax =
     let sectorsPerSecond = 75
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
-    let extractWaveAsync trackNumber skip = task {
+    let extractWaveAsync driveNumber trackNumber skip = task {
+        let device = DiscDrives.all[driveNumber]
+
         let spanString = $"-t {trackNumber}"
 
         let factor =

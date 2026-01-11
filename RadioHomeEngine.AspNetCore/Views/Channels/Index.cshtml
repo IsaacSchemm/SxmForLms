@@ -55,7 +55,7 @@
 
     @foreach (var cd in Model.CDs)
     {
-        <h1>CD</h1>
+        <h1>CD @cd.DriveNumber</h1>
 
         <p>
             <span style="font-size: 150%">@cd.Title</span>
@@ -85,7 +85,7 @@
                             @track.Title
                         </td>
                         <td align="left">
-                            <a href="/CD/PlayTrack?track=@track.Position">
+                            <a href="/CD/PlayTrack?driveNumber=@cd.DriveNumber&track=@track.Position">
                                 .wav
                             </a>
                         </td>
@@ -101,6 +101,7 @@
             {
                 <p>
                     <form asp-action="PlayCD" target="myframe">
+                        <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
                         <input type="hidden" name="mac" value="@player.MacAddress" />
                         <button type="submit">
                             @player.Name
@@ -112,6 +113,7 @@
 
         <p>
             <form asp-action="RipCD" target="myframe">
+                <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
                 <button type="submit">
                     Rip CD
                 </button>
@@ -120,6 +122,7 @@
 
         <p>
             <form asp-action="EjectCD" target="myframe">
+                <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
                 <button type="submit">
                     Eject
                 </button>

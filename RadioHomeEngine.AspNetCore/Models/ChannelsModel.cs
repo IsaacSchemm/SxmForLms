@@ -10,6 +10,7 @@ namespace RadioHomeEngine.AspNetCore.Models
 
         public record CD
         {
+            public required int DriveNumber { get; init; }
             public required string Title { get; init; }
             public required FSharpList<string> Artists { get; init; }
             public required FSharpList<Track> Tracks { get; init; }

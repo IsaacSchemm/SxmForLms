@@ -6,7 +6,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public partial class CDController() : Controller
     {
-        public async Task<IActionResult> PlayTrack(int track)
+        public async Task<IActionResult> PlayTrack(int driveNumber, int track)
         {
             int offset = 0;
 
@@ -17,7 +17,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 offset = int.Parse(match.Groups[1].Value);
             }
 
-            var obj = await Icedax.extractWaveAsync(track, offset);
+            var obj = await Icedax.extractWaveAsync(driveNumber, track, offset);
 
             Response.StatusCode = 200;
             Response.ContentType = "audio/wav";

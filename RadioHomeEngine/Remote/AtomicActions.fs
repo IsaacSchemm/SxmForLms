@@ -1,7 +1,6 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.Diagnostics
 open System.IO
 open System.Text.RegularExpressions
 open System.Threading
@@ -37,28 +36,31 @@ module AtomicActions =
             return None
     }
 
-    let playAllTracksAsync player (startAtTrack: int) = task {
+    let playDiscAsync player driveNumber startAtTrack = task {
         do! Players.simulateButtonAsync player "stop"
 
         do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-        let! info = Discovery.GetDiscInfoForInsertedDiscAsync() |> TaskSeq.head
-        let tracks = info.tracks
+        let! info = Discovery.getInfoAsync [driveNumber]
 
         do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
         do! Playlist.clearAsync player
 
         let! address = Network.getAddressAsync ()
-        for track in tracks |> Seq.skipWhile (fun t -> t.position < startAtTrack) do
-            let title =
-                match track.title with
-                | "" -> $"Track {track.position}"
-                | x -> x
-            do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.position}" title
+        for disc in info do
+            for track in disc.tracks |> Seq.skipWhile (fun t -> t.position < startAtTrack) do
+                let title =
+                    match track.title with
+                    | "" -> $"Track {track.position}"
+                    | x -> x
+                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={driveNumber}&track={track.position}" title
 
         do! Playlist.playAsync player
     }
+
+    let playFirstDiscAsync player startAtTrack =
+        playDiscAsync player 0 startAtTrack
 
     let performActionAsync player atomicAction = task {
         match atomicAction with
@@ -88,14 +90,13 @@ module AtomicActions =
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(5))
 
         | Rip ->
-            Abcde.BeginRipAsync()
+            Abcde.beginRipAsync 0
 
         | Eject ->
-            use proc = Process.Start("eject", $"-T {Icedax.device}")
-            do! proc.WaitForExitAsync()
+            do! DiscDrives.ejectAsync 0
 
         | PlayTrack n ->
-            do! playAllTracksAsync player n
+            do! playFirstDiscAsync player n
 
         | Forecast ->
             do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))

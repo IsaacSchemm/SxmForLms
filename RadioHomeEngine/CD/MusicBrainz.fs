@@ -17,7 +17,7 @@ module MusicBrainz =
 
     let private parseAs<'T> (_: 'T) (json: string) = Json.JsonSerializer.Deserialize<'T>(json)
 
-    let GetInfoAsync(discId: string) = task {
+    let getInfoAsync (driveNumber: int) (discId: string) = task {
         use! discResponse = client.GetAsync($"discid/{discId}?inc=recordings+artist-credits")
         if discResponse.StatusCode = HttpStatusCode.NotFound then
             return None
@@ -43,6 +43,7 @@ module MusicBrainz =
             let release = Seq.head disc.releases
 
             return Some {
+                driveNumber = driveNumber
                 artists = [
                     for artist in release.``artist-credit`` do
                         artist.name

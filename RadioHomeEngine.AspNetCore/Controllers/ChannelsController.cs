@@ -1,15 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.FSharp.Collections;
 using RadioHomeEngine.AspNetCore.Models;
-using System;
-using System.Diagnostics;
-using System.Threading;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
 {
     public class ChannelsController : Controller
     {
-        private async Task<FSharpList<ChannelsModel.Channel>> GetChannelsAsync(CancellationToken cancellationToken)
+        private static async Task<FSharpList<ChannelsModel.Channel>> GetChannelsAsync(CancellationToken cancellationToken)
         {
             FSharpList<ChannelsModel.Channel> channels = [];
             FSharpList<ChannelsModel.CD> cds = [];
@@ -33,15 +30,16 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             }
         }
 
-        private async Task<FSharpList<ChannelsModel.CD>> GetCDsAsync(CancellationToken cancellationToken)
+        private static async Task<FSharpList<ChannelsModel.CD>> GetCDsAsync()
         {
             try
             {
-                var albums = await Discovery.GetDiscInfoForInsertedDiscAsync().Take(1).ToListAsync(cancellationToken);
+                var albums = await Discovery.getInfoAsync(DiscDrives.allDriveNumbers);
 
                 return [
                     .. albums.Select(a => new ChannelsModel.CD
                     {
+                        DriveNumber = a.driveNumber,
                         Title = a.title,
                         Artists = a.artists,
                         Tracks = [
@@ -64,7 +62,8 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
             var channelsTask = GetChannelsAsync(cancellationToken);
-            var cdsTask = GetCDsAsync(cancellationToken);
+
+            var cdsTask = GetCDsAsync();
 
             var knownPlayers = await LyrionKnownPlayers.Names.getPlayersWithNamesAsync();
 
@@ -97,23 +96,24 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [HttpPost]
-        public async Task PlayCD(string mac)
+        public async Task PlayCD(int driveNumber, string mac)
         {
-            await AtomicActions.performActionAsync(
+            await AtomicActions.playDiscAsync(
                 LyrionCLI.Player.NewPlayer(mac),
-                AtomicAction.NewPlayTrack(1));
+                driveNumber,
+                1);
         }
 
         [HttpPost]
-        public void RipCD()
+        public void RipCD(int driveNumber)
         {
-            Abcde.BeginRipAsync();
+            Abcde.beginRipAsync(driveNumber);
         }
 
         [HttpPost]
-        public async Task EjectCD(CancellationToken cancellationToken)
+        public async Task EjectCD(int driveNumber)
         {
-            await Process.Start("eject").WaitForExitAsync(cancellationToken);
+            await DiscDrives.ejectAsync(driveNumber);
         }
     }
 }

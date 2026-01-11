@@ -5,11 +5,11 @@ open System.Diagnostics
 open System.Threading.Tasks
 
 module Abcde =
-    let device = Icedax.device
-
     let mutable ripping = false
 
-    let GetMusicBrainzDiscIdAsync() = task {
+    let getMusicBrainzDiscIdAsync driveNumber = task {
+        let device = DiscDrives.all[driveNumber]
+
         let proc =
             new ProcessStartInfo(
                 "abcde-musicbrainz-tool",
@@ -36,7 +36,9 @@ module Abcde =
         else return Some id
     }
 
-    let RipAsync() = task {
+    let ripAsync driveNumber = task {
+        let device = DiscDrives.all[driveNumber]
+
         if ripping then
             Console.Error.WriteLine("Rip in progress; not starting new rip")
         else
@@ -69,4 +71,5 @@ module Abcde =
             ripping <- false
     }
 
-    let BeginRipAsync() = ignore (RipAsync())
+    let beginRipAsync driveNumber =
+        ignore (ripAsync driveNumber)

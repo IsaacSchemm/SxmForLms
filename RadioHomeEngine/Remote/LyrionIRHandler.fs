@@ -253,10 +253,10 @@ module LyrionIRHandler =
                 match num with
                 | "" ->
                     do! clearAsync ()
-                    do! AtomicActions.playAllTracksAsync player 1
+                    do! AtomicActions.playFirstDiscAsync player 1
                 | Int32 track ->
                     do! clearAsync ()
-                    do! AtomicActions.playAllTracksAsync player track
+                    do! AtomicActions.playFirstDiscAsync player track
                 | _ ->
                     do! writePromptAsync "> "
 

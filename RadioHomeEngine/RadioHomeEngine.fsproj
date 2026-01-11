@@ -17,6 +17,7 @@
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />
     <Compile Include="CD\DiscInfo.fs" />
+    <Compile Include="CD\DiscDrives.fs" />
     <Compile Include="CD\Icedax.fs" />
     <Compile Include="CD\MusicBrainz.fs" />
     <Compile Include="CD\Abcde.fs" />

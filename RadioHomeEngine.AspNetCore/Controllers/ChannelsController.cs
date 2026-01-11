@@ -24,10 +24,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                     .. knownPlayers.Select(k => new ChannelsModel.Player {
                         MacAddress = k.player.Item,
                         Name = k.name
-                    }),
-                    .. Roku.GetDevices().Select(device => new ChannelsModel.Player {
-                        MacAddress = device.MacAddress,
-                        Name = device.Name
                     })
                 ]
             });
@@ -44,15 +40,6 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 if (player.Item == mac)
                 {
                     await LyrionCLI.Playlist.playItemAsync(player, url, name);
-                    return Accepted();
-                }
-            }
-
-            foreach (var device in Roku.GetDevices())
-            {
-                if (device.MacAddress == mac)
-                {
-                    await Roku.PlayAsync(device, url, name, cancellationToken);
                     return Accepted();
                 }
             }

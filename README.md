@@ -20,7 +20,6 @@ Functionality includes:
     * Channel list, with:
         * A web player for each channel, with a list of recently played tracks
         * Ability to play a channel on a Squeezebox device
-        * Ability to play a channel on a Roku device using [Media Assistant](https://github.com/MedievalApple/Media-Assistant)
 
 *This application's port 5000 should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
 

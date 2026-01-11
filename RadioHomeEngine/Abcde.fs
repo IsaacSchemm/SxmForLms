@@ -51,7 +51,7 @@ module Abcde =
         //}
 
         do! proc.WaitForExitAsync()
-        do! callbackFeeder
+        //do! callbackFeeder
 
         let eject = Process.Start("eject")
         do! eject.WaitForExitAsync()

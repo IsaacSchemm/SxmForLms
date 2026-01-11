@@ -12,6 +12,16 @@
     <title>Channel List</title>
     @await Html.PartialAsync("_Styles")
     <style type="text/css">
+        .trackTable th,
+        .trackTable td {
+            padding: 0 0.5em;
+        }
+
+        fieldset {
+            margin: 16px auto;
+            max-width: 280px;
+        }
+
         .box {
             border: 1px solid currentColor;
             display: inline-block;
@@ -37,6 +47,93 @@
     </style>
 </head>
 <body>
+    <p>
+        <a href="http://@this.Context.Request.Host.Host:9000">Go to Lyrion Music Server</a>
+    </p>
+
+    <hr />
+
+    @foreach (var cd in Model.CDs)
+    {
+        <h1>CD</h1>
+
+        <p>
+            <span style="font-size: 150%">@cd.Title</span>
+            <br />
+            @foreach (var artist in cd.Artists)
+            {
+                <span>@artist</span>
+            }
+        </p>
+
+        <table class="trackTable">
+            <thead>
+                <tr>
+                    <th scope="col">Track</th>
+                    <th scope="col" align="left">Title</th>
+                    <th scope="col" align="left">Download</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var track in cd.Tracks)
+                {
+                    <tr>
+                        <td>
+                            @track.Position
+                        </td>
+                        <td align="left">
+                            @track.Title
+                        </td>
+                        <td align="left">
+                            <a href="/CD/PlayTrack?track=@track.Position">
+                                .wav
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <fieldset>
+            <legend>Play on</legend>
+
+            @foreach (var player in Model.Players)
+            {
+                <p>
+                    <form asp-action="PlayCD" target="myframe">
+                        <input type="hidden" name="mac" value="@player.MacAddress" />
+                        <button type="submit">
+                            @player.Name
+                        </button>
+                    </form>
+                </p>
+            }
+        </fieldset>
+
+        <p>
+            <form asp-action="RipCD" target="myframe">
+                <button type="submit">
+                    Rip CD
+                </button>
+            </form>
+        </p>
+
+        <p>
+            <form asp-action="EjectCD" target="myframe">
+                <button type="submit">
+                    Eject
+                </button>
+            </form>
+        </p>
+
+        <hr />
+    }
+
+    @if (!Model.Channels.IsEmpty)
+    {
+        <h1>SiriusXM</h1>
+    }
+
     @foreach (var channel in Model.Channels)
     {
         <div class="box">
@@ -61,7 +158,6 @@
                         <form asp-action="Play" target="myframe">
                             <input type="hidden" name="mac" value="@player.MacAddress" />
                             <input type="hidden" name="num" value="@channel.ChannelNumber" />
-                            <input type="hidden" name="name" value="@channel.Name" />
                             <button type="submit">
                                 Play on @player.Name
                             </button>
@@ -70,6 +166,27 @@
                 }
             </details>
         </div>
+    }
+
+    <hr />
+
+    @if (Model.Players.Length > 0)
+    {
+        <fieldset>
+            <legend>Clear playlist on</legend>
+
+            @foreach (var player in Model.Players)
+            {
+                <p>
+                    <form asp-action="Clear" target="myframe">
+                        <input type="hidden" name="mac" value="@player.MacAddress" />
+                        <button type="submit">
+                            @player.Name
+                        </button>
+                    </form>
+                </p>
+            }
+        </fieldset>
     }
 
     <iframe name="myframe" width="300" height="50" src="about:blank"></iframe>

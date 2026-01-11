@@ -5,6 +5,7 @@ open System.Diagnostics
 open System.IO
 open System.Text.RegularExpressions
 open System.Threading
+open FSharp.Control
 
 open LyrionCLI
 
@@ -36,63 +37,25 @@ module AtomicActions =
             return None
     }
 
-    let tryQueryMusicDatabaseAsync discId trackCount = task {
-        try
-            match discId with
-            | Some d ->
-                let! result = MusicBrainz.GetTracksAsync(d)
-                if List.length result.tracks <> trackCount then
-                    failwithf "Track count mismatch: %d tracks on album, but MusicBrainz has %d" trackCount (List.length result.tracks)
-
-                return Some result
-            | None ->
-                return failwith "No discId found, cannot query MusicBrainz"
-        with ex ->
-            Console.Error.WriteLine(ex)
-            return None
-    }
-
     let playAllTracksAsync player (startAtTrack: int) = task {
         do! Players.simulateButtonAsync player "stop"
 
         do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-        let disc = Icedax.getInfo ()
-
-        do! Players.setDisplayAsync player "Please wait" "Querying online database..." (TimeSpan.FromMilliseconds(1))
-
-        let! tracks = task {
-            try
-                match disc.discid with
-                | Some d ->
-                    let! result = MusicBrainz.GetTracksAsync(d)
-                    if List.length result.tracks <> List.length disc.tracks then
-                        failwithf "Track count mismatch: %d tracks on album, but MusicBrainz has %d" (List.length disc.tracks) (List.length result.tracks)
-
-                    return [
-                        for t in result.tracks do {|
-                            title = t.title
-                            number = t.position
-                        |}
-                    ]
-                | None ->
-                    return failwith "No discId found, cannot query MusicBrainz"
-            with ex ->
-                Console.Error.WriteLine(ex)
-                return disc.tracks
-        }
+        let! info = Discovery.GetDiscInfoForInsertedDiscAsync() |> TaskSeq.head
+        let tracks = info.tracks
 
         do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
         do! Playlist.clearAsync player
 
         let! address = Network.getAddressAsync ()
-        for track in tracks |> Seq.skipWhile (fun t -> t.number < startAtTrack) do
+        for track in tracks |> Seq.skipWhile (fun t -> t.position < startAtTrack) do
             let title =
                 match track.title with
-                | "" -> $"Track {track.number}"
+                | "" -> $"Track {track.position}"
                 | x -> x
-            do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.number}" title
+            do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?track={track.position}" title
 
         do! Playlist.playAsync player
     }
@@ -125,14 +88,7 @@ module AtomicActions =
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(5))
 
         | Rip ->
-            //let showStatus line = ignore (task {
-            //    try
-            //        do! Players.setDisplayAsync player "Rip CD" line (TimeSpan.FromSeconds(5))
-            //    with ex ->
-            //        Console.Error.WriteLine(ex)
-            //})
-
-            do! Abcde.ripAsync () //[showStatus]
+            Abcde.BeginRipAsync()
 
         | Eject ->
             use proc = Process.Start("eject", $"-T {Icedax.device}")

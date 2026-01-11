@@ -9,8 +9,6 @@
     <Compile Include="Utility.fs" />
     <Compile Include="ActivePatterns.fs" />
     <Compile Include="Network.fs" />
-    <Compile Include="Icedax.fs" />
-    <Compile Include="MusicBrainz.fs" />
     <Compile Include="Streaming\SiriusXMClient.fs" />
     <Compile Include="Streaming\ChunklistParser.fs" />
     <Compile Include="Streaming\MediaProxy.fs" />
@@ -18,7 +16,11 @@
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
     <Compile Include="Lyrion\LyrionFavorites.fs" />
-    <Compile Include="Abcde.fs" />
+    <Compile Include="CD\DiscInfo.fs" />
+    <Compile Include="CD\Icedax.fs" />
+    <Compile Include="CD\MusicBrainz.fs" />
+    <Compile Include="CD\Abcde.fs" />
+    <Compile Include="CD\Discovery.fs" />
     <Compile Include="Info\Speech.fs" />
     <Compile Include="Info\SpeechSynthesis.fs" />
     <Compile Include="Info\NWS.fs" />
@@ -31,9 +33,9 @@
 
   <ItemGroup>
     <PackageReference Include="CrossInterfaceRokuDeviceDiscovery" Version="1.0.0" />
+    <PackageReference Include="FSharp.Control.TaskSeq" Version="0.4.0" />
     <PackageReference Include="FSharp.Data" Version="6.6.0" />
     <PackageReference Include="FSharp.Data.Json.Core" Version="6.6.0" />
-    <PackageReference Include="MetaBrainz.MusicBrainz" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.7" />
     <PackageReference Include="System.Runtime.Caching" Version="9.0.7" />

@@ -10,9 +10,32 @@ open System.Threading.Tasks
 module Icedax =
     let device = "/dev/cdrom"
 
+    let albumTitlePattern = new Regex("^Album title: '(.*)")
     let trackPattern = new Regex("^T([0-9]+): .* title '(.*)")
     let cdIndexPattern = new Regex("^CDINDEX discid: (.+)")
     let sampleFileSizePattern = new Regex("^samplefile size will be ([0-9]+) bytes")
+
+    let (|AlbumTitle|_|) (str: string) = Seq.tryHead (seq {
+        let m = albumTitlePattern.Match(str)
+        if m.Success then
+            use sr = new StringReader(m.Groups[1].Value)
+
+            let str = String [|
+                let mutable finished = false
+                while not finished do
+                    match sr.Read() with
+                    | -1 ->
+                        finished <- true
+                    | v when char v = '\'' ->
+                        finished <- true
+                    | v when char v = '\\' ->
+                        char (sr.Read())
+                    | v ->
+                        char v
+            |]
+
+            str
+    })
 
     let (|Track|_|) (str: string) = Seq.tryHead (seq {
         let m = trackPattern.Match(str)
@@ -72,11 +95,14 @@ module Icedax =
 
         proc.WaitForExit()
 
+        let mutable albumTitle = None
         let mutable tracks = []
         let mutable discid = None
 
         for line in Utility.split '\n' (body.ToString()) do
             match line with
+            | AlbumTitle t ->
+                albumTitle <- Some t
             | Track (n, t) ->
                 tracks <- {| number = n; title = t |} :: tracks
             | CDINDEX x ->
@@ -85,7 +111,17 @@ module Icedax =
 
         {|
             discid = discid
-            tracks = tracks |> Seq.sortBy (fun t -> t.number) |> Seq.toList
+            info = {
+                title = albumTitle |> Option.orElse discid |> Option.defaultValue ""
+                artists = []
+                tracks = [
+                    for t in tracks |> Seq.sortBy (fun t -> t.number) do {
+                        title = t.title
+                        position = t.number
+                    }
+                ]
+                source = "icedax / CD-Text"
+            }
         |}
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2

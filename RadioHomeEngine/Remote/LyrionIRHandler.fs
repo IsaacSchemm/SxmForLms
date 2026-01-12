@@ -205,7 +205,7 @@ module LyrionIRHandler =
                     let prompt =
                         match behavior with
                         | Nothing -> "Press Input/Source to set up number buttons"
-                        | SeekToSeconds | SeekToMinutes | PlayCD | SiriusXM -> $"> {n}"
+                        | SeekToSeconds | SeekToMinutes | SiriusXM -> $"> {n}"
                         | _ -> "Press OK to continue"
                     do! writePromptAsync prompt
         }
@@ -248,26 +248,16 @@ module LyrionIRHandler =
                 do! AtomicActions.performActionAsync player AtomicAction.Forecast
 
             | Button "knob_push", PlayCD ->
-                let num = prompt.Substring(2)
-
-                match num with
-                | "" ->
-                    do! clearAsync ()
-                    do! AtomicActions.playFirstDiscAsync player 1
-                | Int32 track ->
-                    do! clearAsync ()
-                    do! AtomicActions.playFirstDiscAsync player track
-                | _ ->
-                    do! writePromptAsync "> "
+                do! clearAsync ()
+                do! AtomicActions.performActionAsync player AtomicAction.PlayAllDiscs
 
             | Button "knob_push", RipCD ->
-                do! Players.setDisplayAsync player "Rip CD" "Attempting rip..." (TimeSpan.FromSeconds(3))
-                do! AtomicActions.performActionAsync player AtomicAction.Rip
-                do! Players.setDisplayAsync player "Rip CD" "Rip complete." (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player "Ripping CD" "Ripping process started." (TimeSpan.FromSeconds(10))
+                do! AtomicActions.performActionAsync player AtomicAction.RipAllDiscs
 
             | Button "knob_push", EjectCD ->
                 do! clearAsync ()
-                do! AtomicActions.performActionAsync player AtomicAction.Eject
+                do! AtomicActions.performActionAsync player AtomicAction.EjectAllDiscs
 
             | Button "knob_push", SiriusXM ->
                 let num = prompt.Substring(2)

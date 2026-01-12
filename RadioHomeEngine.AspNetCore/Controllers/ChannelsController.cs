@@ -98,16 +98,15 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         [HttpPost]
         public async Task PlayCD(int driveNumber, string mac)
         {
-            await AtomicActions.playDiscAsync(
+            await AtomicActions.playDiscsAsync(
                 LyrionCLI.Player.NewPlayer(mac),
-                driveNumber,
-                1);
+                [driveNumber]);
         }
 
         [HttpPost]
         public void RipCD(int driveNumber)
         {
-            Abcde.beginRipAsync(driveNumber);
+            Abcde.beginRipAsync([driveNumber]);
         }
 
         [HttpPost]

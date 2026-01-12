@@ -1,30 +1,31 @@
 # Radio Home Engine
 
-An ASP.NET Core application that makes SiriusXM channels available to local
-network devices and extends Lyrion Music Server with additional functionality
-through the use of a third-party IR remote.
+An ASP.NET Core sidecar for Lyrion Music Server.
 
 RadioHomeEngine is designed to run on a Linux server that is also running [Lyrion Music Server](https://lyrion.org/) (LMS).
-Functionality includes:
 
-* Decoding and forwarding SiriusXM audio streams to devices on the local network
-* Playing U.S. weather forcasts and alerts from `weather.gov`, using `espeak` speech synthesis
-* Use of a third-party remote (listening via the LMS telnet interface) to:
-    * activate built-in functions (by simulating real buttons on the remote or device)
-    * play audio CDs (using the host computer's CD drive)
-    * load presets
-    * seek to specific timestamps
-    * play SiriusXM channels
-        * view the title of the current song/program on the most recently entered SiriusXM channel
-* Web interface at HTTP port 5000, with:
-    * Audio CD support
-        * Information (if a CD is inserted), from CD-Text or MusicBrainz
-        * Ability to play the CD through LMS
-        * Ability to rip the CD to Lyrion Music Server's music folder
-    * SiriusXM support
-        * List of channels
-        * Ability to play the channel through LMS
-        * A web player for each channel, with a list of recently played tracks
+Functionality available from the web interface (port 5000):
+
+* Audio CD playback
+    * Album and track names (from CD-Text or MusicBrainz)
+    * Play a disc (all tracks) on a device connected to LMS
+    * Rip the disc to LMS's media folder using `abcde`
+* SiriusXM
+    * List channels (live streams only; Xtra channels not supported)
+    * Play a channel on a device connected to LMS
+    * Play a channel in the browser, and view a list of recently played songs
+
+Functionality available from a custom infrared remote:
+
+* Audio CD playback
+    * Album and track names (from CD-Text or MusicBrainz)
+    * Play a disc (all tracks)
+    * Rip the disc to LMS's media folder using `abcde`
+* SiriusXM
+    * Play channel by number (live streams only; Xtra channels not supported)
+    * View currently playing program title (for the last SiriusXM channel number entered)
+* Seek to specific timestamps (number of seconds / number of minutes)
+* U.S. weather forcasts and alerts from `weather.gov`, using `espeak` speech synthesis
 
 *This application's port 5000 should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
 
@@ -42,6 +43,16 @@ and/or through `screen`.
 
 ## Configuration
 
-The SiriusXM username and password are read from `username.txt` and `password.txt`, respectively.
-
 The user's latitude and longitude (used for weather forecasts) are stored in `location.txt`.
+
+## IR
+
+RadioHomeEngine monitors LMS for infrared remote commands, and performs actions based on the mappings in `LyrionIR.fs`.
+
+In the default mapping, the "Source" button is used to flip between modes for the number buttons, and the number buttons trigger a prompt that can activate special actions.
+
+## Audio CD playback
+
+RadioHomeEngine supports more than one CD drive.
+
+When playing a CD using infrared remote commands, all inserted CDs will be added to the playlist, in order.

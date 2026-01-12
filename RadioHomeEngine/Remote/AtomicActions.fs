@@ -11,9 +11,9 @@ open LyrionCLI
 type AtomicAction =
 | PlaySiriusXMChannel of int
 | SiriusXMNowPlaying
-| PlayTrack of int
-| Rip
-| Eject
+| PlayAllDiscs
+| RipAllDiscs
+| EjectAllDiscs
 | Forecast
 | SeekBegin of decimal
 | SeekCurrent of decimal
@@ -36,12 +36,12 @@ module AtomicActions =
             return None
     }
 
-    let playDiscAsync player driveNumber startAtTrack = task {
+    let playDiscsAsync player driveNumbers = task {
         do! Players.simulateButtonAsync player "stop"
 
         do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-        let! info = Discovery.getInfoAsync [driveNumber]
+        let! info = Discovery.getInfoAsync driveNumbers
 
         do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
@@ -49,18 +49,15 @@ module AtomicActions =
 
         let! address = Network.getAddressAsync ()
         for disc in info do
-            for track in disc.tracks |> Seq.skipWhile (fun t -> t.position < startAtTrack) do
+            for track in disc.tracks do
                 let title =
                     match track.title with
                     | "" -> $"Track {track.position}"
                     | x -> x
-                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={driveNumber}&track={track.position}" title
+                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={disc.driveNumber}&track={track.position}" title
 
         do! Playlist.playAsync player
     }
-
-    let playFirstDiscAsync player startAtTrack =
-        playDiscAsync player 0 startAtTrack
 
     let performActionAsync player atomicAction = task {
         match atomicAction with
@@ -89,14 +86,15 @@ module AtomicActions =
 
             do! Players.setDisplayAsync player line1 line2 (TimeSpan.FromSeconds(5))
 
-        | Rip ->
-            Abcde.beginRipAsync 0
+        | PlayAllDiscs ->
+            do! playDiscsAsync player DiscDrives.allDriveNumbers
 
-        | Eject ->
-            do! DiscDrives.ejectAsync 0
+        | RipAllDiscs ->
+            Abcde.beginRipAsync DiscDrives.allDriveNumbers
 
-        | PlayTrack n ->
-            do! playFirstDiscAsync player n
+        | EjectAllDiscs ->
+            for n in DiscDrives.allDriveNumbers do
+                do! DiscDrives.ejectAsync n
 
         | Forecast ->
             do! Players.setDisplayAsync player "Forecast" "Please wait..." (TimeSpan.FromSeconds(5))

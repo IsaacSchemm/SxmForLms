@@ -4,31 +4,31 @@ open System
 open FSharp.Control
 
 module Discovery =
-    let private asyncGetDiscIds driveNumber driveInfo = asyncSeq {
+    let private asyncGetDiscIds driveNumber driveInfo = async {
+        let mutable discIds = Set.empty
+
         let icedax_id = driveInfo.discid
 
         match icedax_id with
-        | Some id -> id
+        | Some id -> discIds <- Set.add id discIds
         | None -> ()
-
-        // Sometimes abcde-musicbrainz-tool can find a different MusicBrainz ID than icedax does,
-        // but other times abcde-musicbrainz-tool is very slow,
-        // so only try it if necessary.
 
         try
             let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber |> Async.AwaitTask
 
-            if abcde_id <> icedax_id then
-                match abcde_id with
-                | Some id -> id
-                | _ -> ()
+            match abcde_id with
+            | Some id -> discIds <- Set.add id discIds
+            | _ -> ()
         with ex ->
             Console.Error.WriteLine(ex)
+
+        return discIds
     }
 
     let private asyncQueryMusicBrainz discId = async {
         try
-            return! MusicBrainz.getInfoAsync discId |> Async.AwaitTask
+            let! result = MusicBrainz.getInfoAsync discId |> Async.AwaitTask
+            return result
         with ex ->
             Console.Error.WriteLine(ex)
             return None
@@ -51,10 +51,17 @@ module Discovery =
         else
             printfn $"[Discovery] [{driveNumber}] Querying MusicBrainz..."
 
-            let! candidate =
-                asyncGetDiscIds driveNumber driveInfo
-                |> AsyncSeq.chooseAsync asyncQueryMusicBrainz
-                |> AsyncSeq.tryFirst
+            let! discIds = asyncGetDiscIds driveNumber driveInfo
+
+            let! candidates =
+                discIds
+                |> Seq.map asyncQueryMusicBrainz
+                |> Async.Parallel
+
+            let candidate =
+                candidates
+                |> Seq.choose id
+                |> Seq.tryHead
 
             match candidate with
             | Some newDisc ->

@@ -11,12 +11,17 @@ module Discovery =
         | Some id -> id
         | None -> ()
 
+        // Sometimes abcde-musicbrainz-tool can find a different MusicBrainz ID than icedax does,
+        // but other times abcde-musicbrainz-tool is very slow,
+        // so only try it if necessary.
+
         try
             let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber |> Async.AwaitTask
 
-            match abcde_id with
-            | Some id -> id
-            | None -> ()
+            if abcde_id <> icedax_id then
+                match abcde_id with
+                | Some id -> id
+                | _ -> ()
         with ex ->
             Console.Error.WriteLine(ex)
     }

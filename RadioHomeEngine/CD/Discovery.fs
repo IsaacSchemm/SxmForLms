@@ -1,11 +1,10 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.Threading.Tasks
 open FSharp.Control
 
 module Discovery =
-    let private getDiscIdsAsync driveNumber driveInfo = taskSeq {
+    let private asyncGetDiscIds driveNumber driveInfo = asyncSeq {
         let icedax_id = driveInfo.discid
 
         match icedax_id with
@@ -13,7 +12,7 @@ module Discovery =
         | None -> ()
 
         try
-            let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber
+            let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber |> Async.AwaitTask
 
             match abcde_id with
             | Some id -> id
@@ -22,18 +21,18 @@ module Discovery =
             Console.Error.WriteLine(ex)
     }
 
-    let private queryMusicBrainzAsync discId = task {
+    let private asyncQueryMusicBrainz discId = async {
         try
-            return! MusicBrainz.getInfoAsync discId
+            return! MusicBrainz.getInfoAsync discId |> Async.AwaitTask
         with ex ->
             Console.Error.WriteLine(ex)
             return None
     }
 
-    let getDiscInfoAsync (driveNumber: int) = task {
+    let asyncGetDiscInfo (driveNumber: int) = async {
         printfn $"[Discovery] [{driveNumber}] Scanning drive {driveNumber}..."
 
-        let! driveInfo = Icedax.getInfoAsync driveNumber
+        let! driveInfo = Icedax.getInfoAsync driveNumber |> Async.AwaitTask
         let disc = driveInfo.disc
 
         if driveInfo.disc.tracks = [] then
@@ -48,9 +47,9 @@ module Discovery =
             printfn $"[Discovery] [{driveNumber}] Querying MusicBrainz..."
 
             let! candidate =
-                getDiscIdsAsync driveNumber driveInfo
-                |> TaskSeq.chooseAsync queryMusicBrainzAsync
-                |> TaskSeq.tryHead
+                asyncGetDiscIds driveNumber driveInfo
+                |> AsyncSeq.chooseAsync asyncQueryMusicBrainz
+                |> AsyncSeq.tryFirst
 
             match candidate with
             | Some newDisc ->
@@ -62,7 +61,11 @@ module Discovery =
                 return driveInfo
     }
 
-    let getAllDiscInfoAsync (driveNumbers: int seq) =
-        driveNumbers
-        |> Seq.map getDiscInfoAsync
-        |> Task.WhenAll
+    let getAllDiscInfoAsync (driveNumbers: int seq) = task {
+        let! array =
+            driveNumbers
+            |> Seq.map asyncGetDiscInfo
+            |> Async.Parallel
+
+        return array
+    }

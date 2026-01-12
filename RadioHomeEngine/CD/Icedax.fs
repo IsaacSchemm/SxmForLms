@@ -67,14 +67,19 @@ module Icedax =
 
     let noDiscMessage = "load cdrom please and press enter"
 
-    let getInfo driveNumber =
+    let getInfoAsync driveNumber = task {
         let device = DiscDrives.all[driveNumber]
 
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
             |> Process.Start
 
-        let body =
+        let _ = task {
+            do! Task.Delay(5000)
+            if not proc.HasExited then proc.Kill()
+        }
+
+        let! body = task {
             let body = new StringBuilder()
 
             use sr = proc.StandardError
@@ -91,9 +96,12 @@ module Icedax =
                     if body.ToString().EndsWith(noDiscMessage) then
                         proc.Kill()
 
-            body.ToString()
+            return body.ToString()
+        }
 
-        proc.WaitForExit()
+        do! proc.WaitForExitAsync()
+
+        if not proc.HasExited then proc.Kill()
 
         let mutable albumTitle = None
         let mutable tracks = []
@@ -109,23 +117,21 @@ module Icedax =
                 discid <- Some x
             | _ -> ()
 
-        {
+        return {
             driveNumber = driveNumber
             discid = discid
-            disc =
-                if tracks = []
-                then None
-                else Some {
-                    title = albumTitle |> Option.defaultValue ""
-                    artists = []
-                    tracks = [
-                        for t in tracks |> Seq.sortBy (fun t -> t.number) do {
-                            title = t.title
-                            position = t.number
-                        }
-                    ]
+            disc = {
+                title = albumTitle |> Option.defaultValue ""
+                artists = []
+                tracks = [
+                    for t in tracks |> Seq.sortBy (fun t -> t.number) do {
+                        title = t.title
+                        position = t.number
+                    }
+                ]
             }
         }
+    }
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2
     let sectorsPerSecond = 75

@@ -55,29 +55,25 @@
 
     @foreach (var drive in Model.CDs)
     {
+        var disc = drive.disc;
+
         <h1>CD Drive @drive.driveNumber</h1>
 
-        @foreach (var disc in drive.Discs)
+        <p>
+            <div style="font-size: 150%">@disc.title</div>
+            @foreach (var artist in disc.artists)
+            {
+                <div>@artist</div>
+            }
+        </p>
+
+        if (!disc.tracks.IsEmpty)
         {
-            var hasTrackTitles = disc.tracks.Any(track => track.title != "");
-
-            <p>
-                <span style="font-size: 150%">@disc.title</span>
-                <br />
-                @foreach (var artist in disc.artists)
-                {
-                    <span>@artist</span>
-                }
-            </p>
-
             <table class="trackTable">
                 <thead>
                     <tr>
                         <th scope="col">Track</th>
-                        @if (hasTrackTitles)
-                        {
-                            <th scope="col" align="left">Title</th>
-                        }
+                        <th scope="col" align="left">Title</th>
                         <th scope="col" align="left">Download</th>
                     </tr>
                 </thead>
@@ -88,12 +84,9 @@
                             <td>
                                 @track.position
                             </td>
-                            @if (hasTrackTitles)
-                            {
-                                <td align="left">
-                                    @track.title
-                                </td>
-                            }
+                            <td align="left">
+                                @track.title
+                            </td>
                             <td align="left">
                                 <a href="/CD/PlayTrack?driveNumber=@drive.driveNumber&track=@track.position">
                                     .wav
@@ -103,33 +96,33 @@
                     }
                 </tbody>
             </table>
-
-            <fieldset>
-                <legend>Play on</legend>
-
-                @foreach (var player in Model.Players)
-                {
-                    <p>
-                        <form asp-action="PlayCD" target="myframe">
-                            <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
-                            <input type="hidden" name="mac" value="@player.MacAddress" />
-                            <button type="submit">
-                                @player.Name
-                            </button>
-                        </form>
-                    </p>
-                }
-            </fieldset>
-
-            <p>
-                <form asp-action="RipCD" target="myframe">
-                    <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
-                    <button type="submit">
-                        Rip CD
-                    </button>
-                </form>
-            </p>
         }
+
+        <fieldset>
+            <legend>Play on</legend>
+
+            @foreach (var player in Model.Players)
+            {
+                <p>
+                    <form asp-action="PlayCD" target="myframe">
+                        <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                        <input type="hidden" name="mac" value="@player.MacAddress" />
+                        <button type="submit">
+                            @player.Name
+                        </button>
+                    </form>
+                </p>
+            }
+        </fieldset>
+
+        <p>
+            <form asp-action="RipCD" target="myframe">
+                <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                <button type="submit">
+                    Rip CD
+                </button>
+            </form>
+        </p>
 
         <p>
             <form asp-action="EjectCD" target="myframe">

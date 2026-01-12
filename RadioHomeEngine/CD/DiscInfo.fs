@@ -14,6 +14,5 @@ type DiscInfo = {
 type DriveInfo = {
     driveNumber: int
     discid: string option
-    disc: DiscInfo option
-} with
-    member this.Discs = Option.toList this.disc
+    disc: DiscInfo
+}

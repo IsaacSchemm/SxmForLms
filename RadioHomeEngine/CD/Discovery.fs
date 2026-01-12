@@ -33,18 +33,18 @@ module Discovery =
     let getDiscInfoAsync (driveNumber: int) = task {
         printfn $"[Discovery] [{driveNumber}] Scanning drive {driveNumber}..."
 
-        let driveInfo = Icedax.getInfo driveNumber
+        let! driveInfo = Icedax.getInfoAsync driveNumber
+        let disc = driveInfo.disc
 
-        match driveInfo.disc with
-        | None ->
-            printfn $"[Discovery] [{driveNumber}] No disc"
+        if driveInfo.disc.tracks = [] then
+            printfn $"[Discovery] [{driveNumber}] No tracks found on disc, not attempting MusicBrainz lookup"
             return driveInfo
 
-        | Some disc when not (String.IsNullOrEmpty (disc.title)) ->
+        else if not (String.IsNullOrEmpty (disc.title)) then
             printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
             return driveInfo
 
-        | Some disc ->
+        else
             printfn $"[Discovery] [{driveNumber}] Querying MusicBrainz..."
 
             let! candidate =
@@ -55,7 +55,7 @@ module Discovery =
             match candidate with
             | Some newDisc ->
                 printfn $"[Discovery] [{driveNumber}] Using title {newDisc.title} from MusicBrainz"
-                return { driveInfo with disc = Some newDisc }
+                return { driveInfo with disc = newDisc }
             | None ->
                 printfn $"[Discovery] [{driveNumber}] Not found on MusicBrainz"
                 printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"

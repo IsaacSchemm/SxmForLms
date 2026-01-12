@@ -53,76 +53,87 @@
 
     <hr />
 
-    @foreach (var cd in Model.CDs)
+    @foreach (var drive in Model.CDs)
     {
-        <h1>CD @cd.DriveNumber</h1>
+        <h1>CD Drive @drive.driveNumber</h1>
 
-        <p>
-            <span style="font-size: 150%">@cd.Title</span>
-            <br />
-            @foreach (var artist in cd.Artists)
-            {
-                <span>@artist</span>
-            }
-        </p>
+        @foreach (var disc in drive.Discs)
+        {
+            var hasTrackTitles = disc.tracks.Any(track => track.title != "");
 
-        <table class="trackTable">
-            <thead>
-                <tr>
-                    <th scope="col">Track</th>
-                    <th scope="col" align="left">Title</th>
-                    <th scope="col" align="left">Download</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var track in cd.Tracks)
+            <p>
+                <span style="font-size: 150%">@disc.title</span>
+                <br />
+                @foreach (var artist in disc.artists)
                 {
-                    <tr>
-                        <td>
-                            @track.Position
-                        </td>
-                        <td align="left">
-                            @track.Title
-                        </td>
-                        <td align="left">
-                            <a href="/CD/PlayTrack?driveNumber=@cd.DriveNumber&track=@track.Position">
-                                .wav
-                            </a>
-                        </td>
-                    </tr>
+                    <span>@artist</span>
                 }
-            </tbody>
-        </table>
+            </p>
 
-        <fieldset>
-            <legend>Play on</legend>
+            <table class="trackTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Track</th>
+                        @if (hasTrackTitles)
+                        {
+                            <th scope="col" align="left">Title</th>
+                        }
+                        <th scope="col" align="left">Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var track in disc.tracks)
+                    {
+                        <tr>
+                            <td>
+                                @track.position
+                            </td>
+                            @if (hasTrackTitles)
+                            {
+                                <td align="left">
+                                    @track.title
+                                </td>
+                            }
+                            <td align="left">
+                                <a href="/CD/PlayTrack?driveNumber=@drive.driveNumber&track=@track.position">
+                                    .wav
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
 
-            @foreach (var player in Model.Players)
-            {
-                <p>
-                    <form asp-action="PlayCD" target="myframe">
-                        <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
-                        <input type="hidden" name="mac" value="@player.MacAddress" />
-                        <button type="submit">
-                            @player.Name
-                        </button>
-                    </form>
-                </p>
-            }
-        </fieldset>
+            <fieldset>
+                <legend>Play on</legend>
 
-        <p>
-            <form asp-action="RipCD" target="myframe">
-                <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
-                <button type="submit">
-                    Rip CD
-                </button>
-            </form>
-        </p>
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="PlayCD" target="myframe">
+                            <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <button type="submit">
+                                @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </fieldset>
+
+            <p>
+                <form asp-action="RipCD" target="myframe">
+                    <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                    <button type="submit">
+                        Rip CD
+                    </button>
+                </form>
+            </p>
+        }
 
         <p>
             <form asp-action="EjectCD" target="myframe">
-                <input type="hidden" name="driveNumber" value="@cd.DriveNumber" />
+                <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
                 <button type="submit">
                     Eject
                 </button>

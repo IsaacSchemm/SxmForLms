@@ -1,54 +1,68 @@
 ﻿namespace RadioHomeEngine
 
 open System
+open System.Threading.Tasks
 open FSharp.Control
 
 module Discovery =
-    let getInfoAsync driveNumbers = task {
-        let mutable list = []
+    let private getDiscIdsAsync driveNumber driveInfo = taskSeq {
+        let icedax_id = driveInfo.discid
 
-        for driveNumber in driveNumbers do
-            printfn $"[Discovery.fs] [{driveNumber}] running icedax"
+        match icedax_id with
+        | Some id -> id
+        | None -> ()
 
-            let fromDisc = Icedax.getInfo driveNumber
+        try
+            let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber
 
-            if fromDisc.info.tracks.Length > 0 then
-                let discIds = taskSeq {
-                    match fromDisc.discid with
-                    | Some discid -> discid
-                    | None -> ()
-
-                    printfn $"[Discovery.fs] [{driveNumber}] running abcde-musicbrainz-tool"
-                    try
-                        let! discId2 = Abcde.getMusicBrainzDiscIdAsync driveNumber
-                        match discId2 with
-                        | Some discid -> discid
-                        | None -> ()
-                    with ex ->
-                        Console.Error.WriteLine(ex)
-                }
-
-                let candidates = taskSeq {
-                    for discId in discIds do
-                        printfn $"[Discovery.fs] [{driveNumber}] querying musicbrainz"
-                        try
-                            let! result = MusicBrainz.getInfoAsync driveNumber discId
-                            match result with
-                            | Some info -> info
-                            | None -> ()
-                        with ex ->
-                            Console.Error.WriteLine(ex)
-
-                    fromDisc.info
-                }
-
-                let! singleCandidate =
-                    candidates
-                    |> TaskSeq.tryHead
-
-                match singleCandidate with
-                | Some c -> list <- c :: list
-                | None -> ()
-
-        return list
+            match abcde_id with
+            | Some id -> id
+            | None -> ()
+        with ex ->
+            Console.Error.WriteLine(ex)
     }
+
+    let private queryMusicBrainzAsync discId = task {
+        try
+            return! MusicBrainz.getInfoAsync discId
+        with ex ->
+            Console.Error.WriteLine(ex)
+            return None
+    }
+
+    let getDiscInfoAsync (driveNumber: int) = task {
+        printfn $"[Discovery] [{driveNumber}] Scanning drive {driveNumber}..."
+
+        let driveInfo = Icedax.getInfo driveNumber
+
+        match driveInfo.disc with
+        | None ->
+            printfn $"[Discovery] [{driveNumber}] No disc"
+            return driveInfo
+
+        | Some disc when not (String.IsNullOrEmpty (disc.title)) ->
+            printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
+            return driveInfo
+
+        | Some disc ->
+            printfn $"[Discovery] [{driveNumber}] Querying MusicBrainz..."
+
+            let! candidate =
+                getDiscIdsAsync driveNumber driveInfo
+                |> TaskSeq.chooseAsync queryMusicBrainzAsync
+                |> TaskSeq.tryHead
+
+            match candidate with
+            | Some newDisc ->
+                printfn $"[Discovery] [{driveNumber}] Using title {newDisc.title} from MusicBrainz"
+                return { driveInfo with disc = Some newDisc }
+            | None ->
+                printfn $"[Discovery] [{driveNumber}] Not found on MusicBrainz"
+                printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
+                return driveInfo
+    }
+
+    let getAllDiscInfoAsync (driveNumbers: int seq) =
+        driveNumbers
+        |> Seq.map getDiscInfoAsync
+        |> Task.WhenAll

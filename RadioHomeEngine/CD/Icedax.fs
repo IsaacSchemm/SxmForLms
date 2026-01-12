@@ -109,21 +109,23 @@ module Icedax =
                 discid <- Some x
             | _ -> ()
 
-        {|
+        {
+            driveNumber = driveNumber
             discid = discid
-            info = {
-                driveNumber = driveNumber
-                title = albumTitle |> Option.orElse discid |> Option.defaultValue ""
-                artists = []
-                tracks = [
-                    for t in tracks |> Seq.sortBy (fun t -> t.number) do {
-                        title = t.title
-                        position = t.number
-                    }
-                ]
-                source = "icedax / CD-Text"
+            disc =
+                if tracks = []
+                then None
+                else Some {
+                    title = albumTitle |> Option.defaultValue ""
+                    artists = []
+                    tracks = [
+                        for t in tracks |> Seq.sortBy (fun t -> t.number) do {
+                            title = t.title
+                            position = t.number
+                        }
+                    ]
             }
-        |}
+        }
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2
     let sectorsPerSecond = 75

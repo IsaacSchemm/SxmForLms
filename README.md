@@ -56,3 +56,11 @@ In the default mapping, the "Source" button is used to flip between modes for th
 RadioHomeEngine supports more than one CD drive.
 
 When playing a CD using infrared remote commands, all inserted CDs will be added to the playlist, in order.
+
+Note that when you rip a CD, `abcde` handles metadata retrieval itself (to support album art, etc).
+You might want to add a [`.abcde.conf`](https://manpages.debian.org/trixie/abcde/abcde.1.en.html) configuration file.
+Some example options you might use include:
+
+    CDDBMETHOD=cdtext,musicbrainz
+    WAVOUTPUTDIR=/tmp
+    LOWDISK=y

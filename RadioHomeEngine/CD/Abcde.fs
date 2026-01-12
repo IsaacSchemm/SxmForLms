@@ -36,7 +36,7 @@ module Abcde =
         else return Some id
     }
 
-    let ripAsync driveNumbers = task {
+    let ripAsync (driveNumbers: int seq) = task {
         if ripping then
             Console.Error.WriteLine("Rip in progress; not starting new rip")
         else

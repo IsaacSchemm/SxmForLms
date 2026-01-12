@@ -41,20 +41,23 @@ module AtomicActions =
 
         do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-        let! info = Discovery.getInfoAsync driveNumbers
+        let! drives = Discovery.getAllDiscInfoAsync driveNumbers
 
         do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
         do! Playlist.clearAsync player
 
         let! address = Network.getAddressAsync ()
-        for disc in info do
-            for track in disc.tracks do
-                let title =
-                    match track.title with
-                    | "" -> $"Track {track.position}"
-                    | x -> x
-                do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={disc.driveNumber}&track={track.position}" title
+        for driveInfo in drives do
+            match driveInfo.disc with
+            | None -> ()
+            | Some disc ->
+                for track in disc.tracks do
+                    let title =
+                        match track.title with
+                        | "" -> $"Track {track.position}"
+                        | x -> x
+                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={driveInfo.driveNumber}&track={track.position}" title
 
         do! Playlist.playAsync player
     }

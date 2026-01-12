@@ -1,11 +1,9 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.IO
 open System.Net
 open System.Net.Http
 open System.Text
-open System.Threading.Tasks
 
 module MusicBrainz =
     let private client =
@@ -17,7 +15,7 @@ module MusicBrainz =
 
     let private parseAs<'T> (_: 'T) (json: string) = Json.JsonSerializer.Deserialize<'T>(json)
 
-    let getInfoAsync (driveNumber: int) (discId: string) = task {
+    let getInfoAsync (discId: string) = task {
         use! discResponse = client.GetAsync($"discid/{discId}?inc=recordings+artist-credits")
         if discResponse.StatusCode = HttpStatusCode.NotFound then
             return None
@@ -43,7 +41,6 @@ module MusicBrainz =
             let release = Seq.head disc.releases
 
             return Some {
-                driveNumber = driveNumber
                 artists = [
                     for artist in release.``artist-credit`` do
                         artist.name
@@ -56,6 +53,5 @@ module MusicBrainz =
                             position = track.position
                         }
                 ]
-                source = $"MusicBrainz: {discId}"
             }
     }

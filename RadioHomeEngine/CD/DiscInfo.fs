@@ -6,9 +6,14 @@ type TrackInfo = {
 }
 
 type DiscInfo = {
-    driveNumber: int
     title: string
     artists: string list
     tracks: TrackInfo list
-    source: string
 }
+
+type DriveInfo = {
+    driveNumber: int
+    discid: string option
+    disc: DiscInfo option
+} with
+    member this.Discs = Option.toList this.disc

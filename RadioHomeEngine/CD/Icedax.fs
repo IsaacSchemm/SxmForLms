@@ -75,7 +75,7 @@ module Icedax =
             |> Process.Start
 
         let _ = task {
-            do! Task.Delay(5000)
+            do! Task.Delay(10000)
             if not proc.HasExited then proc.Kill()
         }
 

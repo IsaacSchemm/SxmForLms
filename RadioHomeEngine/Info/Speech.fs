@@ -2,7 +2,6 @@
 
 open System
 open System.Runtime.Caching
-open System.Threading
 
 open LyrionCLI
 

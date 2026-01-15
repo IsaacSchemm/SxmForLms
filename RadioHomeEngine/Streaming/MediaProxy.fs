@@ -173,7 +173,7 @@ module MediaProxy =
                 algorithm.KeySize <- 128
                 algorithm.BlockSize <- 128
 
-                algorithm.Key <- Option.get SiriusXMClient.key
+                algorithm.Key <- SiriusXMClient.getKey ()
 
                 algorithm.IV <-
                     let iv = Array.zeroCreate 16

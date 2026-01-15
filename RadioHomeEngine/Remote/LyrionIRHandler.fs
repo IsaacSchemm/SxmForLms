@@ -1,7 +1,6 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.Diagnostics
 open System.Globalization
 open System.IO
 open System.Text.RegularExpressions
@@ -379,7 +378,7 @@ module LyrionIRHandler =
         inherit BackgroundService()
 
         override _.ExecuteAsync(cancellationToken) = task {
-            LyrionKnownPlayers.WhenAdded.attachHandler (fun player ->
+            LyrionKnownPlayers.attachNewPlayerHandler (fun player ->
                 printfn "Creating IR handler for %A" player
                 handlers <- new Handler(player) :: handlers
             )

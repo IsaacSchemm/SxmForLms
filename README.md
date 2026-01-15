@@ -44,14 +44,28 @@ and/or through `screen`.
 ## Configuration
 
 The user's latitude and longitude (used for weather forecasts) are stored in `location.txt`.
+Their SiriusXM username and password are stored in `username.txt` and `password.txt`, respectively.
 
-## IR
+(In both cases, the software assumes the user is in the U.S.)
+
+## Other dependencies
+
+* `ip`
+* `ffmpeg`
+* `eject`
+* `icedax`
+* `abcde`
+* `espeak`
+
+## Features
+
+### IR
 
 RadioHomeEngine monitors LMS for infrared remote commands, and performs actions based on the mappings in `LyrionIR.fs`.
 
 In the default mapping, the "Source" button is used to flip between modes for the number buttons, and the number buttons trigger a prompt that can activate special actions.
 
-## Audio CD playback
+### Audio CD playback
 
 RadioHomeEngine supports more than one CD drive.
 

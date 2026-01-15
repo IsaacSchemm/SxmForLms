@@ -30,9 +30,10 @@ module NWS =
         | :? 'T as item -> Some item
         | _ -> None
 
+    let cacheKey = $"{Guid.NewGuid()}"
+
     let getPointAsync cancellationToken = task {
-        let key = "058769d7-1c03-49ca-856c-25b22887cad3"
-        match tryCacheGet key with
+        match tryCacheGet cacheKey with
         | Some obj ->
             return obj
         | None ->
@@ -55,7 +56,7 @@ module NWS =
                     |}
                 |}
             |}
-            MemoryCache.Default.Add(key, obj, DateTime.UtcNow.AddDays(1)) |> ignore
+            MemoryCache.Default.Add(cacheKey, obj, DateTime.UtcNow.AddDays(1)) |> ignore
             return obj
     }
 

@@ -17,13 +17,12 @@ module LyrionKnownPlayers =
 
     let mutable known = Set.empty
 
-    module WhenAdded =
-        let mutable handlers: (Player -> unit) list = []
+    let mutable onPlayerAdded: (Player -> unit) list = []
 
-        let attachHandler h =
-            handlers <- h :: handlers
-            for player in known do
-                h player
+    let attachNewPlayerHandler h =
+        onPlayerAdded <- h :: onPlayerAdded
+        for player in known do
+            h player
 
     let refreshAsync () = task {
         try
@@ -33,7 +32,7 @@ module LyrionKnownPlayers =
 
                 if not (known |> Set.contains player) then
                     known <- known |> Set.add player
-                    for h in WhenAdded.handlers do
+                    for h in onPlayerAdded do
                         h player
         with ex ->
             Console.Error.WriteLine(ex)
@@ -42,8 +41,10 @@ module LyrionKnownPlayers =
     module PowerStates =
         let cache = MemoryCache.Default
 
+        let keyPrefix = Guid.NewGuid()
+
         let getKey (Player id) =
-            $"34ed04dd-2edc-4e58-8020-74026d4b5511-{id}"
+            $"{keyPrefix}-{id}"
 
         let getCachedState player =
             match cache[getKey player] with
@@ -72,17 +73,6 @@ module LyrionKnownPlayers =
             | None ->
                 let! state = getCurrentStateAsync player
                 return state
-        }
-
-        let getPlayersWithStateAsync requestedState = task {
-            let mutable list = []
-
-            for player in known do
-                let! state = getStateAsync player
-                if state = requestedState then
-                    list <- player :: list
-
-            return list
         }
 
     module Names =

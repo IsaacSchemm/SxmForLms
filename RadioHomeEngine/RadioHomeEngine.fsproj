@@ -15,7 +15,6 @@
     <Compile Include="ChannelMemory.fs" />
     <Compile Include="Lyrion\LyrionCLI.fs" />
     <Compile Include="Lyrion\LyrionKnownPlayers.fs" />
-    <Compile Include="Lyrion\LyrionFavorites.fs" />
     <Compile Include="CD\DiscInfo.fs" />
     <Compile Include="CD\DiscDrives.fs" />
     <Compile Include="CD\Icedax.fs" />

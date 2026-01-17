@@ -124,3 +124,52 @@ module AtomicActions =
                     alert.info
             ]
     }
+
+    let performAlternateActionAsync player atomicAction = task {
+        match atomicAction with
+        | PlaySiriusXMChannel channelNumber ->
+            do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
+
+            let! channels = SiriusXMClient.getChannelsAsync CancellationToken.None
+            let channel =
+                channels
+                |> Seq.where (fun c -> c.channelNumber = $"{channelNumber}")
+                |> Seq.tryHead
+
+            match channel with
+            | None -> ()
+            | Some c ->
+                let! playlist = SiriusXMClient.getPlaylistAsync c.channelGuid c.channelId CancellationToken.None
+                let song =
+                    playlist.cuts
+                    |> Seq.sortByDescending (fun cut -> cut.startTime)
+                    |> Seq.tryHead
+
+                match song with
+                | None -> ()
+                | Some c ->
+                    let artist = String.concat " / " c.artists
+                    do! Players.setDisplayAsync player artist c.title (TimeSpan.FromSeconds(10))
+
+        | PlayCD scope ->
+            do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
+
+            let! info = Discovery.getAllDiscInfoAsync scope
+            match info with
+            | [] ->
+                do! Players.setDisplayAsync player "Audio CD" "No disc found" (TimeSpan.FromSeconds(10))
+            | [drive] ->
+                let artist =
+                    match drive.disc.artists with
+                    | [] -> "Unknown artist"
+                    | artists -> String.concat " / " artists
+                let title =
+                    if not (String.IsNullOrWhiteSpace(drive.disc.title))
+                    then drive.disc.title
+                    else "Unknown disc"
+                do! Players.setDisplayAsync player artist title (TimeSpan.FromSeconds(10))
+            | _ :: _ :: _ ->
+                do! Players.setDisplayAsync player "Audio CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
+
+        | _ -> ()
+    }

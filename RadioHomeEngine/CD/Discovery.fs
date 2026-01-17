@@ -80,5 +80,5 @@ module Discovery =
             |> Seq.map asyncGetDiscInfo
             |> Async.Parallel
 
-        return array
+        return Array.toList array
     }

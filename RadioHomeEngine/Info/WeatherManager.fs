@@ -6,27 +6,24 @@ open Microsoft.Extensions.Hosting
 
 open LyrionCLI
 
-module WeatherManager =
-    type Service() =
-        inherit BackgroundService()
+type WeatherService() =
+    inherit BackgroundService()
 
-        override _.ExecuteAsync cancellationToken = task {
-            while not cancellationToken.IsCancellationRequested do
-                try
-                    let mutable players = []
-                    for player in LyrionKnownPlayers.known do
-                        let! state = Players.getPowerAsync player
-                        if state then
-                            let! mode = Playlist.getModeAsync player
-                            if mode = Playlist.Mode.Playing then
-                                players <- player :: players
+    override _.ExecuteAsync cancellationToken = task {
+        while not cancellationToken.IsCancellationRequested do
+            try
+                let mutable players = []
+                for playerData in PlayerConnections.GetAll() do
+                    if playerData.PowerState then
+                        let! mode = Playlist.getModeAsync playerData.Player
+                        if mode = Playlist.Mode.Playing then
+                            players <- playerData.Player :: players
+                if not (List.isEmpty players) then
+                    let! alerts = Weather.getNewAlertsAsync cancellationToken
+                    if not (List.isEmpty alerts) then
+                        for player in players do
+                            do! Speech.readAsync player [for alert in alerts do alert.info]
+            with ex -> Console.Error.WriteLine(ex)
 
-                    if not (List.isEmpty players) then
-                        let! alerts = Weather.getNewAlertsAsync cancellationToken
-                        if not (List.isEmpty alerts) then
-                            for player in players do
-                                do! Speech.readAsync player [for alert in alerts do alert.info]
-                with ex -> Console.Error.WriteLine(ex)
-
-                do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
-        }
+            do! Task.Delay(TimeSpan.FromMinutes(5), cancellationToken)
+    }

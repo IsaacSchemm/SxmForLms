@@ -7,8 +7,6 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 
-open Microsoft.Extensions.Hosting
-
 open LyrionCLI
 open LyrionIR
 
@@ -183,13 +181,11 @@ module LyrionIRHandler =
                 do! Players.simulateButtonAsync player button
 
             | Custom action ->
-                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-                if powerState then
+                if PlayerConnections.IsOn(player) then
                     do! performCustomActionAsync action
 
             | Atomic action ->
-                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-                if powerState then
+                if PlayerConnections.IsOn(player) then
                     do! AtomicActions.performActionAsync player action
 
             | IRPress name ->
@@ -199,8 +195,7 @@ module LyrionIRHandler =
                 do! Players.simulateButtonAsync player $"playPreset_{n}"
 
             | Number n ->
-                let! powerState = LyrionKnownPlayers.PowerStates.getStateAsync player
-                if powerState then
+                if PlayerConnections.IsOn(player) then
                     let prompt =
                         match behavior with
                         | Nothing -> "Press Input/Source to set up number buttons"
@@ -356,36 +351,13 @@ module LyrionIRHandler =
             with ex -> Console.Error.WriteLine(ex)
         }
 
-        let subscriber = reader |> Observable.subscribe (fun command ->
-            ignore (processCommandAsync command))
+        let subscriber = LyrionCLI.subscribeToResponses (processCommandAsync >> ignore)
 
         member _.Player = player
 
         member _.ProcessPressAsync(press) = processPressAsync press
 
         interface IDisposable with
-            member _.Dispose() = subscriber.Dispose()
-
-    let mutable private handlers: Handler list = []
-
-    let ProcessPressAsync(player: Player, press: Press) = task {
-        for handler in handlers do
-            if handler.Player = player then
-                do! handler.ProcessPressAsync(press)
-    }
-
-    type Service() =
-        inherit BackgroundService()
-
-        override _.ExecuteAsync(cancellationToken) = task {
-            LyrionKnownPlayers.attachNewPlayerHandler (fun player ->
-                printfn "Creating IR handler for %A" player
-                handlers <- new Handler(player) :: handlers
-            )
-
-            while not cancellationToken.IsCancellationRequested do
-                do! Task.Delay(-1, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
-
-            for x in handlers do
-                (x :> IDisposable).Dispose()
-        }
+            member _.Dispose() =
+                printfn "Stopping IR handler for %A" player
+                subscriber.Dispose()

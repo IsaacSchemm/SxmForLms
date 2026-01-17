@@ -35,16 +35,14 @@ namespace RadioHomeEngine.AspNetCore.Controllers
 
             var drives = await Discovery.getAllDiscInfoAsync(DiscDrives.allDriveNumbers);
 
-            var knownPlayers = await LyrionKnownPlayers.Names.getPlayersWithNamesAsync();
-
             return View(new ChannelsModel
             {
                 CDs = [.. drives],
                 Channels = await channelsTask,
                 Players = [
-                    .. knownPlayers.Select(k => new ChannelsModel.Player {
-                        MacAddress = k.player.Item,
-                        Name = k.name
+                    .. PlayerConnections.GetAll().Select(conn => new ChannelsModel.Player {
+                        MacAddress = conn.MacAddress,
+                        Name = conn.Name
                     })
                 ]
             });

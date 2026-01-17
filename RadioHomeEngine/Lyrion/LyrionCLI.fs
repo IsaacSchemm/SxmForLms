@@ -2,113 +2,32 @@
 
 open System
 open System.IO
-open System.Net.Sockets
-open System.Text
-open System.Threading
 open System.Threading.Channels
 open System.Threading.Tasks
 
-open Microsoft.Extensions.Hosting
-
 module LyrionCLI =
-    let port = 9090
+    let private channel = Channel.CreateUnbounded<string>()
 
-    let encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier = false)
+    let private event = new Event<string list>()
 
-    let recieved = new Event<string list>()
-
-    let reader = recieved.Publish
-    let channel = Channel.CreateUnbounded<string>()
-
-    let mutable initialConnectionEstablished = false
-
-    exception NotConnectedException
-
-    let sendAsync command =
+    let sendCommandAsync command =
         command
         |> Seq.map Uri.EscapeDataString
         |> String.concat " "
         |> channel.Writer.WriteAsync
 
-    type Service() =
-        inherit BackgroundService()
+    let readNextCommandAsync cancellationToken =
+        channel.Reader.ReadAsync(cancellationToken)
 
-        override _.ExecuteAsync(cancellationToken) = task {
-            while not cancellationToken.IsCancellationRequested do
-                let! ip = Network.getAddressAsync ()
+    let broadcastResponse response =
+        event.Trigger(response)
 
-                printfn $"Connecting to {ip}:{port}"
+    let subscribeToResponses callback =
+        Observable.subscribe callback event.Publish
 
-                let client = new TcpClient()
+    let mutable initialConnectionEstablished = false
 
-                let mutable connected = false
-                while not connected do
-                    try
-                        do! client.ConnectAsync(ip, port, cancellationToken)
-                        connected <- true
-                    with :? SocketException as ex ->
-                        printfn "%O" ex
-                        do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
-
-                initialConnectionEstablished <- true
-
-                use stream = client.GetStream()
-
-                let readTask = task {
-                    try
-                        use sr = new StreamReader(stream, Encoding.UTF8)
-
-                        printfn $"Connected to port {port}"
-
-                        do! sendAsync ["subscribe"; "client,playlist,power,unknownir"]
-
-                        let mutable finished = false
-                        while client.Connected && not finished do
-                            let! line = sr.ReadLineAsync(cancellationToken)
-                            if isNull line then
-                                client.Close()
-                                finished <- true
-                            else
-                                let command =
-                                    line
-                                    |> Utility.split ' '
-                                    |> Seq.map Uri.UnescapeDataString
-                                    |> Seq.toList
-                                recieved.Trigger(command)
-                    with
-                        | :? IOException when not client.Connected -> ()
-                        | :? OperationCanceledException -> ()
-                }
-
-                let writeToken, cancelWrite =
-                    let cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
-                    cts.Token, fun () -> cts.Cancel()
-
-                ignore (task {
-                    try
-                        use sw = new StreamWriter(stream, encoding, AutoFlush = true)
-
-                        while not writeToken.IsCancellationRequested do
-                            let! string = channel.Reader.ReadAsync(writeToken)
-                            let sb = new StringBuilder(string)
-                            do! sw.WriteLineAsync(sb, writeToken)
-                    with
-                        | :? IOException when not client.Connected -> ()
-                        | :? OperationCanceledException -> ()
-                })
-
-                do! readTask
-
-                printfn $"Disconnecting from port {port}"
-
-                client.Close()
-
-                printfn $"Disconnected from port {port}"
-                
-                cancelWrite ()
-
-                do! Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing)
-        }
+    exception NotConnectedException
 
     exception NoMatchingResponseException of command: string list
 
@@ -116,7 +35,7 @@ module LyrionCLI =
         let tcs = new TaskCompletionSource<'T>()
 
         use _ =
-            recieved.Publish
+            event.Publish
             |> Observable.choose chooser
             |> Observable.subscribe tcs.SetResult
 
@@ -131,7 +50,7 @@ module LyrionCLI =
         let _ = task {
             try
                 while not jointTask.IsCompleted do
-                    do! sendAsync command
+                    do! sendCommandAsync command
                     do! Task.Delay(500)
             with ex -> Console.Error.WriteLine(ex)
         }
@@ -152,11 +71,11 @@ module LyrionCLI =
             | ["pref"; "mediadirs"; paths ] -> Some (Uri.UnescapeDataString(paths).Split(','))
             | _ -> None)
 
-        let rescanAsync () = sendAsync ["rescan"]
+        let rescanAsync () = sendCommandAsync ["rescan"]
 
-        let exitAsync () = sendAsync ["exit"]
+        let exitAsync () = sendCommandAsync ["exit"]
 
-        let restartServer () = sendAsync ["restartserver"]
+        let restartServer () = sendCommandAsync ["restartserver"]
 
     module Players =
         let countAsync () = listenForAsync ["player"; "count"; "?"] (fun command ->
@@ -180,13 +99,13 @@ module LyrionCLI =
             | [x; "power"; "1"] when x = id -> Some true
             | _ -> None)
 
-        let setPowerAsync (Player id) state = sendAsync [
+        let setPowerAsync (Player id) state = sendCommandAsync [
             id
             "power"
             if state then "1" else "0"
         ]
 
-        let togglePowerAsync (Player id) = sendAsync [
+        let togglePowerAsync (Player id) = sendCommandAsync [
             id
             "power"
         ]
@@ -196,7 +115,7 @@ module LyrionCLI =
             | [x; "mixer"; "volume"; Decimal value] when x = id -> Some value
             | _ -> None)
 
-        let setVolumeAsync (Player id) volume = sendAsync [
+        let setVolumeAsync (Player id) volume = sendCommandAsync [
             id
             "mixer"
             "volume"
@@ -209,14 +128,14 @@ module LyrionCLI =
             | [x; "mixer"; "muting"; "1"] when x = id -> Some true
             | _ -> None)
 
-        let setMutingAsync (Player id) state = sendAsync [
+        let setMutingAsync (Player id) state = sendCommandAsync [
             id
             "mixer"
             "muting"
             if state then "1" else "0"
         ]
 
-        let toggleMutingAsync (Player id) = sendAsync [
+        let toggleMutingAsync (Player id) = sendCommandAsync [
             id
             "mixer"
             "muting"
@@ -232,7 +151,7 @@ module LyrionCLI =
             | [x; "displaynow"; line1; line2] when x = id -> Some (line1, line2)
             | _ -> None)
 
-        let setDisplayAsync (Player id) line1 line2 (duration: TimeSpan) = sendAsync [
+        let setDisplayAsync (Player id) line1 line2 (duration: TimeSpan) = sendCommandAsync [
             id
             "display"
             line1
@@ -240,13 +159,13 @@ module LyrionCLI =
             $"{duration.TotalSeconds}"
         ]
 
-        let simulateButtonAsync (Player id) buttoncode = sendAsync [
+        let simulateButtonAsync (Player id) buttoncode = sendCommandAsync [
             id
             "button"
             buttoncode
         ]
 
-        let simulateIRAsync (Player id) (ircode: int) (time: decimal) = sendAsync [
+        let simulateIRAsync (Player id) (ircode: int) (time: decimal) = sendCommandAsync [
             id
             "ir"
             ircode.ToString("x8")
@@ -254,23 +173,23 @@ module LyrionCLI =
         ]
 
     module Playlist =
-        let playAsync (Player id) = sendAsync [
+        let playAsync (Player id) = sendCommandAsync [
             id
             "play"
         ]
 
-        let stopAsync (Player id) = sendAsync [
+        let stopAsync (Player id) = sendCommandAsync [
             id
             "stop"
         ]
 
-        let setPauseAsync (Player id) state = sendAsync [
+        let setPauseAsync (Player id) state = sendCommandAsync [
             id
             "pause"
             if state then "1" else "0"
         ]
 
-        let setTimeAsync (Player id) origin (time: decimal) = sendAsync [
+        let setTimeAsync (Player id) origin (time: decimal) = sendCommandAsync [
             id
             "time"
 
@@ -283,7 +202,7 @@ module LyrionCLI =
                 failwithf "Unsupported seek origin %A %f" x time
         ]
 
-        let togglePauseAsync (Player id) = sendAsync [
+        let togglePauseAsync (Player id) = sendCommandAsync [
             id
             "pause"
         ]
@@ -302,7 +221,7 @@ module LyrionCLI =
             | [x; "title"; title] when x = id -> Some title
             | _ -> None)
 
-        let playItemAsync (Player id) item title = sendAsync [
+        let playItemAsync (Player id) item title = sendCommandAsync [
             id
             "playlist"
             "play"
@@ -310,7 +229,7 @@ module LyrionCLI =
             title
         ]
 
-        let addItemAsync (Player id) item title = sendAsync [
+        let addItemAsync (Player id) item title = sendCommandAsync [
             id
             "playlist"
             "add"
@@ -318,13 +237,13 @@ module LyrionCLI =
             title
         ]
 
-        let clearAsync (Player id) = sendAsync [
+        let clearAsync (Player id) = sendCommandAsync [
             id
             "playlist"
             "clear"
         ]
 
-        let insertItemAsync (Player id) item title = sendAsync [
+        let insertItemAsync (Player id) item title = sendCommandAsync [
             id
             "playlist"
             "insert"

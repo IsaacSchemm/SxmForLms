@@ -2,7 +2,6 @@
 
 open System
 open System.Globalization
-open System.Threading
 open System.Threading.Tasks
 
 open LyrionCLI
@@ -42,10 +41,12 @@ type LyrionIRHandler(player: Player) =
             }
     }
 
+    let promptIndicator = "> "
+
     let appendToPromptAsync text =
         match promptText with
         | Some prefix -> writePromptAsync $"{prefix}{text}"
-        | None -> writePromptAsync $"> {text}"
+        | None -> writePromptAsync $"{promptIndicator}{text}"
 
     let clearAsync () = task {
         promptText <- None
@@ -84,23 +85,23 @@ type LyrionIRHandler(player: Player) =
             if PlayerConnections.IsOn(player) then
                 do! AtomicActions.performActionAsync player action
 
-        | None, Backspace
         | None, NoAction -> ()
 
         | Some _, Number n ->
             do! appendToPromptAsync $"{n}"
 
-        | Some prompt, Backspace when prompt.StartsWith("> ") ->
+        | Some prompt, IR "favorites"
+        | Some prompt, IR "arrow_left" when prompt.StartsWith(promptIndicator) && prompt <> promptIndicator ->
             do! writePromptAsync (prompt.Substring(0, prompt.Length - 1))
 
         | Some prompt, Button "knob_push" ->
+            do! clearAsync ()
+
             let num = prompt.Substring(2)
             match AtomicActions.tryGetAction num with
+            | None -> ()
             | Some action ->
-                do! clearAsync ()
                 do! AtomicActions.performActionAsync player action
-            | None ->
-                do! writePromptAsync "> "
 
         | Some _, _ ->
             do! clearAsync()

@@ -73,7 +73,6 @@ module LyrionIR =
     | Button of string
     | Atomic of AtomicAction
     | Number of int
-    | Backspace
     | NoAction
 
     let Mappings = Map.ofList [
@@ -83,12 +82,12 @@ module LyrionIR =
         0x00ffc13e, Button "jump_fwd"
         0x00ff19e6, IR "rew"
         0x00ff41be, IR "fwd"
-        0x00ffc936, IR "play" // Play/Pause
+        0x00ffc936, Atomic PlayPause // Play/Pause
         0x00ff39c6, IR "voldown"
         0x00ff31ce, IR "volup"
         0x00ff6b94, Button "stop" // Flip
-        0x00ffe916, Atomic (PlayCD AllDrives) // Source
-        0x00ff6996, Atomic Forecast // Zoom
+        0x00ffe916, Atomic Information // Source
+        0x00ff6996, IR "play" // Zoom
         0x00ff8976, IR "home" // Menu
         0x00ff25da, Button "exit_left"
         0x00ffa956, IR "arrow_up"
@@ -105,7 +104,7 @@ module LyrionIR =
         0x00fff10e, Number 7
         0x00ff718e, Number 8
         0x00ffb14e, Number 9
-        0x00ff21de, NoAction // Recall
+        0x00ff21de, Atomic Replay // Recall
         0x00ff49b6, Number 0
-        0x00ff29d6, Backspace // Fav/⌫
+        0x00ff29d6, IR "favorites" // Fav/⌫
     ]

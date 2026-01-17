@@ -1,7 +1,6 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.Diagnostics
 open FSharp.Control
 
 open LyrionCLI

@@ -20,24 +20,22 @@ type AtomicAction =
 
 module AtomicActions =
     let zeroCodes = [
-        ("0", Information, "Information")
+        ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
+        ("02", RipCD AllDrives, "Rip CD")
         ("03", EjectCD AllDrives, "Eject CD")
-        ("07", RipCD AllDrives, "Rip CD")
         ("09", Forecast, "Weather")
     ]
 
-    let tryGetAction entry = Seq.tryHead (seq {
-        if entry = "0" then
-            Information
-
-        for num, action, _ in zeroCodes do
-            if num = entry then
-                action
-
-        match entry with
-        | Int32 n -> PlaySiriusXMChannel n
-        | _ -> ()
+    let tryGetAction (entry: string) = Seq.tryHead (seq {
+        if entry.StartsWith("0") then
+            for num, action, _ in zeroCodes do
+                if num = entry then
+                    action
+        else
+            match entry with
+            | Int32 n -> PlaySiriusXMChannel n
+            | _ -> ()
     })
 
     let performActionAsync player atomicAction = task {
@@ -59,21 +57,21 @@ module AtomicActions =
         | Information ->
             let sec n = TimeSpan.FromSeconds(n)
             let wait n = Task.Delay(sec n)
-            let title = "Information"
-
-            do! Players.setDisplayAsync player title "1-999: SiriusXM" (sec 10)
-            do! wait 2
+            let title = "Numeric Entry"
 
             for code, _, name in zeroCodes do
                 do! Players.setDisplayAsync player title $"{code}: {name}" (sec 10)
                 do! wait 2
 
+            do! Players.setDisplayAsync player title "1-999: SiriusXM" (sec 10)
+            do! wait 2
+
             match player with Player id ->
-                do! Players.setDisplayAsync player title $"Player ID: {id}" (sec 10)
+                do! Players.setDisplayAsync player "Player ID" $"{id}" (sec 10)
                 do! wait 5
 
             let! ip = Network.getAddressAsync ()
-            do! Players.setDisplayAsync player title $"Server: {ip}:{Config.port}" (sec 5)
+            do! Players.setDisplayAsync player "Server" $"{ip}:{Config.port}" (sec 5)
 
         | PlayPause ->
             let! state = Playlist.getModeAsync player

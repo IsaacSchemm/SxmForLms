@@ -109,7 +109,7 @@ module Icedax =
 
         for line in Utility.split '\n' (body.ToString()) do
             match line with
-            | AlbumTitle t ->
+            | AlbumTitle t when t <> "" ->
                 albumTitle <- Some t
             | Track (n, t) ->
                 tracks <- {| number = n; title = t |} :: tracks
@@ -121,7 +121,7 @@ module Icedax =
             driveNumber = driveNumber
             discid = discid
             disc = {
-                title = albumTitle |> Option.defaultValue ""
+                title = albumTitle
                 artists = []
                 tracks = [
                     for t in tracks |> Seq.sortBy (fun t -> t.number) do {

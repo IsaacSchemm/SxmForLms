@@ -159,15 +159,7 @@ module AtomicActions =
             | [] ->
                 do! Players.setDisplayAsync player "Audio CD" "No disc found" (TimeSpan.FromSeconds(10))
             | [drive] ->
-                let artist =
-                    match drive.disc.artists with
-                    | [] -> "Unknown artist"
-                    | artists -> String.concat " / " artists
-                let title =
-                    if not (String.IsNullOrWhiteSpace(drive.disc.title))
-                    then drive.disc.title
-                    else "Unknown disc"
-                do! Players.setDisplayAsync player artist title (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player drive.disc.DisplayArtist drive.disc.DisplayTitle (TimeSpan.FromSeconds(10))
             | _ :: _ :: _ ->
                 do! Players.setDisplayAsync player "Audio CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 

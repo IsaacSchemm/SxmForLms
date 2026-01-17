@@ -44,7 +44,7 @@ module Discovery =
             printfn $"[Discovery] [{driveNumber}] No tracks found on disc, not attempting MusicBrainz lookup"
             return driveInfo
 
-        else if not (String.IsNullOrEmpty (disc.title)) then
+        else if Option.isSome disc.title then
             printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
             return driveInfo
 

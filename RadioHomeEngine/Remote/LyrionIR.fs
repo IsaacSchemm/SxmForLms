@@ -68,54 +68,44 @@ module LyrionIR =
         "preset_6", 0x76896a95
     ]
 
-    type CustomAction =
-    | ChannelUp
-    | ChannelDown
-    | Input
-    | Backspace
-
-    type Press =
-    | Button of string
-    | Custom of CustomAction
-    | Atomic of AtomicAction
-    | IRPress of string
-    | Number of int
-
     type Action =
     | IR of string
-    | Series of Press list
+    | Button of string
+    | Atomic of AtomicAction
+    | Number of int
+    | Backspace
     | NoAction
 
     let Mappings = Map.ofList [
-        0x00ff15ea, Series [Button "power"]
+        0x00ff15ea, Button "power"
         0x00ff11ee, IR "muting"
-        0x00ff09f6, Series [Button "jump_rew"]
-        0x00ffc13e, Series [Button "jump_fwd"]
+        0x00ff09f6, Button "jump_rew"
+        0x00ffc13e, Button "jump_fwd"
         0x00ff19e6, IR "rew"
         0x00ff41be, IR "fwd"
-        0x00ffc936, Series [IRPress "play"; IRPress "pause"]
+        0x00ffc936, IR "play" // Play/Pause
         0x00ff39c6, IR "voldown"
         0x00ff31ce, IR "volup"
-        0x00ff6b94, Series [Button "stop"] // Flip
-        0x00ffe916, Series [Custom Input] // Source
-        0x00ff6996, Series [Atomic SiriusXMNowPlaying] // Zoom
+        0x00ff6b94, Button "stop" // Flip
+        0x00ffe916, Atomic (PlayCD AllDrives) // Source
+        0x00ff6996, Atomic Forecast // Zoom
         0x00ff8976, IR "home" // Menu
-        0x00ff25da, Series [Button "exit_left"]
+        0x00ff25da, Button "exit_left"
         0x00ffa956, IR "arrow_up"
         0x00ff59a6, IR "arrow_down"
         0x00ffd926, IR "arrow_left"
         0x00ff9966, IR "arrow_right"
-        0x00ff7986, Series [Button "knob_push"]
-        0x00ffe11e, Series [Number 1]
-        0x00ff619e, Series [Number 2]
-        0x00ffa15e, Series [Number 3]
-        0x00ffd12e, Series [Number 4]
-        0x00ff51ae, Series [Number 5]
-        0x00ff916e, Series [Number 6]
-        0x00fff10e, Series [Number 7]
-        0x00ff718e, Series [Number 8]
-        0x00ffb14e, Series [Number 9]
-        0x00ff21de, Series [Atomic (SeekCurrent -10m); Atomic (SeekBegin 0m)] // Recall
-        0x00ff49b6, Series [Number 0]
-        0x00ff29d6, Series [Custom Backspace; IRPress "favorites"] // Fav/⌫
+        0x00ff7986, Button "knob_push"
+        0x00ffe11e, Number 1
+        0x00ff619e, Number 2
+        0x00ffa15e, Number 3
+        0x00ffd12e, Number 4
+        0x00ff51ae, Number 5
+        0x00ff916e, Number 6
+        0x00fff10e, Number 7
+        0x00ff718e, Number 8
+        0x00ffb14e, Number 9
+        0x00ff21de, NoAction // Recall
+        0x00ff49b6, Number 0
+        0x00ff29d6, Backspace // Fav/⌫
     ]

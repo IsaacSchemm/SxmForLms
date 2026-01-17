@@ -33,7 +33,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         {
             var channelsTask = GetChannelsAsync(cancellationToken);
 
-            var drives = await Discovery.getAllDiscInfoAsync(DiscDrives.allDriveNumbers);
+            var drives = await Discovery.getAllDiscInfoAsync(DiscDriveScope.AllDrives);
 
             return View(new ChannelsModel
             {
@@ -66,21 +66,24 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         [HttpPost]
         public async Task PlayCD(int driveNumber, string mac)
         {
-            await AtomicActions.playDiscsAsync(
+            await AtomicActions.performActionAsync(
                 LyrionCLI.Player.NewPlayer(mac),
-                [driveNumber]);
+                AtomicAction.NewPlayCD(
+                    DiscDriveScope.NewSingleDrive(driveNumber)));
         }
 
         [HttpPost]
         public void RipCD(int driveNumber)
         {
-            Abcde.beginRipAsync([driveNumber]);
+            Abcde.beginRipAsync(
+                DiscDriveScope.NewSingleDrive(driveNumber));
         }
 
         [HttpPost]
         public async Task EjectCD(int driveNumber)
         {
-            await DiscDrives.ejectAsync(driveNumber);
+            await DiscDrives.ejectAsync(
+                DiscDriveScope.NewSingleDrive(driveNumber));
         }
     }
 }

@@ -36,7 +36,7 @@ type LyrionPlayerDetectionService() =
                         | None ->
                             let conn = new PlayerConnection(player)
                             PlayerConnections.Add(conn)
-                            activeListeners.Add(new LyrionIRHandler.Handler(player))
+                            activeListeners.Add(new LyrionIRHandler(player))
                             conn
 
                     let! name = Players.getNameAsync player

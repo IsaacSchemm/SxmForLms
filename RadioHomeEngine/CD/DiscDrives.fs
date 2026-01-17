@@ -10,10 +10,24 @@ module DiscDrives =
         |> Seq.where File.Exists
         |> Seq.toList
 
-    let allDriveNumbers =
-        seq { 0 .. all.Length - 1 }
+    let allDriveNumbers = [0 .. all.Length - 1]
 
-    let ejectAsync driveNumber = task {
-        use proc = Process.Start("eject", $"-T {all[driveNumber]}")
+    let getDriveNumbers scope =
+        match scope with
+        | SingleDrive x -> [x]
+        | AllDrives -> allDriveNumbers
+
+    let getDevices scope =
+        scope
+        |> getDriveNumbers
+        |> Seq.map (fun i -> all[i])
+
+    let ejectDeviceAsync (device: string) = task {
+        use proc = Process.Start("eject", $"-T {device}")
         do! proc.WaitForExitAsync()
+    }
+
+    let ejectAsync scope = task {
+        for device in getDevices scope do
+            do! ejectDeviceAsync device
     }

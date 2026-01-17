@@ -73,9 +73,10 @@ module Discovery =
                 return driveInfo
     }
 
-    let getAllDiscInfoAsync (driveNumbers: int seq) = task {
+    let getAllDiscInfoAsync scope = task {
         let! array =
-            driveNumbers
+            scope
+            |> DiscDrives.getDriveNumbers
             |> Seq.map asyncGetDiscInfo
             |> Async.Parallel
 

@@ -36,7 +36,7 @@ module Abcde =
         else return Some id
     }
 
-    let ripAsync (driveNumbers: int seq) = task {
+    let ripAsync scope = task {
         if ripping then
             Console.Error.WriteLine("Rip in progress; not starting new rip")
         else
@@ -50,9 +50,7 @@ module Abcde =
                     |> Seq.tryHead
                     |> Option.defaultWith (fun () -> failwith "No media_dir found to rip to")
 
-                for driveNumber in driveNumbers do
-                    let device = DiscDrives.all[driveNumber]
-
+                for device in DiscDrives.getDevices scope do
                     let proc =
                         new ProcessStartInfo(
                             "abcde",
@@ -62,7 +60,7 @@ module Abcde =
 
                     do! proc.WaitForExitAsync()
 
-                    do! DiscDrives.ejectAsync driveNumber
+                    do! DiscDrives.ejectDeviceAsync device
 
                 do! LyrionCLI.General.rescanAsync()
             with ex ->

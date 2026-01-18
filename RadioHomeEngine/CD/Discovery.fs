@@ -4,29 +4,26 @@ open System
 open FSharp.Control
 
 module Discovery =
-    let private asyncGetDiscIds driveNumber driveInfo = async {
-        let mutable discIds = Set.empty
-
+    let private asyncGetDiscIds driveNumber driveInfo = asyncSeq {
         let icedax_id = driveInfo.discid
 
         match icedax_id with
-        | Some id -> discIds <- Set.add id discIds
+        | Some id -> yield id
         | None -> ()
 
         try
             let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber |> Async.AwaitTask
 
             match abcde_id with
-            | Some id -> discIds <- Set.add id discIds
+            | Some id -> yield id
             | _ -> ()
         with ex ->
             Console.Error.WriteLine(ex)
-
-        return discIds
     }
 
     let private asyncQueryMusicBrainz discId = async {
         try
+            printfn $"[Discovery] Querying MusicBrainz for disc {discId}..."
             let! result = MusicBrainz.getInfoAsync discId |> Async.AwaitTask
             return result
         with ex ->
@@ -49,19 +46,14 @@ module Discovery =
             return driveInfo
 
         else
-            printfn $"[Discovery] [{driveNumber}] Querying MusicBrainz..."
+            printfn $"[Discovery] [{driveNumber}] Preparing to query MusicBrainz..."
 
-            let! discIds = asyncGetDiscIds driveNumber driveInfo
-
-            let! candidates =
-                discIds
-                |> Seq.map asyncQueryMusicBrainz
-                |> Async.Parallel
-
-            let candidate =
-                candidates
-                |> Seq.choose id
-                |> Seq.tryHead
+            let! candidate =
+                asyncGetDiscIds driveNumber driveInfo
+                |> AsyncSeq.distinctUntilChanged
+                |> AsyncSeq.mapAsync asyncQueryMusicBrainz
+                |> AsyncSeq.choose id
+                |> AsyncSeq.tryFirst
 
             match candidate with
             | Some newDisc ->

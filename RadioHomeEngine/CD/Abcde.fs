@@ -25,7 +25,7 @@ module Abcde =
 
         let! _ = Task.WhenAny(
             proc.WaitForExitAsync(),
-            Task.Delay(5000))
+            Task.Delay(TimeSpan.FromSeconds(15)))
 
         if not proc.HasExited then proc.Kill()
 

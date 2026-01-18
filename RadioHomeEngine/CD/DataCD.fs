@@ -17,17 +17,14 @@ module DataCD =
         ".aiff"
     ]
 
-    //type File = {
-    //    device: string
-    //    path: string
-    //}
-
     type TemporaryMount(device: string) =
         let mountTask = lazy task {
             let dir = Path.Combine([|
                 Path.GetTempPath()
                 $"{Guid.NewGuid()}"
             |])
+
+            printfn $"[{device}] mounting to {dir}"
 
             let _ = Directory.CreateDirectory(dir)
 
@@ -43,6 +40,8 @@ module DataCD =
             member _.DisposeAsync() = ValueTask(task {
                 let! mountPoint = mountTask.Value
 
+                printfn $"[{device}] unmounting from {mountPoint}"
+
                 let umount = Process.Start("umount", $"{mountPoint}")
                 do! umount.WaitForExitAsync()
 
@@ -56,27 +55,13 @@ module DataCD =
         return [
             for file in Directory.EnumerateFiles(dir, "*.*", new EnumerationOptions(RecurseSubdirectories = true)) do
                 if Set.contains (Path.GetExtension(file).ToLowerInvariant()) extensions then
-                    //{
-                    //    device = device
-                    //    path =
-                            if file.StartsWith(dir)
-                            then file.Substring(dir.Length).TrimStart(Path.DirectorySeparatorChar)
-                            else failwith $"{file} does not start with {dir}"
-                    //}
+                    if file.StartsWith(dir)
+                    then file.Substring(dir.Length).TrimStart(Path.DirectorySeparatorChar)
+                    else failwith $"{file} does not start with {dir}"
         ]
     }
 
-    //let scanAsync scope = task {
-    //    let! results =
-    //        scope
-    //        |> DiscDrives.getDevices
-    //        |> Seq.map scanDeviceAsync
-    //        |> Task.WhenAll
-
-    //    return [for list in results do yield! list]
-    //}
-
-    let readFileAsync (device: string) (path: string) = task {
+    let getFileLengthAsync (device: string) (path: string) = task {
         use mount = new TemporaryMount(device)
         let! dir = mount.GetMountPointAsync()
 
@@ -84,5 +69,27 @@ module DataCD =
         if not (fullPath.StartsWith(dir)) then
             failwith $"{fullPath} is not inside {dir}"
 
-        return File.ReadAllBytes(fullPath)
+        let fileInfo = new FileInfo(fullPath)
+        return fileInfo.Length
+    }
+
+    let readFileAsync (device: string) (path: string) = task {
+        let mount = new TemporaryMount(device)
+        let! dir = mount.GetMountPointAsync()
+
+        let fullPath = Path.Combine(dir, path)
+        if not (fullPath.StartsWith(dir)) then
+            failwith $"{fullPath} is not inside {dir}"
+
+        let stream = File.Open(fullPath, FileMode.Open, FileAccess.Read)
+
+        ignore (task {
+            try
+                use _ = mount
+                while stream.CanRead do
+                    do! Task.Delay(5000)
+            with ex -> Console.Error.WriteLine(ex)
+        })
+
+        return stream
     }

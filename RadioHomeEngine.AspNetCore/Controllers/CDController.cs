@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Channels;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
 {
@@ -32,7 +34,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 enableRangeProcessing: false);
         }
 
-        public async Task<IActionResult> GetFile(string device, string path)
+        public async Task<IActionResult> GetFile(string device, string path, CancellationToken cancellationToken)
         {
             if (!DiscDrives.exists(device))
                 return BadRequest();
@@ -46,10 +48,14 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 ? foundType
                 : "application/octet-stream";
 
-            var data = await DataCD.readFileAsync(device, path);
+            var stream = await DataCD.readFileAsync(device, path);
+
+            //Response.StatusCode = 200;
+            //Response.ContentType = contentType;
+            //Response.ContentLength = stream.Length;
 
             return File(
-                data,
+                stream,
                 contentType,
                 fileDownloadName: filename);
         }

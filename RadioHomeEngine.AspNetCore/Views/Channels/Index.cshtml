@@ -55,7 +55,7 @@
 
     @foreach (var drive in Model.CDs)
     {
-        var disc = drive.disc;
+        var disc = drive.audio;
 
         <h1>CD Drive @drive.device</h1>
 
@@ -67,7 +67,7 @@
             }
         </p>
 
-        if (!disc.tracks.IsEmpty)
+        if (!disc.tracks.IsEmpty || !drive.data.IsEmpty)
         {
             <table class="trackTable">
                 <thead>
@@ -90,6 +90,20 @@
                             <td align="left">
                                 <a href="/CD/PlayTrack?device=@drive.device&track=@track.position">
                                     .wav
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var file in drive.data)
+                    {
+                        <tr>
+                            <td></td>
+                            <td align="left">
+                                @file
+                            </td>
+                            <td align="left">
+                                <a href="/CD/GetFile?device=@drive.device&path=@file">
+                                    @System.IO.Path.GetExtension(file)
                                 </a>
                             </td>
                         </tr>
@@ -119,7 +133,7 @@
             <form asp-action="RipCD" target="myframe">
                 <input type="hidden" name="device" value="@drive.device" />
                 <button type="submit">
-                    Rip CD
+                    Rip all tracks from CD
                 </button>
             </form>
         </p>
@@ -128,7 +142,7 @@
             <form asp-action="EjectCD" target="myframe">
                 <input type="hidden" name="device" value="@drive.device" />
                 <button type="submit">
-                    Eject
+                    Eject CD
                 </button>
             </form>
         </p>

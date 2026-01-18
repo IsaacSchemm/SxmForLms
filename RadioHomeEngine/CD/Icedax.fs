@@ -9,54 +9,45 @@ open System.Threading.Tasks
 
 module Icedax =
     let albumTitlePattern = new Regex("^Album title: '(.*)")
-    let trackPattern = new Regex("^T([0-9]+): .* title '(.*)")
+    let audioTrackPattern = new Regex("^T([0-9]+): +[^ ]+ +[^ ]+ +audio .* title '(.*)")
+    let dataTrackPattern = new Regex("^T([0-9]+): +[^ ]+ +[^ ]+ +data")
     let cdIndexPattern = new Regex("^CDINDEX discid: (.+)")
     let sampleFileSizePattern = new Regex("^samplefile size will be ([0-9]+) bytes")
+
+    let unescapeTitle str = String [|
+        use sr = new StringReader(str)
+
+        let mutable finished = false
+        while not finished do
+            match sr.Read() with
+            | -1 ->
+                finished <- true
+            | v when char v = '\'' ->
+                finished <- true
+            | v when char v = '\\' ->
+                char (sr.Read())
+            | v ->
+                char v
+    |]
 
     let (|AlbumTitle|_|) (str: string) = Seq.tryHead (seq {
         let m = albumTitlePattern.Match(str)
         if m.Success then
-            use sr = new StringReader(m.Groups[1].Value)
-
-            let str = String [|
-                let mutable finished = false
-                while not finished do
-                    match sr.Read() with
-                    | -1 ->
-                        finished <- true
-                    | v when char v = '\'' ->
-                        finished <- true
-                    | v when char v = '\\' ->
-                        char (sr.Read())
-                    | v ->
-                        char v
-            |]
-
-            str
+            unescapeTitle m.Groups[1].Value
     })
 
-    let (|Track|_|) (str: string) = Seq.tryHead (seq {
-        let m = trackPattern.Match(str)
+    let (|AudioTrack|_|) (str: string) = Seq.tryHead (seq {
+        let m = audioTrackPattern.Match(str)
         if m.Success then
             let trackNumber = int m.Groups[1].Value
+            let title = unescapeTitle m.Groups[2].Value
+            (trackNumber, title)
+    })
 
-            use sr = new StringReader(m.Groups[2].Value)
-
-            let str = String [|
-                let mutable finished = false
-                while not finished do
-                    match sr.Read() with
-                    | -1 ->
-                        finished <- true
-                    | v when char v = '\'' ->
-                        finished <- true
-                    | v when char v = '\\' ->
-                        char (sr.Read())
-                    | v ->
-                        char v
-            |]
-
-            (trackNumber, str)
+    let (|DataTrack|_|) (str: string) = Seq.tryHead (seq {
+        let m = dataTrackPattern.Match(str)
+        if m.Success then
+            int m.Groups[1].Value
     })
 
     let (|CDINDEX|_|) (str: string) = Seq.tryHead (seq {
@@ -103,14 +94,17 @@ module Icedax =
 
         let mutable albumTitle = None
         let mutable tracks = []
+        let mutable hasdata = false
         let mutable discid = None
 
         for line in Utility.split '\n' (body.ToString()) do
             match line with
             | AlbumTitle t when t <> "" ->
                 albumTitle <- Some t
-            | Track (n, t) ->
+            | AudioTrack (n, t) ->
                 tracks <- {| number = n; title = t |} :: tracks
+            | DataTrack _ ->
+                hasdata <- true
             | CDINDEX x ->
                 discid <- Some x
             | _ -> ()
@@ -128,6 +122,7 @@ module Icedax =
                     }
                 ]
             }
+            hasdata = hasdata
         }
     }
 

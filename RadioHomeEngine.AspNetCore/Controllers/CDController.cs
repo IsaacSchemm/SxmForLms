@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using System.Text.RegularExpressions;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
@@ -29,6 +30,28 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 obj.stream,
                 "audio/wav",
                 enableRangeProcessing: false);
+        }
+
+        public async Task<IActionResult> GetFile(string device, string path)
+        {
+            if (!DiscDrives.exists(device))
+                return BadRequest();
+
+            var filename = Path.GetFileName(path);
+
+            var contentType =
+                new FileExtensionContentTypeProvider().TryGetContentType(
+                    filename,
+                    out var foundType)
+                ? foundType
+                : "application/octet-stream";
+
+            var data = await DataCD.readFileAsync(device, path);
+
+            return File(
+                data,
+                contentType,
+                fileDownloadName: filename);
         }
 
         [GeneratedRegex("^bytes=([0-9]+)-([0-9]+)$")]

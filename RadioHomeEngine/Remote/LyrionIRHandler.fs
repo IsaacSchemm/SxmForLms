@@ -19,7 +19,7 @@ type LyrionIRHandler(player: Player) =
     let writePromptAsync text = task {
         promptText <- Some text
 
-        let promptHeader = "Enter number (0 for info)"
+        let promptHeader = "Enter channel or zero code"
         do! Players.setDisplayAsync player promptHeader text (TimeSpan.FromSeconds(10))
 
         if promptMonitor.IsCompleted then

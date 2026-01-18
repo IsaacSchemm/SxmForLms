@@ -1,6 +1,7 @@
 ﻿namespace RadioHomeEngine
 
 open System
+open System.Threading.Tasks
 open FSharp.Control
 
 module Discovery =
@@ -65,12 +66,27 @@ module Discovery =
                 return driveInfo
     }
 
+    let asyncGetHybridDiscInfo device = task {
+        let! discInfo = asyncGetDiscInfo device
+
+        let! files =
+            if discInfo.hasdata
+            then DataCD.scanDeviceAsync device
+            else Task.FromResult([])
+
+        return {
+            device = discInfo.device
+            audio = discInfo.disc
+            data = files
+        }
+    }
+
     let getAllDiscInfoAsync scope = task {
         let! array =
             scope
             |> DiscDrives.getDevices
-            |> Seq.map asyncGetDiscInfo
-            |> Async.Parallel
+            |> Seq.map asyncGetHybridDiscInfo
+            |> Task.WhenAll
 
         return Array.toList array
     }

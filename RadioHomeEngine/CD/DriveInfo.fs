@@ -21,4 +21,11 @@ type DriveInfo = {
     device: string
     discid: string option
     disc: DiscInfo
+    hasdata: bool
+}
+
+type HybridDiscInfo = {
+    device: string
+    audio: DiscInfo
+    data: string list
 }

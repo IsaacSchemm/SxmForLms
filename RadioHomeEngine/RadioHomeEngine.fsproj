@@ -23,6 +23,7 @@
     <Compile Include="CD\Icedax.fs" />
     <Compile Include="CD\MusicBrainz.fs" />
     <Compile Include="CD\Abcde.fs" />
+    <Compile Include="CD\DataCD.fs" />
     <Compile Include="CD\Discovery.fs" />
     <Compile Include="Info\Speech.fs" />
     <Compile Include="Info\SpeechSynthesis.fs" />

@@ -22,7 +22,7 @@ module AtomicActions =
     let zeroCodes = [
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
-        ("02", RipCD AllDrives, "Rip CD")
+        ("02", RipCD AllDrives, "Rip all tracks from CD")
         ("03", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]
@@ -95,13 +95,16 @@ module AtomicActions =
             do! Playlist.clearAsync player
 
             let! address = Network.getAddressAsync ()
-            for driveInfo in drives do
-                for track in driveInfo.disc.tracks do
+            for info in drives do
+                for track in info.audio.tracks do
                     let title =
                         match track.title with
                         | "" -> $"Track {track.position}"
                         | x -> x
-                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(driveInfo.device)}&track={track.position}" title
+                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
+
+                for file in info.data do
+                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/GetPath?device={Uri.EscapeDataString(info.device)}&path={Uri.EscapeDataString(file)}" file
 
             do! Playlist.playAsync player
 
@@ -154,12 +157,12 @@ module AtomicActions =
         | PlayCD scope ->
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
 
-            let! info = Discovery.getAllDiscInfoAsync scope
-            match info with
+            let! drives = Discovery.getAllDiscInfoAsync scope
+            match drives with
             | [] ->
                 do! Players.setDisplayAsync player "Audio CD" "No disc found" (TimeSpan.FromSeconds(10))
             | [drive] ->
-                do! Players.setDisplayAsync player drive.disc.DisplayArtist drive.disc.DisplayTitle (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player drive.audio.DisplayArtist drive.audio.DisplayTitle (TimeSpan.FromSeconds(10))
             | _ :: _ :: _ ->
                 do! Players.setDisplayAsync player "Audio CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 

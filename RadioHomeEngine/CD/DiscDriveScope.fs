@@ -1,3 +1,3 @@
 ﻿namespace RadioHomeEngine
 
-type DiscDriveScope = SingleDrive of driveNumber: int | AllDrives
+type DiscDriveScope = SingleDrive of string | AllDrives

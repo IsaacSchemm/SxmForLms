@@ -7,9 +7,7 @@ open System.Threading.Tasks
 module Abcde =
     let mutable ripping = false
 
-    let getMusicBrainzDiscIdAsync driveNumber = task {
-        let device = DiscDrives.all[driveNumber]
-
+    let getMusicBrainzDiscIdAsync (device: string) = task {
         let proc =
             new ProcessStartInfo(
                 "abcde-musicbrainz-tool",
@@ -69,5 +67,5 @@ module Abcde =
             ripping <- false
     }
 
-    let beginRipAsync driveNumbers =
-        ignore (ripAsync driveNumbers)
+    let beginRipAsync scope =
+        ignore (ripAsync scope)

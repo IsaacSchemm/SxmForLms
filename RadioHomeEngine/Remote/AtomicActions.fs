@@ -101,7 +101,7 @@ module AtomicActions =
                         match track.title with
                         | "" -> $"Track {track.position}"
                         | x -> x
-                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?driveNumber={driveInfo.driveNumber}&track={track.position}" title
+                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(driveInfo.device)}&track={track.position}" title
 
             do! Playlist.playAsync player
 

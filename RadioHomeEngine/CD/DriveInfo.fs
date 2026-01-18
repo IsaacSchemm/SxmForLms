@@ -18,7 +18,7 @@ type DiscInfo = {
         | artists -> String.concat ", " artists
 
 type DriveInfo = {
-    driveNumber: int
+    device: string
     discid: string option
     disc: DiscInfo
 }

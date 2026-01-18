@@ -24,7 +24,6 @@
     <Compile Include="CD\MusicBrainz.fs" />
     <Compile Include="CD\Abcde.fs" />
     <Compile Include="CD\Discovery.fs" />
-    <Compile Include="CD\DiscPlayback.fs" />
     <Compile Include="Info\Speech.fs" />
     <Compile Include="Info\SpeechSynthesis.fs" />
     <Compile Include="Info\NWS.fs" />

@@ -4,7 +4,7 @@ open System
 open FSharp.Control
 
 module Discovery =
-    let private asyncGetDiscIds driveNumber driveInfo = asyncSeq {
+    let private asyncGetDiscIds device driveInfo = asyncSeq {
         let icedax_id = driveInfo.discid
 
         match icedax_id with
@@ -12,7 +12,7 @@ module Discovery =
         | None -> ()
 
         try
-            let! abcde_id = Abcde.getMusicBrainzDiscIdAsync driveNumber |> Async.AwaitTask
+            let! abcde_id = Abcde.getMusicBrainzDiscIdAsync device |> Async.AwaitTask
 
             match abcde_id with
             | Some id -> yield id
@@ -31,25 +31,25 @@ module Discovery =
             return None
     }
 
-    let asyncGetDiscInfo (driveNumber: int) = async {
-        printfn $"[Discovery] [{driveNumber}] Scanning drive {driveNumber}..."
+    let asyncGetDiscInfo device = async {
+        printfn $"[Discovery] [{device}] Scanning drive {device}..."
 
-        let! driveInfo = Icedax.getInfoAsync driveNumber |> Async.AwaitTask
+        let! driveInfo = Icedax.getInfoAsync device |> Async.AwaitTask
         let disc = driveInfo.disc
 
         if driveInfo.disc.tracks = [] then
-            printfn $"[Discovery] [{driveNumber}] No tracks found on disc, not attempting MusicBrainz lookup"
+            printfn $"[Discovery] [{device}] No tracks found on disc, not attempting MusicBrainz lookup"
             return driveInfo
 
         else if Option.isSome disc.title then
-            printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
+            printfn $"[Discovery] [{device}] Using title {disc.title} from icedax"
             return driveInfo
 
         else
-            printfn $"[Discovery] [{driveNumber}] Preparing to query MusicBrainz..."
+            printfn $"[Discovery] [{device}] Preparing to query MusicBrainz..."
 
             let! candidate =
-                asyncGetDiscIds driveNumber driveInfo
+                asyncGetDiscIds device driveInfo
                 |> AsyncSeq.distinctUntilChanged
                 |> AsyncSeq.mapAsync asyncQueryMusicBrainz
                 |> AsyncSeq.choose id
@@ -57,18 +57,18 @@ module Discovery =
 
             match candidate with
             | Some newDisc ->
-                printfn $"[Discovery] [{driveNumber}] Using title {newDisc.title} from MusicBrainz"
+                printfn $"[Discovery] [{device}] Using title {newDisc.title} from MusicBrainz"
                 return { driveInfo with disc = newDisc }
             | None ->
-                printfn $"[Discovery] [{driveNumber}] Not found on MusicBrainz"
-                printfn $"[Discovery] [{driveNumber}] Using title {disc.title} from icedax"
+                printfn $"[Discovery] [{device}] Not found on MusicBrainz"
+                printfn $"[Discovery] [{device}] Using title {disc.title} from icedax"
                 return driveInfo
     }
 
     let getAllDiscInfoAsync scope = task {
         let! array =
             scope
-            |> DiscDrives.getDriveNumbers
+            |> DiscDrives.getDevices
             |> Seq.map asyncGetDiscInfo
             |> Async.Parallel
 

@@ -67,9 +67,7 @@ module Icedax =
 
     let noDiscMessage = "load cdrom please and press enter"
 
-    let getInfoAsync driveNumber = task {
-        let device = DiscDrives.all[driveNumber]
-
+    let getInfoAsync device = task {
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
             |> Process.Start
@@ -118,7 +116,7 @@ module Icedax =
             | _ -> ()
 
         return {
-            driveNumber = driveNumber
+            device = device
             discid = discid
             disc = {
                 title = albumTitle
@@ -137,9 +135,7 @@ module Icedax =
     let sectorsPerSecond = 75
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
-    let extractWaveAsync driveNumber trackNumber skip = task {
-        let device = DiscDrives.all[driveNumber]
-
+    let extractWaveAsync (device: string) trackNumber skip = task {
         let spanString = $"-t {trackNumber}"
 
         let factor =

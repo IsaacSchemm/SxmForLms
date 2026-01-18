@@ -57,7 +57,7 @@
     {
         var disc = drive.disc;
 
-        <h1>CD Drive @drive.driveNumber</h1>
+        <h1>CD Drive @drive.device</h1>
 
         <p>
             <div style="font-size: 150%">@disc.DisplayTitle</div>
@@ -88,7 +88,7 @@
                                 @track.title
                             </td>
                             <td align="left">
-                                <a href="/CD/PlayTrack?driveNumber=@drive.driveNumber&track=@track.position">
+                                <a href="/CD/PlayTrack?device=@drive.device&track=@track.position">
                                     .wav
                                 </a>
                             </td>
@@ -105,7 +105,7 @@
             {
                 <p>
                     <form asp-action="PlayCD" target="myframe">
-                        <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                        <input type="hidden" name="device" value="@drive.device" />
                         <input type="hidden" name="mac" value="@player.MacAddress" />
                         <button type="submit">
                             @player.Name
@@ -117,7 +117,7 @@
 
         <p>
             <form asp-action="RipCD" target="myframe">
-                <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                <input type="hidden" name="device" value="@drive.device" />
                 <button type="submit">
                     Rip CD
                 </button>
@@ -126,7 +126,7 @@
 
         <p>
             <form asp-action="EjectCD" target="myframe">
-                <input type="hidden" name="driveNumber" value="@drive.driveNumber" />
+                <input type="hidden" name="device" value="@drive.device" />
                 <button type="submit">
                     Eject
                 </button>

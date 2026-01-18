@@ -61,18 +61,6 @@ module DataCD =
         ]
     }
 
-    let getFileLengthAsync (device: string) (path: string) = task {
-        use mount = new TemporaryMount(device)
-        let! dir = mount.GetMountPointAsync()
-
-        let fullPath = Path.Combine(dir, path)
-        if not (fullPath.StartsWith(dir)) then
-            failwith $"{fullPath} is not inside {dir}"
-
-        let fileInfo = new FileInfo(fullPath)
-        return fileInfo.Length
-    }
-
     let readFileAsync (device: string) (path: string) = task {
         let mount = new TemporaryMount(device)
         let! dir = mount.GetMountPointAsync()

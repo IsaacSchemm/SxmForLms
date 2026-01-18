@@ -11,11 +11,14 @@ type DiscInfo = {
     tracks: TrackInfo list
 } with
     member this.DisplayTitle =
-        this.title |> Option.defaultValue "Unknown Album"
+        match this.title, this.tracks with
+        | Some title, _ -> title
+        | None, [] -> "No disc"
+        | None, _ :: _ -> "Unknown album"
     member this.DisplayArtist =
         match this.artists with
-        | [] -> "Unknown Artist"
-        | artists -> String.concat ", " artists
+        | [] -> "Unknown artist"
+        | _ :: _ -> String.concat ", " this.artists
 
 type DriveInfo = {
     device: string

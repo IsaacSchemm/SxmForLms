@@ -104,7 +104,7 @@ module AtomicActions =
                     do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
 
                 for file in info.data do
-                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/GetPath?device={Uri.EscapeDataString(info.device)}&path={Uri.EscapeDataString(file)}" file
+                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/GetFile?device={Uri.EscapeDataString(info.device)}&path={Uri.EscapeDataString(file)}" file
 
             do! Playlist.playAsync player
 

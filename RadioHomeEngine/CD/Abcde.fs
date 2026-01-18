@@ -49,10 +49,14 @@ module Abcde =
                     |> Option.defaultWith (fun () -> failwith "No media_dir found to rip to")
 
                 for device in DiscDrives.getDevices scope do
+                    let! info = Icedax.getInfoAsync device
+
+                    let trackString = String.concat " " [for t in info.disc.tracks do string t.position]
+
                     let proc =
                         new ProcessStartInfo(
                             "abcde",
-                            $"-a move,embedalbumart,clean -d {device} -o flac -f -N",
+                            $"-a move,embedalbumart,clean -d {device} -o flac -f -N {trackString}",
                             WorkingDirectory = dir)
                         |> Process.Start
 

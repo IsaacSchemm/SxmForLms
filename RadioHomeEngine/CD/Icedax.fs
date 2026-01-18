@@ -152,7 +152,7 @@ module Icedax =
             |}
 
         let proc =
-            new ProcessStartInfo("icedax", $"-D {device} {spanString} -S 1 -o {factor.sectors} -", RedirectStandardOutput = true, RedirectStandardError = true)
+            new ProcessStartInfo("icedax", $"-J -D {device} {spanString} -S 1 -o {factor.sectors} -", RedirectStandardOutput = true, RedirectStandardError = true)
             |> Process.Start
 
         let! length = task {

@@ -5,11 +5,6 @@ open RadioHomeEngine.TemporaryMountPoints
 
 module DataCD =
     let extensions = set [
-        ".mp3"
-        ".wma"
-        ".ogg"
-        ".oga"
-        ".flac"
         ".wav"
         ".aif"
         ".aiff"

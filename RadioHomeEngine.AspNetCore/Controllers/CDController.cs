@@ -37,6 +37,15 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             if (!DiscDrives.exists(device))
                 return BadRequest();
 
+            int offset = 0;
+
+            if (Request.Headers.Range.SingleOrDefault() is string range
+                && GetRangePattern().Match(range) is Match match
+                && match.Success)
+            {
+                offset = int.Parse(match.Groups[1].Value);
+            }
+
             var filename = Path.GetFileName(path);
 
             var contentType =
@@ -47,6 +56,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
                 : "application/octet-stream";
 
             var stream = await DataCD.readFileAsync(device, path);
+            stream.Seek(offset, SeekOrigin.Begin);
 
             return File(
                 stream,

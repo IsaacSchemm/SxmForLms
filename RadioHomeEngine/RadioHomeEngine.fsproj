@@ -46,4 +46,8 @@
     <PackageReference Include="System.Runtime.Caching" Version="9.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RadioHomeEngine.TemporaryMountPoints\RadioHomeEngine.TemporaryMountPoints.csproj" />
+  </ItemGroup>
+
 </Project>

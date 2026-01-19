@@ -61,7 +61,8 @@ namespace RadioHomeEngine.AspNetCore.Controllers
             return File(
                 stream,
                 contentType,
-                fileDownloadName: filename);
+                fileDownloadName: filename,
+                enableRangeProcessing: false);
         }
 
         [GeneratedRegex("^bytes=([0-9]+)-([0-9]+)$")]

@@ -2,16 +2,10 @@
 
 namespace RadioHomeEngine.AspNetCore.Models
 {
-    public record ChannelsModel
+    public record CDsModel
     {
-        public required FSharpList<Channel> Channels { get; init; }
+        public required FSharpList<DriveInfo> CDs { get; init; }
         public required FSharpList<Player> Players { get; init; }
-
-        public record Channel
-        {
-            public required int ChannelNumber { get; init; }
-            public required string Name { get; init; }
-        }
 
         public record Player
         {

@@ -1,0 +1,176 @@
+﻿@model CDsModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>Channel List</title>
+    @await Html.PartialAsync("_Styles")
+    <style type="text/css">
+        .trackTable th,
+        .trackTable td {
+            padding: 0 0.5em;
+        }
+
+        fieldset {
+            margin: 16px auto;
+            max-width: 280px;
+        }
+
+        iframe[name=myframe] {
+            border: 0;
+            margin: 0.5em;
+        }
+    </style>
+</head>
+<body>
+    <p>
+        <a href="http://@this.Context.Request.Host.Host:9000">Go to Lyrion Music Server</a>
+    </p>
+
+    <hr />
+
+    @foreach (var drive in Model.CDs)
+    {
+        <h1>CD Drive @drive.device</h1>
+
+        foreach (var disc in drive.AudioDiscs)
+        {
+            <p>
+                @foreach (var title in disc.titles)
+                {
+                    <div style="font-size: 150%">@title</div>
+                }
+                @foreach (var artist in disc.artists)
+                {
+                    <div>@artist</div>
+                }
+            </p>
+
+            <table class="trackTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Track</th>
+                        <th scope="col" align="left">Title</th>
+                        <th scope="col" align="left">Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var track in disc.tracks)
+                    {
+                        <tr>
+                            <td>
+                                @track.position
+                            </td>
+                            <td align="left">
+                                @track.title
+                            </td>
+                            <td align="left">
+                                <a href="/CD/PlayTrack?device=@drive.device&track=@track.position">
+                                    .wav
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <fieldset>
+                <legend>Play on</legend>
+
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="PlayCD" target="myframe">
+                            <input type="hidden" name="device" value="@drive.device" />
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <button type="submit">
+                                @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </fieldset>
+
+            <p>
+                <form asp-action="RipCD" target="myframe">
+                    <input type="hidden" name="device" value="@drive.device" />
+                    <button type="submit">
+                        Rip all tracks from CD
+                    </button>
+                </form>
+            </p>
+        }
+
+        @foreach (var disc in drive.DataDiscs)
+        {
+            <table class="trackTable">
+                <tbody>
+                    @foreach (var file in disc.files)
+                    {
+                        <tr>
+                            <td align="left">
+                                @file
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <fieldset>
+                <legend>Play MP3 CD</legend>
+
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="PlayMP3CD" target="myframe">
+                            <input type="hidden" name="device" value="@drive.device" />
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <button type="submit">
+                                @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </fieldset>
+        }
+
+        <p>
+            <form asp-action="EjectCD" target="myframe">
+                <input type="hidden" name="device" value="@drive.device" />
+                <button type="submit">
+                    Eject CD
+                </button>
+            </form>
+        </p>
+
+        <hr />
+    }
+
+    @if (Model.Players.Length > 0)
+    {
+        <fieldset>
+            <legend>Clear playlist on</legend>
+
+            @foreach (var player in Model.Players)
+            {
+                <p>
+                    <form asp-action="Clear" target="myframe">
+                        <input type="hidden" name="mac" value="@player.MacAddress" />
+                        <button type="submit">
+                            @player.Name
+                        </button>
+                    </form>
+                </p>
+            }
+        </fieldset>
+    }
+
+    <iframe name="myframe" width="300" height="50" src="about:blank"></iframe>
+</body>
+</html>

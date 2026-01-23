@@ -1,0 +1,29 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0" />
+    <title>Channel List</title>
+    @await Html.PartialAsync("_Styles")
+</head>
+<body>
+    <p>
+        <a href="http://@this.Context.Request.Host.Host:9000">Go to Lyrion Music Server</a>
+    </p>
+
+    <hr />
+
+    <p>
+        <a asp-controller="Channels" asp-action="Index">SiriusXM</a>
+    </p>
+
+    <p>
+        <a asp-controller="CDUI" asp-action="Index">CDs</a>
+    </p>
+</body>
+</html>

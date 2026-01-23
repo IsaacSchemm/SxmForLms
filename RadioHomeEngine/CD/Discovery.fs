@@ -53,20 +53,21 @@ module Discovery =
 
             let disc = scanResults.disc
 
-            if disc.tracks = [] then
-                printfn $"[Discovery] [{device}] No tracks found on disc"
+            if disc.tracks = [] && scanResults.hasdata then
+                printfn $"[Discovery] [{device}] No tracks found on disc; mounting filesystem"
 
-                if scanResults.hasdata then
-                    let! files = DataCD.scanDeviceAsync device |> Async.AwaitTask
+                let! files = DataCD.scanDeviceAsync device |> Async.AwaitTask
 
-                    return {
-                        device = device
-                        disc = DataDisc {
-                            files = files
-                        }
+                return {
+                    device = device
+                    disc = DataDisc {
+                        files = files
                     }
-                else
-                    return driveInfo
+                }
+
+            else if disc.tracks = [] then
+                printfn $"[Discovery] [{device}] No tracks found on disc"
+                return driveInfo
 
             else if disc.titles <> [] then
                 printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"

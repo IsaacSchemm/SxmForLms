@@ -6,7 +6,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
     {
         public IActionResult Index()
         {
-            return RedirectToAction("Index", "Channels");
+            return View();
         }
     }
 }

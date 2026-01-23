@@ -5,8 +5,8 @@ open System.Diagnostics
 open System.IO
 open System.Text
 open System.Text.RegularExpressions
+open System.Threading
 open System.Threading.Tasks
-open RadioHomeEngine.TemporaryMountPoints
 
 module Icedax =
     let albumTitlePattern = new Regex("^Album title: '(.*)")
@@ -59,8 +59,8 @@ module Icedax =
 
     let noDiscMessage = "load cdrom please and press enter"
 
-    let getInfoAsync device = task {
-        do! EstablishedMountPoints.UnmountDeviceAsync(device)
+    let getInfoAsync (device: string) = task {
+        do! DataCD.unmountDeviceAsync device
 
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
@@ -113,19 +113,15 @@ module Icedax =
             | _ -> ()
 
         return {
-            device = device
             discid = discid
-            disc = {
-                title = albumTitle
-                artists = []
-                tracks = [
-                    for t in tracks |> Seq.sortBy (fun t -> t.number) do {
-                        title = t.title
-                        position = t.number
-                    }
-                ]
-            }
-            hasdata = hasdata
+            title = albumTitle
+            artists = []
+            tracks = [
+                for t in tracks |> Seq.sortBy (fun t -> t.number) do {
+                    title = t.title
+                    position = t.number
+                }
+            ]
         }
     }
 
@@ -134,7 +130,7 @@ module Icedax =
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
     let extractWaveAsync (device: string) trackNumber skip = task {
-        do! EstablishedMountPoints.UnmountDeviceAsync(device)
+        do! DataCD.unmountDeviceAsync device
 
         let spanString = $"-t {trackNumber}"
 

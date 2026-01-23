@@ -5,7 +5,6 @@ open System.IO
 open System.Threading
 open System.Threading.Tasks
 open FSharp.Control
-open RadioHomeEngine.TemporaryMountPoints
 
 open LyrionCLI
 
@@ -25,7 +24,7 @@ module AtomicActions =
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
         ("02", RipCD AllDrives, "Rip CD")
-        ("03", PlayCD AllDrives, "Play MP3 CD")
+        ("03", PlayMP3CD AllDrives, "Play MP3 CD")
         ("04", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]
@@ -91,6 +90,8 @@ module AtomicActions =
 
             do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
+            do! DataCD.unmountAsync scope
+
             let! drives = Discovery.getAllDiscInfoAsync scope
 
             do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
@@ -100,8 +101,10 @@ module AtomicActions =
             let! address = Network.getAddressAsync ()
 
             for info in drives do
-                if info.disc.tracks <> [] then
-                    for track in info.disc.tracks do
+                match info.disc with
+                | DataDisc _ -> ()
+                | AudioDisc audioDisc ->
+                    for track in audioDisc.tracks do
                         let title =
                             match track.title with
                             | "" -> $"Track {track.position}"
@@ -115,17 +118,24 @@ module AtomicActions =
 
             do! Players.setDisplayAsync player "Please wait" "Searching for files..." (TimeSpan.FromSeconds(999))
 
-            let! drives = Discovery.getAllDataDiscInfoAsync scope
+            do! DataCD.mountAsync scope
+
+            let! drives = Discovery.getAllDiscInfoAsync scope
 
             do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
             do! Playlist.clearAsync player
 
             for info in drives do
-                if info.files <> [] then
-                    let! mountPoint = EstablishedMountPoints.MountAsync(info.device)
-                    for file in info.files do
-                        do! Playlist.addItemAsync player $"file://{mountPoint.MountPath}/{file}" ""
+                match info.disc with
+                | AudioDisc _ -> ()
+                | DataDisc files ->
+                    let! mountPoint = DataCD.mountDeviceAsync info.device
+                    match mountPoint with
+                    | None -> ()
+                    | Some dir ->
+                        for file in files do
+                            do! Playlist.addItemAsync player $"file://{dir}/{file}" $"{file}"
 
             do! Playlist.playAsync player
 
@@ -179,13 +189,17 @@ module AtomicActions =
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
 
             let! drives = Discovery.getAllDiscInfoAsync scope
-            match drives with
+            let discs = [for dr in drives do dr.disc]
+
+            match discs with
             | [] ->
-                do! Players.setDisplayAsync player "Audio CD" "No disc found" (TimeSpan.FromSeconds(10))
-            | [drive] ->
-                do! Players.setDisplayAsync player drive.disc.DisplayArtist drive.disc.DisplayTitle (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player "CD" "No disc found" (TimeSpan.FromSeconds(10))
+            | [AudioDisc audioDisc] ->
+                do! Players.setDisplayAsync player audioDisc.DisplayArtist audioDisc.DisplayTitle (TimeSpan.FromSeconds(10))
+            | [DataDisc files] ->
+                do! Players.setDisplayAsync player "CD" $"{List.length files} file(s) found" (TimeSpan.FromSeconds(10))
             | _ :: _ :: _ ->
-                do! Players.setDisplayAsync player "Audio CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player "CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 
         | _ -> ()
     }

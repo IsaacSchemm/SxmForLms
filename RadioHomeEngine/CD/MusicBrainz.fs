@@ -41,6 +41,7 @@ module MusicBrainz =
             let release = Seq.head disc.releases
 
             return Some {
+                discid = Some discId
                 artists = [
                     for artist in release.``artist-credit`` do
                         artist.name

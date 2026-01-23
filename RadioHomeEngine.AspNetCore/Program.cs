@@ -1,5 +1,4 @@
 using RadioHomeEngine;
-using RadioHomeEngine.TemporaryMountPoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,4 +17,4 @@ app.MapControllerRoute(
 
 app.Run($"http://+:{Config.port}");
 
-await EstablishedMountPoints.UnmountAllAsync();
+await DataCD.unmountAsync(DiscDriveScope.AllDrives);

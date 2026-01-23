@@ -60,7 +60,7 @@ module Icedax =
     let noDiscMessage = "load cdrom please and press enter"
 
     let getInfoAsync device = task {
-        EstablishedMountPoint.UnmountDevice(device)
+        do! EstablishedMountPoints.UnmountDeviceAsync(device)
 
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
@@ -134,7 +134,7 @@ module Icedax =
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
     let extractWaveAsync (device: string) trackNumber skip = task {
-        EstablishedMountPoint.UnmountDevice(device)
+        do! EstablishedMountPoints.UnmountDeviceAsync(device)
 
         let spanString = $"-t {trackNumber}"
 

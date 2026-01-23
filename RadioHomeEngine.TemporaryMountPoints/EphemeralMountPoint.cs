@@ -2,20 +2,20 @@
 
 namespace RadioHomeEngine.TemporaryMountPoints
 {
-    public sealed class TemporaryMountPoint : IMountPoint
+    public sealed class EphemeralMountPoint : IMountPoint, IAsyncDisposable
     {
         private bool _disposed;
 
         public string Device { get; }
         public string MountPath { get; }
 
-        private TemporaryMountPoint(string device, string mountPath)
+        private EphemeralMountPoint(string device, string mountPath)
         {
             Device = device ?? throw new ArgumentNullException(nameof(device));
             MountPath = mountPath ?? throw new ArgumentNullException(nameof(mountPath));
         }
 
-        public static async Task<TemporaryMountPoint> CreateAsync(string device)
+        public static async Task<EphemeralMountPoint> CreateAsync(string device)
         {
             var directory = Path.Combine(
                 Path.GetTempPath(),
@@ -31,7 +31,7 @@ namespace RadioHomeEngine.TemporaryMountPoints
             return new(device, directory);
         }
 
-        public void Dispose()
+        public async ValueTask DisposeAsync()
         {
             if (_disposed)
                 return;
@@ -41,7 +41,7 @@ namespace RadioHomeEngine.TemporaryMountPoints
             Console.WriteLine($"[{Device}] unmounting from {MountPath}");
 
             using var umountProc = Process.Start("umount", $"{MountPath}");
-            umountProc.WaitForExit();
+            await umountProc.WaitForExitAsync();
 
             Directory.Delete(MountPath, recursive: false);
         }

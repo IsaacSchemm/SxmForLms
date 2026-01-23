@@ -18,4 +18,4 @@ app.MapControllerRoute(
 
 app.Run($"http://+:{Config.port}");
 
-EstablishedMountPoint.UnmountAll();
+await EstablishedMountPoints.UnmountAllAsync();

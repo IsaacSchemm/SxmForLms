@@ -1,6 +1,6 @@
 ﻿namespace RadioHomeEngine.TemporaryMountPoints
 {
-    public interface IMountPoint : IDisposable
+    public interface IMountPoint
     {
         string Device { get; }
         string MountPath { get; }

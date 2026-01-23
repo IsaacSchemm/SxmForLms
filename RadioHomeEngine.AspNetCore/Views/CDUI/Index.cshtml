@@ -79,33 +79,24 @@
                     }
                 </tbody>
             </table>
-
-            <fieldset>
-                <legend>Play on</legend>
-
-                @foreach (var player in Model.Players)
-                {
-                    <p>
-                        <form asp-action="PlayCD" target="myframe">
-                            <input type="hidden" name="device" value="@drive.device" />
-                            <input type="hidden" name="mac" value="@player.MacAddress" />
-                            <button type="submit">
-                                @player.Name
-                            </button>
-                        </form>
-                    </p>
-                }
-            </fieldset>
-
-            <p>
-                <form asp-action="RipCD" target="myframe">
-                    <input type="hidden" name="device" value="@drive.device" />
-                    <button type="submit">
-                        Rip all tracks from CD
-                    </button>
-                </form>
-            </p>
         }
+
+        <fieldset>
+            <legend>Play on</legend>
+
+            @foreach (var player in Model.Players)
+            {
+                <p>
+                    <form asp-action="PlayCD" target="myframe">
+                        <input type="hidden" name="device" value="@drive.device" />
+                        <input type="hidden" name="mac" value="@player.MacAddress" />
+                        <button type="submit">
+                            @player.Name
+                        </button>
+                    </form>
+                </p>
+            }
+        </fieldset>
 
         @foreach (var disc in drive.DataDiscs)
         {
@@ -121,23 +112,18 @@
                     }
                 </tbody>
             </table>
+        }
 
-            <fieldset>
-                <legend>Play MP3 CD</legend>
-
-                @foreach (var player in Model.Players)
-                {
-                    <p>
-                        <form asp-action="PlayMP3CD" target="myframe">
-                            <input type="hidden" name="device" value="@drive.device" />
-                            <input type="hidden" name="mac" value="@player.MacAddress" />
-                            <button type="submit">
-                                @player.Name
-                            </button>
-                        </form>
-                    </p>
-                }
-            </fieldset>
+        @if (drive.AudioDiscs.Any(a => !a.tracks.IsEmpty))
+        {
+            <p>
+                <form asp-action="RipCD" target="myframe">
+                    <input type="hidden" name="device" value="@drive.device" />
+                    <button type="submit">
+                        Rip CD
+                    </button>
+                </form>
+            </p>
         }
 
         <p>

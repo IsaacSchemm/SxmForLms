@@ -16,5 +16,3 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run($"http://+:{Config.port}");
-
-await DataCD.unmountAsync(DiscDriveScope.AllDrives);

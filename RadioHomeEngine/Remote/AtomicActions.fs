@@ -15,7 +15,6 @@ type AtomicAction =
 | Replay
 | PlayCD of DiscDriveScope
 | RipCD of DiscDriveScope
-| PlayMP3CD of DiscDriveScope
 | EjectCD of DiscDriveScope
 | Forecast
 
@@ -24,8 +23,7 @@ module AtomicActions =
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
         ("02", RipCD AllDrives, "Rip CD")
-        ("03", PlayMP3CD AllDrives, "Play MP3 CD")
-        ("04", EjectCD AllDrives, "Eject CD")
+        ("03", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]
 
@@ -90,8 +88,6 @@ module AtomicActions =
 
             do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
 
-            do! DataCD.unmountAsync scope
-
             let! drives = Discovery.getAllDiscInfoAsync scope
 
             do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
@@ -102,33 +98,6 @@ module AtomicActions =
 
             for info in drives do
                 match info.disc with
-                | DataDisc _ -> ()
-                | AudioDisc audioDisc ->
-                    for track in audioDisc.tracks do
-                        let title =
-                            match track.title with
-                            | "" -> $"Track {track.position}"
-                            | x -> x
-                        do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
-
-            do! Playlist.playAsync player
-
-        | PlayMP3CD scope ->
-            do! Players.simulateButtonAsync player "stop"
-
-            do! Players.setDisplayAsync player "Please wait" "Searching for files..." (TimeSpan.FromSeconds(999))
-
-            do! DataCD.mountAsync scope
-
-            let! drives = Discovery.getAllDiscInfoAsync scope
-
-            do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
-
-            do! Playlist.clearAsync player
-
-            for info in drives do
-                match info.disc with
-                | AudioDisc _ -> ()
                 | DataDisc dataDisc ->
                     let! mountPoint = DataCD.mountDeviceAsync info.device
                     match mountPoint with
@@ -136,6 +105,13 @@ module AtomicActions =
                     | Some dir ->
                         for file in dataDisc.files do
                             do! Playlist.addItemAsync player $"file://{dir}/{file}" $"{file}"
+                | AudioDisc audioDisc ->
+                    for track in audioDisc.tracks do
+                        let title =
+                            match track.title with
+                            | "" -> $"Track {track.position}"
+                            | x -> x
+                        do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
 
             do! Playlist.playAsync player
 

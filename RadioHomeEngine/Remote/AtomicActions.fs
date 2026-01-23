@@ -106,7 +106,7 @@ module AtomicActions =
                     do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
 
                 if info.audio.tracks = [] && info.data <> [] then
-                    let! mountPoint = EstablishedMountPoints.GetOrCreateAsync(info.device)
+                    let! mountPoint = EstablishedMountPoints.MountAsync(info.device)
                     for file in info.data do
                         do! Playlist.addItemAsync player $"file://{mountPoint.MountPath}/{file}" ""
 

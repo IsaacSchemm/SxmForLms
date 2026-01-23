@@ -13,12 +13,8 @@ namespace RadioHomeEngine.TemporaryMountPoints
 
         private static readonly List<MountPoint> _mountPoints = [];
 
-        public static async Task<IMountPoint> GetOrCreateAsync(string device)
+        public static async Task<IMountPoint> MountAsync(string device)
         {
-            foreach (var existing in _mountPoints)
-                if (existing.Device == device)
-                    return existing;
-
             var mountPoint = new MountPoint(
                 await EphemeralMountPoint.CreateAsync(
                     device));

@@ -7,23 +7,18 @@ type TrackInfo = {
 
 type AudioDiscInfo = {
     discid: string option
-    title: string option
+    titles: string list
     artists: string list
     tracks: TrackInfo list
-} with
-    member this.DisplayTitle =
-        match this.title, this.tracks with
-        | Some title, _ -> title
-        | None, [] -> "No disc"
-        | None, _ :: _ -> "Unknown album"
-    member this.DisplayArtist =
-        match this.artists with
-        | [] -> "Unknown artist"
-        | _ :: _ -> String.concat ", " this.artists
+}
+
+type DataDiscInfo = {
+    files: string list
+}
 
 type DiscInfo =
 | AudioDisc of AudioDiscInfo
-| DataDisc of files: string list
+| DataDisc of DataDiscInfo
 
 type DriveInfo = {
     device: string

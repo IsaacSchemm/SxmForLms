@@ -46,7 +46,7 @@ module MusicBrainz =
                     for artist in release.``artist-credit`` do
                         artist.name
                 ]
-                title = Some release.title
+                titles = [release.title]
                 tracks = [
                     for media in release.media do
                         for track in media.tracks do {

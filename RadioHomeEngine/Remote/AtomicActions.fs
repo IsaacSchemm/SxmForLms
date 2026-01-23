@@ -129,12 +129,12 @@ module AtomicActions =
             for info in drives do
                 match info.disc with
                 | AudioDisc _ -> ()
-                | DataDisc files ->
+                | DataDisc dataDisc ->
                     let! mountPoint = DataCD.mountDeviceAsync info.device
                     match mountPoint with
                     | None -> ()
                     | Some dir ->
-                        for file in files do
+                        for file in dataDisc.files do
                             do! Playlist.addItemAsync player $"file://{dir}/{file}" $"{file}"
 
             do! Playlist.playAsync player
@@ -195,9 +195,17 @@ module AtomicActions =
             | [] ->
                 do! Players.setDisplayAsync player "CD" "No disc found" (TimeSpan.FromSeconds(10))
             | [AudioDisc audioDisc] ->
-                do! Players.setDisplayAsync player audioDisc.DisplayArtist audioDisc.DisplayTitle (TimeSpan.FromSeconds(10))
-            | [DataDisc files] ->
-                do! Players.setDisplayAsync player "CD" $"{List.length files} file(s) found" (TimeSpan.FromSeconds(10))
+                let title =
+                    match audioDisc.titles with
+                    | [] -> "Unknown album"
+                    | x -> String.concat ", " x
+                let artist =
+                    match audioDisc.artists with
+                    | [] -> "Unknown artist"
+                    | x -> String.concat ", " x
+                do! Players.setDisplayAsync player artist title (TimeSpan.FromSeconds(10))
+            | [DataDisc dataDisc] ->
+                do! Players.setDisplayAsync player "CD" $"{List.length dataDisc.files} file(s) found" (TimeSpan.FromSeconds(10))
             | _ :: _ :: _ ->
                 do! Players.setDisplayAsync player "CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 

@@ -1,7 +1,6 @@
 ﻿namespace RadioHomeEngine
 
 open System
-open System.Threading
 open FSharp.Control
 
 module Discovery =
@@ -40,22 +39,37 @@ module Discovery =
 
             return {
                 device = device
-                disc = DataDisc files
+                disc = DataDisc {
+                    files = files
+                }
             }
         else
-            let! disc = Icedax.getInfoAsync device |> Async.AwaitTask
+            let! scanResults = Icedax.getInfoAsync device |> Async.AwaitTask
 
             let driveInfo = {
                 device = device
-                disc = AudioDisc disc
+                disc = AudioDisc scanResults.disc
             }
 
-            if disc.tracks = [] then
-                printfn $"[Discovery] [{device}] No tracks found on disc, not attempting MusicBrainz lookup"
-                return driveInfo
+            let disc = scanResults.disc
 
-            else if Option.isSome disc.title then
-                printfn $"[Discovery] [{device}] Using title {disc.title} from icedax"
+            if disc.tracks = [] then
+                printfn $"[Discovery] [{device}] No tracks found on disc"
+
+                if scanResults.hasdata then
+                    let! files = DataCD.scanDeviceAsync device |> Async.AwaitTask
+
+                    return {
+                        device = device
+                        disc = DataDisc {
+                            files = files
+                        }
+                    }
+                else
+                    return driveInfo
+
+            else if disc.titles <> [] then
+                printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
                 return driveInfo
 
             else
@@ -70,14 +84,11 @@ module Discovery =
 
                 match candidate with
                 | Some newDisc ->
-                    printfn $"[Discovery] [{device}] Using title {newDisc.title} from MusicBrainz"
-                    return {
-                        device = device
-                        disc = AudioDisc newDisc
-                    }
+                    printfn $"[Discovery] [{device}] Using title {newDisc.titles} from MusicBrainz"
+                    return { driveInfo with disc = AudioDisc newDisc }
                 | None ->
                     printfn $"[Discovery] [{device}] Not found on MusicBrainz"
-                    printfn $"[Discovery] [{device}] Using title {disc.title} from icedax"
+                    printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
                     return driveInfo
     }
 

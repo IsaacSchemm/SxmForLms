@@ -51,7 +51,7 @@ module Abcde =
                 for device in DiscDrives.getDevices scope do
                     let! info = Icedax.getInfoAsync device
 
-                    let trackString = String.concat " " [for t in info.tracks do string t.position]
+                    let trackString = String.concat " " [for t in info.disc.tracks do string t.position]
 
                     let proc =
                         new ProcessStartInfo(

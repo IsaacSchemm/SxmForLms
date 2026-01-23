@@ -47,7 +47,7 @@ module DataCD =
             use proc = Process.Start("umount", $"\"{device}\"")
             do! proc.WaitForExitAsync()
             if proc.ExitCode <> 0 then
-                failwithf "Process quit with exit code %d" proc.ExitCode
+                printf "umount process quit with exit code %d" proc.ExitCode
                 do! Task.Delay(TimeSpan.FromSeconds(0.25))
     }
 

@@ -112,17 +112,20 @@ module Icedax =
                 discid <- Some x
             | _ -> ()
 
-        return {
-            discid = discid
-            title = albumTitle
-            artists = []
-            tracks = [
-                for t in tracks |> Seq.sortBy (fun t -> t.number) do {
-                    title = t.title
-                    position = t.number
-                }
-            ]
-        }
+        return {|
+            hasdata = hasdata
+            disc = {
+                discid = discid
+                titles = Option.toList albumTitle
+                artists = []
+                tracks = [
+                    for t in tracks |> Seq.sortBy (fun t -> t.number) do {
+                        title = t.title
+                        position = t.number
+                    }
+                ]
+            }
+        |}
     }
 
     let bytesPerSecond = 44100 * sizeof<uint16> * 2

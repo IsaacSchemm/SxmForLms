@@ -2,12 +2,12 @@
 
 namespace RadioHomeEngine.TemporaryMountPoints
 {
-    public sealed class TemporaryMountPoint : IDisposable
+    public sealed class TemporaryMountPoint : IMountPoint
     {
-        public readonly string Device;
-        public readonly string MountPath;
-
         private bool _disposed;
+
+        public string Device { get; }
+        public string MountPath { get; }
 
         private TemporaryMountPoint(string device, string mountPath)
         {

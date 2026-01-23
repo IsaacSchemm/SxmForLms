@@ -1,4 +1,5 @@
 using RadioHomeEngine;
+using RadioHomeEngine.TemporaryMountPoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,3 +17,5 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run($"http://+:{Config.port}");
+
+EstablishedMountPoint.UnmountAll();

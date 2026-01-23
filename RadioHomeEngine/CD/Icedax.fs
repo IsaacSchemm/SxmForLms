@@ -6,6 +6,7 @@ open System.IO
 open System.Text
 open System.Text.RegularExpressions
 open System.Threading.Tasks
+open RadioHomeEngine.TemporaryMountPoints
 
 module Icedax =
     let albumTitlePattern = new Regex("^Album title: '(.*)")
@@ -59,6 +60,8 @@ module Icedax =
     let noDiscMessage = "load cdrom please and press enter"
 
     let getInfoAsync device = task {
+        EstablishedMountPoint.UnmountDevice(device)
+
         let proc =
             new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
             |> Process.Start
@@ -131,6 +134,8 @@ module Icedax =
     let bytesPerSector = bytesPerSecond / sectorsPerSecond
 
     let extractWaveAsync (device: string) trackNumber skip = task {
+        EstablishedMountPoint.UnmountDevice(device)
+
         let spanString = $"-t {trackNumber}"
 
         let factor =

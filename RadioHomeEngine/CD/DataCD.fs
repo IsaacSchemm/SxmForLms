@@ -1,18 +1,27 @@
 ﻿namespace RadioHomeEngine
 
+open System
 open System.IO
 open RadioHomeEngine.TemporaryMountPoints
 
 module DataCD =
     let extensions = set [
-        ".wav"
+        ".aac"
         ".aif"
         ".aiff"
+        ".flac"
+        ".mp3"
+        ".m4a"
+        ".oga"
+        ".ogg"
+        ".wav"
+        ".wma"
     ]
 
     let scanDeviceAsync (device: string) = task {
-        use! mount = TemporaryMountPoint.CreateAsync(device)
-        let dir = mount.MountPath
+        use! mountPoint = TemporaryMountPoint.CreateAsync(device)
+
+        let dir = mountPoint.MountPath
 
         return [
             for file in Directory.EnumerateFiles(dir, "*.*", new EnumerationOptions(RecurseSubdirectories = true)) do
@@ -23,5 +32,16 @@ module DataCD =
         ]
     }
 
-    let readFileAsync (device: string) (path: string) =
-        DeviceFileStream.CreateAsync(device, path)
+    [<Obsolete>]
+    let readFileAsync (device: string) (path: string) = task {
+        let! mountPoint = EstablishedMountPoint.GetOrCreateAsync(device)
+
+        let dir = mountPoint.MountPath
+
+        return new FileStream(
+            Path.Combine(
+                dir,
+                path),
+            FileMode.Open,
+            FileAccess.Read)
+    }

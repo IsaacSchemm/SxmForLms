@@ -66,26 +66,32 @@ module Discovery =
                 return driveInfo
     }
 
-    let asyncGetHybridDiscInfo device = task {
-        let! discInfo = asyncGetDiscInfo device
-
-        let! files =
-            if discInfo.hasdata
-            then DataCD.scanDeviceAsync device
-            else Task.FromResult([])
-
-        return {
-            device = discInfo.device
-            audio = discInfo.disc
-            data = files
-        }
-    }
-
     let getAllDiscInfoAsync scope = task {
         let! array =
             scope
             |> DiscDrives.getDevices
-            |> Seq.map asyncGetHybridDiscInfo
+            |> Seq.map asyncGetDiscInfo
+            |> Async.Parallel
+
+        return Array.toList array
+    }
+
+    let getDataDiscInfoAsync device = task {
+        let! discInfo = asyncGetDiscInfo device
+
+        let! files = DataCD.scanDeviceAsync device
+
+        return {|
+            device = discInfo.device
+            files = files
+        |}
+    }
+
+    let getAllDataDiscInfoAsync scope = task {
+        let! array =
+            scope
+            |> DiscDrives.getDevices
+            |> Seq.map getDataDiscInfoAsync
             |> Task.WhenAll
 
         return Array.toList array

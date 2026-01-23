@@ -55,7 +55,7 @@
 
     @foreach (var drive in Model.CDs)
     {
-        var disc = drive.audio;
+        var disc = drive.disc;
 
         <h1>CD Drive @drive.device</h1>
 
@@ -67,7 +67,7 @@
             }
         </p>
 
-        if (!disc.tracks.IsEmpty || !drive.data.IsEmpty)
+        if (!disc.tracks.IsEmpty)
         {
             <table class="trackTable">
                 <thead>
@@ -94,45 +94,58 @@
                             </td>
                         </tr>
                     }
-                    @foreach (var file in drive.data)
-                    {
-                        <tr>
-                            <td></td>
-                            <td align="left">
-                                @file
-                            </td>
-                            <td align="left"></td>
-                        </tr>
-                    }
                 </tbody>
             </table>
         }
 
-        <fieldset>
-            <legend>Play on</legend>
+        @if (!disc.tracks.IsEmpty)
+        {
+            <fieldset>
+                <legend>Play on</legend>
 
-            @foreach (var player in Model.Players)
-            {
-                <p>
-                    <form asp-action="PlayCD" target="myframe">
-                        <input type="hidden" name="device" value="@drive.device" />
-                        <input type="hidden" name="mac" value="@player.MacAddress" />
-                        <button type="submit">
-                            @player.Name
-                        </button>
-                    </form>
-                </p>
-            }
-        </fieldset>
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="PlayCD" target="myframe">
+                            <input type="hidden" name="device" value="@drive.device" />
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <button type="submit">
+                                @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </fieldset>
 
-        <p>
-            <form asp-action="RipCD" target="myframe">
-                <input type="hidden" name="device" value="@drive.device" />
-                <button type="submit">
-                    Rip all tracks from CD
-                </button>
-            </form>
-        </p>
+            <p>
+                <form asp-action="RipCD" target="myframe">
+                    <input type="hidden" name="device" value="@drive.device" />
+                    <button type="submit">
+                        Rip all tracks from CD
+                    </button>
+                </form>
+            </p>
+        }
+
+        @if (drive.hasdata)
+        {
+            <fieldset>
+                <legend>Play MP3 CD</legend>
+
+                @foreach (var player in Model.Players)
+                {
+                    <p>
+                        <form asp-action="PlayMP3CD" target="myframe">
+                            <input type="hidden" name="device" value="@drive.device" />
+                            <input type="hidden" name="mac" value="@player.MacAddress" />
+                            <button type="submit">
+                                @player.Name
+                            </button>
+                        </form>
+                    </p>
+                }
+            </fieldset>
+        }
 
         <p>
             <form asp-action="EjectCD" target="myframe">

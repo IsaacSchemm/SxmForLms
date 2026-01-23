@@ -5,9 +5,9 @@ open System.IO
 open System.Threading
 open System.Threading.Tasks
 open FSharp.Control
+open RadioHomeEngine.TemporaryMountPoints
 
 open LyrionCLI
-open RadioHomeEngine.TemporaryMountPoints
 
 type AtomicAction =
 | PlaySiriusXMChannel of int
@@ -16,6 +16,7 @@ type AtomicAction =
 | Replay
 | PlayCD of DiscDriveScope
 | RipCD of DiscDriveScope
+| PlayMP3CD of DiscDriveScope
 | EjectCD of DiscDriveScope
 | Forecast
 
@@ -23,8 +24,9 @@ module AtomicActions =
     let zeroCodes = [
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
-        ("02", RipCD AllDrives, "Rip all tracks from CD")
-        ("03", EjectCD AllDrives, "Eject CD")
+        ("02", RipCD AllDrives, "Rip CD")
+        ("03", PlayCD AllDrives, "Play MP3 CD")
+        ("04", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]
 
@@ -98,16 +100,31 @@ module AtomicActions =
             let! address = Network.getAddressAsync ()
 
             for info in drives do
-                for track in info.audio.tracks do
-                    let title =
-                        match track.title with
-                        | "" -> $"Track {track.position}"
-                        | x -> x
-                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
+                if info.disc.tracks <> [] then
+                    for track in info.disc.tracks do
+                        let title =
+                            match track.title with
+                            | "" -> $"Track {track.position}"
+                            | x -> x
+                        do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
 
-                if info.audio.tracks = [] && info.data <> [] then
+            do! Playlist.playAsync player
+
+        | PlayMP3CD scope ->
+            do! Players.simulateButtonAsync player "stop"
+
+            do! Players.setDisplayAsync player "Please wait" "Searching for files..." (TimeSpan.FromSeconds(999))
+
+            let! drives = Discovery.getAllDataDiscInfoAsync scope
+
+            do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
+
+            do! Playlist.clearAsync player
+
+            for info in drives do
+                if info.files <> [] then
                     let! mountPoint = EstablishedMountPoints.MountAsync(info.device)
-                    for file in info.data do
+                    for file in info.files do
                         do! Playlist.addItemAsync player $"file://{mountPoint.MountPath}/{file}" ""
 
             do! Playlist.playAsync player
@@ -166,7 +183,7 @@ module AtomicActions =
             | [] ->
                 do! Players.setDisplayAsync player "Audio CD" "No disc found" (TimeSpan.FromSeconds(10))
             | [drive] ->
-                do! Players.setDisplayAsync player drive.audio.DisplayArtist drive.audio.DisplayTitle (TimeSpan.FromSeconds(10))
+                do! Players.setDisplayAsync player drive.disc.DisplayArtist drive.disc.DisplayTitle (TimeSpan.FromSeconds(10))
             | _ :: _ :: _ ->
                 do! Players.setDisplayAsync player "Audio CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 

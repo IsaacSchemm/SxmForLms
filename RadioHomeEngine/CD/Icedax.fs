@@ -63,7 +63,11 @@ module Icedax =
         do! DataCD.unmountDeviceAsync device
 
         let proc =
-            new ProcessStartInfo("icedax", $"-J -g -D {device} -S 1 -v toc", RedirectStandardError = true)
+            new ProcessStartInfo(
+                "icedax",
+                $"-J -g -D {device} -S 1 -v toc",
+                RedirectStandardError = true,
+                WorkingDirectory = "/tmp")
             |> Process.Start
 
         let _ = task {

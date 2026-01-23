@@ -7,6 +7,7 @@ open System.Threading.Tasks
 open FSharp.Control
 
 open LyrionCLI
+open RadioHomeEngine.TemporaryMountPoints
 
 type AtomicAction =
 | PlaySiriusXMChannel of int
@@ -95,6 +96,7 @@ module AtomicActions =
             do! Playlist.clearAsync player
 
             let! address = Network.getAddressAsync ()
+
             for info in drives do
                 for track in info.audio.tracks do
                     let title =
@@ -103,8 +105,10 @@ module AtomicActions =
                         | x -> x
                     do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
 
-                for file in info.data do
-                    do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/GetFile?device={Uri.EscapeDataString(info.device)}&path={Uri.EscapeDataString(file)}" file
+                if info.audio.tracks = [] && info.data <> [] then
+                    let! mountPoint = EstablishedMountPoints.GetOrCreateAsync(info.device)
+                    for file in info.data do
+                        do! Playlist.addItemAsync player $"file://{mountPoint.MountPath}/{file}" ""
 
             do! Playlist.playAsync player
 

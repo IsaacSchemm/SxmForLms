@@ -19,7 +19,7 @@ module DataCD =
     ]
 
     let scanDeviceAsync (device: string) = task {
-        use! mountPoint = EphemeralMountPoint.CreateAsync(device)
+        let! mountPoint = EstablishedMountPoints.GetOrCreateAsync(device)
 
         let dir = mountPoint.MountPath
 

@@ -112,6 +112,7 @@ module AtomicActions =
                             | "" -> $"Track {track.position}"
                             | x -> x
                         do! Playlist.addItemAsync player $"http://{address}:{Config.port}/CD/PlayTrack?device={Uri.EscapeDataString(info.device)}&track={track.position}" title
+                | NoDisc -> ()
 
             do! Playlist.playAsync player
 
@@ -165,12 +166,17 @@ module AtomicActions =
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
 
             let! drives = Discovery.getAllDiscInfoAsync scope
-            let discs = [for dr in drives do dr.disc]
+            let disc =
+                drives
+                |> Seq.map (fun dr -> dr.disc)
+                |> Seq.except [NoDisc]
+                |> Seq.tryHead
+                |> Option.defaultValue NoDisc
 
-            match discs with
-            | [] ->
+            match disc with
+            | NoDisc ->
                 do! Players.setDisplayAsync player "CD" "No disc found" (TimeSpan.FromSeconds(10))
-            | [AudioDisc audioDisc] ->
+            | AudioDisc audioDisc ->
                 let title =
                     match audioDisc.titles with
                     | [] -> "Unknown album"
@@ -180,10 +186,8 @@ module AtomicActions =
                     | [] -> "Unknown artist"
                     | x -> String.concat ", " x
                 do! Players.setDisplayAsync player artist title (TimeSpan.FromSeconds(10))
-            | [DataDisc dataDisc] ->
+            | DataDisc dataDisc ->
                 do! Players.setDisplayAsync player "CD" $"{List.length dataDisc.files} file(s) found" (TimeSpan.FromSeconds(10))
-            | _ :: _ :: _ ->
-                do! Players.setDisplayAsync player "CD" "Multiple discs found" (TimeSpan.FromSeconds(10))
 
         | _ -> ()
     }

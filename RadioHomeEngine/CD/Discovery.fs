@@ -46,10 +46,7 @@ module Discovery =
         else
             let! scanResults = Icedax.getInfoAsync device |> Async.AwaitTask
 
-            let driveInfo = {
-                device = device
-                disc = AudioDisc scanResults.disc
-            }
+            printfn "%A" scanResults
 
             let disc = scanResults.disc
 
@@ -67,11 +64,10 @@ module Discovery =
 
             else if disc.tracks = [] then
                 printfn $"[Discovery] [{device}] No tracks found on disc"
-                return driveInfo
-
-            else if disc.titles <> [] then
-                printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
-                return driveInfo
+                return {
+                    device = device
+                    disc = NoDisc
+                }
 
             else
                 printfn $"[Discovery] [{device}] Preparing to query MusicBrainz..."
@@ -86,11 +82,17 @@ module Discovery =
                 match candidate with
                 | Some newDisc ->
                     printfn $"[Discovery] [{device}] Using title {newDisc.titles} from MusicBrainz"
-                    return { driveInfo with disc = AudioDisc newDisc }
+                    return {
+                        device = device
+                        disc = AudioDisc newDisc
+                    }
                 | None ->
                     printfn $"[Discovery] [{device}] Not found on MusicBrainz"
                     printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
-                    return driveInfo
+                    return {
+                        device = device
+                        disc = AudioDisc scanResults.disc
+                    }
     }
 
     let getAllDiscInfoAsync scope = task {

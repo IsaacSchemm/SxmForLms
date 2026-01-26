@@ -19,6 +19,7 @@ type DataDiscInfo = {
 type DiscInfo =
 | AudioDisc of AudioDiscInfo
 | DataDisc of DataDiscInfo
+| NoDisc
 
 type DriveInfo = {
     device: string

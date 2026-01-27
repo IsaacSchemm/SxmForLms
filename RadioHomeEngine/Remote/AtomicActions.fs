@@ -23,7 +23,6 @@ module AtomicActions =
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
         ("02", RipCD AllDrives, "Rip CD")
-        ("02", RipCD AllDrives, "Rip CD")
         ("03", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]

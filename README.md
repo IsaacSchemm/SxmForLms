@@ -8,8 +8,8 @@ Functionality available from the web interface (port 5000):
 
 * Audio CD playback
     * Album and track names (from CD-Text or MusicBrainz)
-    * Play a disc (all tracks) on a device connected to LMS
-    * Rip the disc to LMS's media folder using `abcde`
+    * Play a disc (all tracks, or all audio files) on a device connected to LMS
+    * Rip the disc to LMS's media folder using `abcde` (audio CDs only)
 * SiriusXM
     * List channels (live streams only; Xtra channels not supported)
     * Play a channel on a device connected to LMS
@@ -19,12 +19,11 @@ Functionality available from a custom infrared remote:
 
 * Audio CD playback
     * Album and track names (from CD-Text or MusicBrainz)
-    * Play a disc (all tracks)
-    * Rip the disc to LMS's media folder using `abcde`
+    * Play a disc (all tracks, or all audio files)
+    * Rip the disc to LMS's media folder using `abcde` (audio CDs only)
 * SiriusXM
     * Play channel by number (live streams only; Xtra channels not supported)
     * View currently playing program title (for the last SiriusXM channel number entered)
-* Seek to specific timestamps (number of seconds / number of minutes)
 * U.S. weather forcasts and alerts from `weather.gov`, using `espeak` speech synthesis
 
 *This application's port 5000 should not be exposed to the internet* - like LMS, it is designed only for use within a local home network.
@@ -63,7 +62,13 @@ Their SiriusXM username and password are stored in `username.txt` and `password.
 
 RadioHomeEngine monitors LMS for infrared remote commands, and performs actions based on the mappings in `LyrionIR.fs`.
 
-In the default mapping, the "Source" button is used to flip between modes for the number buttons, and the number buttons trigger a prompt that can activate special actions.
+In the default mapping, the "Source" button is used to flip between modes for the number buttons, and the number buttons trigger a prompt that can activate "atomic actions":
+
+* 00: Information
+* 01: Play CD
+* 02: Rip CD
+* 03: Eject CD
+* 09: Weather
 
 ### Audio CD playback
 

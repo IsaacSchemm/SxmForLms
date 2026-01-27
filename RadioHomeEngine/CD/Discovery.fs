@@ -46,8 +46,6 @@ module Discovery =
         else
             let! scanResults = Icedax.getInfoAsync device |> Async.AwaitTask
 
-            printfn "%A" scanResults
-
             let disc = scanResults.disc
 
             if disc.tracks = [] then

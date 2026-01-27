@@ -27,6 +27,12 @@ module AtomicActions =
         ("09", Forecast, "Weather")
     ]
 
+    let beginRipAsync scope = ignore (task {
+        do! DataCD.ripAsync scope
+        do! Abcde.ripAsync scope
+        do! DiscDrives.ejectAsync scope
+    })
+
     let tryGetAction (entry: string) = Seq.tryHead (seq {
         if entry.StartsWith("0") then
             for num, action, _ in zeroCodes do
@@ -118,7 +124,7 @@ module AtomicActions =
             do! Playlist.playAsync player
 
         | RipCD scope ->
-            Abcde.beginRipAsync scope
+            beginRipAsync scope
 
         | EjectCD scope ->
             do! DiscDrives.ejectAsync scope

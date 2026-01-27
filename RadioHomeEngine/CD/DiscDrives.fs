@@ -4,6 +4,8 @@ open System.Diagnostics
 open System.IO
 
 module DiscDrives =
+    let mutable ripping = false
+
     let getAll () =
         seq { 0 .. 9 }
         |> Seq.map (fun n -> $"/dev/sr{n}")

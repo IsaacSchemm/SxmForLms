@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RadioHomeEngine.AspNetCore.Models;
+using System.Threading.Tasks;
 
 namespace RadioHomeEngine.AspNetCore.Controllers
 {
@@ -47,7 +48,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         [HttpPost]
         public void RipCD(string device)
         {
-            Abcde.beginRipAsync(
+            AtomicActions.beginRipAsync(
                 DiscDriveScope.NewSingleDrive(device));
         }
 

@@ -103,15 +103,6 @@
                     }
                 </tbody>
             </table>
-
-            <p>
-                <form asp-action="RipCD" target="myframe">
-                    <input type="hidden" name="device" value="@drive.device" />
-                    <button type="submit">
-                        Rip CD
-                    </button>
-                </form>
-            </p>
         }
 
         if (drive.HasData)
@@ -154,6 +145,18 @@
                     </p>
                 }
             </fieldset>
+        }
+
+        if (!drive.disc.IsNoDisc)
+        {
+            <p>
+                <form asp-action="RipCD" target="myframe">
+                    <input type="hidden" name="device" value="@drive.device" />
+                    <button type="submit">
+                        Rip CD
+                    </button>
+                </form>
+            </p>
         }
 
         <p>

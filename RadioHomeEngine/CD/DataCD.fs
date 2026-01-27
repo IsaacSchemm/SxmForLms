@@ -89,3 +89,45 @@ module DataCD =
                         else failwith $"{file} does not start with {dir}"
         ]
     }
+
+    let ripAsync scope = task {
+        if DiscDrives.ripping then
+            Console.Error.WriteLine("Rip in progress; not starting new rip")
+        else
+            DiscDrives.ripping <- true
+
+            try
+                let! dirs = LyrionCLI.General.getMediaDirsAsync()
+
+                let mediaDir =
+                    dirs
+                    |> Seq.tryHead
+                    |> Option.defaultWith (fun () -> failwith "No media_dir found to rip to")
+
+                let destDir = Path.Combine(
+                    mediaDir,
+                    $"Copied from CD-ROM ({DateTimeOffset.UtcNow.ToUnixTimeSeconds()})")
+
+                ignore (Directory.CreateDirectory(destDir))
+
+                for device in DiscDrives.getDevices scope do
+                    let! mountPoint = mountDeviceAsync device
+
+                    match mountPoint with
+                    | None -> ()
+                    | Some srcDir ->
+                        let! files = scanDeviceAsync device
+
+                        printfn $"Copying {files.Length} files from {srcDir} to {destDir}"
+
+                        for file in files do
+                            let srcPath = Path.Combine(srcDir, file)
+                            let destPath = Path.Combine(destDir, Path.GetFileName(file))
+                            File.Copy(srcPath, destPath)
+
+                do! LyrionCLI.General.rescanAsync()
+            with ex ->
+                Console.Error.WriteLine(ex)
+
+            DiscDrives.ripping <- false
+    }

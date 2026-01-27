@@ -5,8 +5,6 @@ open System.Diagnostics
 open System.Threading.Tasks
 
 module Abcde =
-    let mutable ripping = false
-
     let getMusicBrainzDiscIdAsync (device: string) = task {
         let proc =
             new ProcessStartInfo(
@@ -35,10 +33,10 @@ module Abcde =
     }
 
     let ripAsync scope = task {
-        if ripping then
+        if DiscDrives.ripping then
             Console.Error.WriteLine("Rip in progress; not starting new rip")
         else
-            ripping <- true
+            DiscDrives.ripping <- true
 
             try
                 let! dirs = LyrionCLI.General.getMediaDirsAsync()
@@ -62,14 +60,9 @@ module Abcde =
 
                     do! proc.WaitForExitAsync()
 
-                    do! DiscDrives.ejectDeviceAsync device
-
                 do! LyrionCLI.General.rescanAsync()
             with ex ->
                 Console.Error.WriteLine(ex)
 
-            ripping <- false
+            DiscDrives.ripping <- false
     }
-
-    let beginRipAsync scope =
-        ignore (ripAsync scope)

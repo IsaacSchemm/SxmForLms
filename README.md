@@ -9,7 +9,7 @@ Functionality available from the web interface (port 5000):
 * Audio CD playback
     * Album and track names (from CD-Text or MusicBrainz)
     * Play a disc (all tracks, or all audio files) on a device connected to LMS
-    * Rip the disc to LMS's media folder using `abcde` (audio CDs only)
+    * Rip the disc to LMS's media folder using `abcde`
 * SiriusXM
     * List channels (live streams only; Xtra channels not supported)
     * Play a channel on a device connected to LMS
@@ -20,7 +20,7 @@ Functionality available from a custom infrared remote:
 * Audio CD playback
     * Album and track names (from CD-Text or MusicBrainz)
     * Play a disc (all tracks, or all audio files)
-    * Rip the disc to LMS's media folder using `abcde` (audio CDs only)
+    * Rip the disc to LMS's media folder using `abcde`
 * SiriusXM
     * Play channel by number (live streams only; Xtra channels not supported)
     * View currently playing program title (for the last SiriusXM channel number entered)

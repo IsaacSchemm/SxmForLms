@@ -31,7 +31,7 @@ module Discovery =
             return None
     }
 
-    let asyncGetDiscInfo device = async {
+    let asyncGetDriveInfo device = async {
         printfn $"[Discovery] [{device}] Scanning drive {device}..."
 
         if Option.isSome (DataCD.getMountPoint device) then
@@ -50,19 +50,7 @@ module Discovery =
 
             let disc = scanResults.disc
 
-            if disc.tracks = [] && scanResults.hasdata then
-                printfn $"[Discovery] [{device}] No tracks found on disc; mounting filesystem"
-
-                let! files = DataCD.scanDeviceAsync device |> Async.AwaitTask
-
-                return {
-                    device = device
-                    disc = DataDisc {
-                        files = files
-                    }
-                }
-
-            else if disc.tracks = [] then
+            if disc.tracks = [] then
                 printfn $"[Discovery] [{device}] No tracks found on disc"
                 return {
                     device = device
@@ -79,27 +67,56 @@ module Discovery =
                     |> AsyncSeq.choose id
                     |> AsyncSeq.tryFirst
 
-                match candidate with
-                | Some newDisc ->
-                    printfn $"[Discovery] [{device}] Using title {newDisc.titles} from MusicBrainz"
-                    return {
-                        device = device
-                        disc = AudioDisc newDisc
-                    }
-                | None ->
-                    printfn $"[Discovery] [{device}] Not found on MusicBrainz"
-                    printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
-                    return {
-                        device = device
-                        disc = AudioDisc scanResults.disc
-                    }
+                let disc =
+                    match candidate with
+                    | Some newDisc ->
+                        printfn $"[Discovery] [{device}] Using title {newDisc.titles} from MusicBrainz"
+                        newDisc
+                    | None ->
+                        printfn $"[Discovery] [{device}] Not found on MusicBrainz"
+                        printfn $"[Discovery] [{device}] Using title {disc.titles} from icedax"
+                        scanResults.disc
+
+                return {
+                    device = device
+                    disc =
+                        if scanResults.hasdata
+                        then HybridDisc disc
+                        else AudioDisc disc
+                }
     }
 
-    let getAllDiscInfoAsync scope = task {
+    let asyncAutoMount device = async {
+        let! info = asyncGetDriveInfo device
+
+        match info.disc with
+        | HybridDisc disc when disc.tracks = [] ->
+            printfn $"[Discovery] [{device}] No tracks on {disc}, mounting filesystem..."
+            let! _ = DataCD.mountDeviceAsync info.device |> Async.AwaitTask
+            return! asyncGetDriveInfo info.device
+        | DataDisc disc when disc.files = [] ->
+            printfn $"[Discovery] [{device}] No playable files on {disc}, unmounting filesystem..."
+            let! _ = DataCD.unmountDeviceAsync info.device |> Async.AwaitTask
+            return! asyncGetDriveInfo info.device
+        | _ ->
+            return info
+    }
+
+    let getDriveInfoAsync scope = task {
         let! array =
             scope
             |> DiscDrives.getDevices
-            |> Seq.map asyncGetDiscInfo
+            |> Seq.map asyncGetDriveInfo
+            |> Async.Parallel
+
+        return Array.toList array
+    }
+
+    let autoMountAsync scope = task {
+        let! array =
+            scope
+            |> DiscDrives.getDevices
+            |> Seq.map asyncAutoMount
             |> Async.Parallel
 
         return Array.toList array

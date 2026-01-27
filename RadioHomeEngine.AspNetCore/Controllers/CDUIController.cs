@@ -7,7 +7,7 @@ namespace RadioHomeEngine.AspNetCore.Controllers
     {
         public async Task<IActionResult> Index()
         {
-            var drives = await Discovery.getAllDiscInfoAsync(DiscDriveScope.AllDrives);
+            var drives = await Discovery.getDriveInfoAsync(DiscDriveScope.AllDrives);
 
             return View(new CDsModel
             {
@@ -22,22 +22,17 @@ namespace RadioHomeEngine.AspNetCore.Controllers
         }
 
         [HttpPost]
-        public async Task Clear(string mac)
-        {
-            await LyrionCLI.Playlist.clearAsync(
-                LyrionCLI.Player.NewPlayer(mac));
-        }
-
-        [HttpPost]
-        public async Task MountCD(string device)
+        public async Task<IActionResult> MountCD(string device)
         {
             await DataCD.mountDeviceAsync(device);
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
-        public async Task UnmountCD(string device)
+        public async Task<IActionResult> UnmountCD(string device)
         {
             await DataCD.unmountDeviceAsync(device);
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]

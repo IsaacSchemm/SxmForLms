@@ -23,6 +23,7 @@ module AtomicActions =
         ("00", Information, "Information")
         ("01", PlayCD AllDrives, "Play CD")
         ("02", RipCD AllDrives, "Rip CD")
+        ("02", RipCD AllDrives, "Rip CD")
         ("03", EjectCD AllDrives, "Eject CD")
         ("09", Forecast, "Weather")
     ]
@@ -86,9 +87,9 @@ module AtomicActions =
         | PlayCD scope ->
             do! Players.simulateButtonAsync player "stop"
 
-            do! Players.setDisplayAsync player "Please wait" "Searching for tracks..." (TimeSpan.FromSeconds(999))
+            do! Players.setDisplayAsync player "Please wait" "Searching for tracks and files..." (TimeSpan.FromSeconds(999))
 
-            let! drives = Discovery.getAllDiscInfoAsync scope
+            let! drives = Discovery.autoMountAsync scope
 
             do! Players.setDisplayAsync player "Please wait" "Finishing up..." (TimeSpan.FromMilliseconds(1))
 
@@ -105,7 +106,8 @@ module AtomicActions =
                     | Some dir ->
                         for file in dataDisc.files do
                             do! Playlist.addItemAsync player $"file://{dir}/{file}" $"{file}"
-                | AudioDisc audioDisc ->
+                | AudioDisc audioDisc
+                | HybridDisc audioDisc ->
                     for track in audioDisc.tracks do
                         let title =
                             match track.title with
@@ -165,7 +167,7 @@ module AtomicActions =
         | PlayCD scope ->
             do! Players.setDisplayAsync player "Info" "Please wait..." (TimeSpan.FromSeconds(10))
 
-            let! drives = Discovery.getAllDiscInfoAsync scope
+            let! drives = Discovery.getDriveInfoAsync scope
             let disc =
                 drives
                 |> Seq.map (fun dr -> dr.disc)
@@ -176,7 +178,8 @@ module AtomicActions =
             match disc with
             | NoDisc ->
                 do! Players.setDisplayAsync player "CD" "No disc found" (TimeSpan.FromSeconds(10))
-            | AudioDisc audioDisc ->
+            | AudioDisc audioDisc
+            | HybridDisc audioDisc ->
                 let title =
                     match audioDisc.titles with
                     | [] -> "Unknown album"

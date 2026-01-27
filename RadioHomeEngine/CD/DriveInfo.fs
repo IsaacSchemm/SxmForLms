@@ -18,6 +18,7 @@ type DataDiscInfo = {
 
 type DiscInfo =
 | AudioDisc of AudioDiscInfo
+| HybridDisc of AudioDiscInfo
 | DataDisc of DataDiscInfo
 | NoDisc
 
@@ -25,5 +26,10 @@ type DriveInfo = {
     device: string
     disc: DiscInfo
 } with
-    member this.AudioDiscs = [match this.disc with AudioDisc x -> x | _ -> ()]
+    member this.AudioDiscs = [match this.disc with AudioDisc x -> x | HybridDisc x -> x | _ -> ()]
     member this.DataDiscs = [match this.disc with DataDisc x -> x | _ -> ()]
+    member this.HasData =
+        match this.disc with
+        | HybridDisc _
+        | DataDisc _ -> true
+        | _ -> false
